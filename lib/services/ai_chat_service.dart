@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/ai/chat_prompt.dart';
 import '../core/ai/fair_use_policy.dart';
@@ -116,6 +116,7 @@ class AiError extends AiResponseResult {
 class AiChatService extends ChangeNotifier {
   final RetroactiveProvider _provider;
   final String _apiKey;
+  final http.Client _client;
 
   List<ChatMessage> _messages = [];
   bool _isLoading = false;
@@ -129,8 +130,16 @@ class AiChatService extends ChangeNotifier {
   AiChatService({
     required RetroactiveProvider provider,
     required String apiKey,
+    http.Client? client,
   })  : _provider = provider,
-        _apiKey = apiKey;
+        _apiKey = apiKey,
+        _client = client ?? http.Client();
+
+  @override
+  void dispose() {
+    _client.close();
+    super.dispose();
+  }
 
   // ──────────────────────────────────────────────
   // Getters
@@ -346,55 +355,52 @@ class AiChatService extends ChangeNotifier {
       'top_p': 0.8,
     });
 
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 15);
-    try {
-      final request = await client
-          .postUrl(url)
-          .timeout(const Duration(seconds: 15));
-      request.headers.set('Content-Type', 'application/json');
-      request.headers.set('Authorization', 'Bearer $_apiKey');
-      // OpenRouter recommended headers
-      request.headers.set('HTTP-Referer', 'https://d-0-pension.app');
-      request.headers.set('X-Title', 'D-0-Pension Calculator');
-      // Use add() with utf8 encoded bytes instead of write() to avoid
-      // "Invalid argument (string): Contains invalid characters" errors
-      // on Windows with certain Unicode characters in the system prompt.
-      request.add(utf8.encode(body));
-      final response = await request
-          .close()
-          .timeout(const Duration(seconds: 60));
+    // package:http resolves to BrowserClient (fetch/XHR) on web and
+    // IOClient on VM/mobile, so this call works on every platform.
+    final response = await _client
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $_apiKey',
+            // OpenRouter recommended headers
+            'HTTP-Referer': 'https://d-0-pension.app',
+            'X-Title': 'D-0-Pension Calculator',
+          },
+          body: body,
+        )
+        .timeout(const Duration(seconds: 60));
 
-      if (response.statusCode != 200) {
-        final responseBody = await response
-            .transform(utf8.decoder)
-            .join()
-            .timeout(const Duration(seconds: 30));
-        throw Exception('HTTP ${response.statusCode}: $responseBody');
-      }
-
-      final responseText = await response
-          .transform(utf8.decoder)
-          .join()
-          .timeout(const Duration(seconds: 60));
-      final data = jsonDecode(responseText) as Map<String, dynamic>;
-
-      // Extract the assistant's message from OpenAI format
-      final choices = data['choices'] as List<dynamic>?;
-      if (choices == null || choices.isEmpty) {
-        throw Exception('No choices in response');
-      }
-      final message = choices[0] as Map<String, dynamic>;
-      final content = message['message'] as Map<String, dynamic>?;
-      final text = content?['content'] as String?;
-      if (text == null || text.isEmpty) {
-        throw Exception('Empty response from model');
-      }
-      return text;
-    } finally {
-      client.close();
+    if (response.statusCode != 200) {
+      throw Exception(
+          'HTTP ${response.statusCode}: ${utf8.decode(response.bodyBytes)}');
     }
+
+    // Decode as UTF-8 explicitly (OpenRouter responses are UTF-8).
+    final data =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+
+    // Extract the assistant's message from OpenAI format
+    final choices = data['choices'] as List<dynamic>?;
+    if (choices == null || choices.isEmpty) {
+      throw Exception('No choices in response');
+    }
+    final message = choices[0] as Map<String, dynamic>;
+    final content = message['message'] as Map<String, dynamic>?;
+    final text = content?['content'] as String?;
+    if (text == null || text.isEmpty) {
+      throw Exception('Empty response from model');
+    }
+    return text;
   }
+
+  /// Test seam: exposes the OpenRouter HTTP call so tests can exercise the
+  /// exact request/response path (including web) with a mocked [http.Client].
+  @visibleForTesting
+  Future<String> callOpenRouterApiForTest(
+    List<Map<String, String>> messages,
+  ) =>
+      _callOpenRouterApi(messages);
 
   // ──────────────────────────────────────────────
   // Response Parsing
