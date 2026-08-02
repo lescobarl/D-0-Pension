@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/utils/pii_cipher.dart';
+
 /// Keys used in [SharedPreferences] to persist user info.
 const _kUserEmail = 'user_email';
 const _kUserLoggedIn = 'user_logged_in';
@@ -36,8 +38,20 @@ class LoginProvider extends ChangeNotifier {
   /// Restore session from SharedPreferences (called from main.dart).
   void initialize() {
     _isLoggedIn = _prefs.getBool(_kUserLoggedIn) ?? false;
-    _userEmail = _prefs.getString(_kUserEmail);
+    _userEmail = _decodeEmail(_prefs.getString(_kUserEmail));
     notifyListeners();
+  }
+
+  /// Decodes the persisted email. Accepts the obfuscated format (v2+) and
+  /// legacy plaintext (older builds stored the raw email; emails contain '@'
+  /// and '.' which are outside the base64 alphabet, so decode fails → fallback).
+  String? _decodeEmail(String? raw) {
+    if (raw == null) return null;
+    try {
+      return PiiCipher.decode(raw);
+    } catch (_) {
+      return raw;
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -73,9 +87,9 @@ class LoginProvider extends ChangeNotifier {
       return false;
     }
 
-    // Persist session
+    // Persist session (email obfuscated at rest via PiiCipher, ver KEY-PII-OFUSCACION.txt)
     await _prefs.setBool(_kUserLoggedIn, true);
-    await _prefs.setString(_kUserEmail, email);
+    await _prefs.setString(_kUserEmail, PiiCipher.encode(email));
 
     _isLoggedIn = true;
     _userEmail = email;

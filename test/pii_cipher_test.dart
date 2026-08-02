@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:d_0_pension/core/models/periodo_salarial.dart';
 import 'package:d_0_pension/core/utils/pii_cipher.dart';
+import 'package:d_0_pension/services/billing/login_provider.dart';
 import 'package:d_0_pension/services/persistence_service.dart';
 
 void main() {
@@ -203,6 +204,48 @@ void main() {
       final loaded = service.loadPeriodos();
       expect(loaded.length, 1);
       expect(loaded[0].salarioDiario, 1800.0);
+    });
+  });
+
+  group('LoginProvider (email PII at rest)', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('email is stored obfuscated and restored on initialize()', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final provider = LoginProvider(prefs);
+      final ok = await provider.signIn(
+        email: 'usuario.ejemplo@correo.com',
+        password: 'secreto123',
+      );
+      expect(ok, isTrue);
+
+      // No se guarda el email en claro.
+      final stored = prefs.get('user_email');
+      expect(stored, isA<String>());
+      expect(stored, isNot('usuario.ejemplo@correo.com'));
+      expect((stored as String).contains('@'), isFalse,
+          reason: 'el email no debe quedar legible en el almacenamiento');
+
+      // Un provider nuevo (p. ej. reinicio de app) restaura la sesión.
+      final restored = LoginProvider(prefs);
+      restored.initialize();
+      expect(restored.isLoggedIn, isTrue);
+      expect(restored.userEmail, 'usuario.ejemplo@correo.com');
+    });
+
+    test('legacy plaintext email is still readable after initialize()', () async {
+      // Simula datos guardados por una versión anterior (email en claro).
+      SharedPreferences.setMockInitialValues({
+        'user_logged_in': true,
+        'user_email': 'antiguo@correo.com',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final restored = LoginProvider(prefs);
+      restored.initialize();
+      expect(restored.isLoggedIn, isTrue);
+      expect(restored.userEmail, 'antiguo@correo.com');
     });
   });
 }

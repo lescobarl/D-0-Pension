@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/models/result.dart';
+import '../../core/utils/pii_cipher.dart';
 import 'play_billing_service.dart';
 import 'play_purchase_success.dart';
 
@@ -191,7 +192,9 @@ class PaymentProvider extends ChangeNotifier {
 
     _prefs.setString(_kLicenseProductId, purchase.verifiedProductId);
     if (purchase.purchaseToken != null) {
-      _prefs.setString(_kLicensePurchaseToken, purchase.purchaseToken!);
+      // Token de compra: dato sensible, se guarda ofuscado en reposo.
+      _prefs.setString(
+          _kLicensePurchaseToken, PiiCipher.encode(purchase.purchaseToken!));
     }
   }
 
