@@ -41,16 +41,19 @@ La infraestructura es 100% dependencia-cero (coherente con la filosofía del
 proyecto):
 
 - [`test/golden_fonts.dart`](test/golden_fonts.dart) carga Roboto + MaterialIcons
-  reales desde la caché del SDK (`bin/cache/artifacts/material_fonts/`) para que
-  los glifos no se rendericen como cajas Ahem.
+  reales desde las copias empaquetadas en [`test/fonts/`](test/fonts/) (byte-idénticas
+  a las del SDK, licencia Apache-2.0 incluida) para que los glifos no se rendericen
+  como cajas Ahem. Cae a la caché del SDK (`bin/cache/artifacts/material_fonts/`)
+  solo si el directorio del repo no existe.
 - [`test/golden_harness.dart`](test/golden_harness.dart) fija la superficie
   (390×844, dpr 1.0) y provee `pumpUntilFound()` (evita los colgados de
   `pumpAndSettle`).
 
 ### Determinismo cross-platform
 
-Los PNG se generan con el motor de software del SDK (misma versión Flutter 3.41.5,
-mismos TTF de la caché, mismo rasterizador) en Windows local y en el runner
-ubuntu-latest de CI, por lo que las referencias son deterministas entre
-plataformas. El job `test` de `.github/workflows/flutter-ci.yml` ya incluye los
-3 archivos golden en su conjunto curado.
+Las fuentes se toman siempre de [`test/fonts/`](test/fonts/) (mismas copias del SDK
+3.41.x en cualquier máquina), por lo que los PNG se renderizan con el mismo motor de
+software del SDK en Windows local y en el runner ubuntu-latest de CI sin depender de
+la caché de artefactos (que en Linux no incluye `material_fonts`). El job `test` de
+`.github/workflows/flutter-ci.yml` ya incluye los 3 archivos golden en su conjunto
+curado.
