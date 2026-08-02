@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Escenario 1: Base (con esposa, 1 hijo, 60.5 años)",
+    "inputs": {
+      "salario_diario_promedio": 2677.3058,
+      "uma_diaria": 128.1055,
+      "salario_minimo_diario": 372.0409,
+      "pension_year": 2029,
+      "semanas_cotizadas": 4637,
+      "tiene_esposa": true,
+      "numero_hijos": 1,
+      "numero_padres": 0,
+      "edad_retiro": 60.5
+    },
+    "excel": {
+      "salario_diario_promedio": 2677.3058,
+      "uma_diaria": 128.1055,
+      "salario_minimo_diario": 372.0409,
+      "salario_en_umas": 20.9,
+      "porcentaje_cuantia_basica": 0.13,
+      "total_cuantia_basica": 141012.3553,
+      "numero_incrementos": 30.0,
+      "total_incrementos": 797262.1627,
+      "pension_vejez_100": 938274.5181,
+      "asignacion_esposa": 126793.8538,
+      "asignacion_hijos": 84529.2359,
+      "asignacion_padres": 0.0,
+      "total_ayuda_asistencial": 0.0,
+      "pension_anual_neta": 879632.3607,
+      "pension_mensual_neta": 73302.6967,
+      "edad_entera": 60.0,
+      "porcentaje_edad": 0.75,
+      "pension_mod40_anual": 879632.3607,
+      "pension_mod40_mensual": 73302.6967
+    }
+  },
+  {
+    "name": "Escenario 2: Soltero (sin esposa, sin hijos, 65 años)",
+    "inputs": {
+      "salario_diario_promedio": 2677.3058,
+      "uma_diaria": 128.1055,
+      "salario_minimo_diario": 372.0409,
+      "pension_year": 2029,
+      "semanas_cotizadas": 4477,
+      "tiene_esposa": false,
+      "numero_hijos": 0,
+      "numero_padres": 0,
+      "edad_retiro": 60.5
+    },
+    "excel": {
+      "salario_diario_promedio": 2677.3058,
+      "uma_diaria": 128.1055,
+      "salario_minimo_diario": 372.0409,
+      "salario_en_umas": 20.9,
+      "porcentaje_cuantia_basica": 0.13,
+      "total_cuantia_basica": 141012.3553,
+      "numero_incrementos": 26.5,
+      "total_incrementos": 704248.2438,
+      "pension_vejez_100": 845260.5991,
+      "asignacion_esposa": 0.0,
+      "asignacion_hijos": 0.0,
+      "asignacion_padres": 0.0,
+      "total_ayuda_asistencial": 95091.8174,
+      "pension_anual_neta": 729037.2667,
+      "pension_mensual_neta": 60753.1056,
+      "edad_entera": 60.0,
+      "porcentaje_edad": 0.75,
+      "pension_mod40_anual": 729037.2667,
+      "pension_mod40_mensual": 60753.1056
+    }
+  }
+]

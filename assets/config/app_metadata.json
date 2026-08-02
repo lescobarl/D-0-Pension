@@ -1,0 +1,867 @@
+{
+  "app_name": "Calculadora Ley 73 IMSS",
+  "version": "1.0.0",
+  "description": "Calculadora de pension Ley 1973 IMSS con Modalidad 40 y Pago Retroactivo",
+  "tabs": [
+    {
+      "key": "datos_gen",
+      "label": "DATOS GEN.",
+      "sheet": "DATOS GEN.",
+      "icon": "description"
+    },
+    {
+      "key": "datos_gen_mod40",
+      "label": "DATOS GEN. MOD 40",
+      "sheet": "DATOS GEN. MOD 40",
+      "icon": "edit_note"
+    },
+    {
+      "key": "fact_asig_sin_mod40",
+      "label": "FACT. + ASIG. SIN MOD 40",
+      "sheet": "FACT. + ASIG.",
+      "icon": "fact_check"
+    },
+    {
+      "key": "pension_actual",
+      "label": "PENSIÓN ACTUAL",
+      "sheet": "PENSIÓN ACTUAL",
+      "icon": "elderly"
+    },
+    {
+      "key": "fact_asig_mod40",
+      "label": "FACT. + ASIG. MOD.40",
+      "sheet": "FACT. + ASIG. MOD.40",
+      "icon": "calculate"
+    },
+    {
+      "key": "pension_mod40",
+      "label": "PENSION MOD. 40",
+      "sheet": "PENSION MOD. 40",
+      "icon": "account_balance"
+    },
+    {
+      "key": "costo_mod40",
+      "label": "COSTO MOD. 40",
+      "sheet": "COSTO MOD. 40",
+      "icon": "attach_money"
+    },
+    {
+      "key": "inversion",
+      "label": "INVERSION",
+      "sheet": "INVERSION",
+      "icon": "trending_up"
+    },
+    {
+      "key": "pago_retroactivo",
+      "label": "PAGO RETROACTIVO",
+      "sheet": "PAGO RETROACTIVO",
+      "icon": "history"
+    },
+    {
+      "key": "financiamiento",
+      "label": "FINANCIAMIENTO",
+      "sheet": "FINANCIAMIENTO",
+      "icon": "account_balance_wallet"
+    },
+    {
+      "key": "segundo_fondeador",
+      "label": "SEGUNDO FONDEADOR",
+      "sheet": "SEGUNDO FONDEADOR",
+      "icon": "payments"
+    },
+    {
+      "key": "pension_sin_con_fin",
+      "label": "PENSIÓN SIN-CON FIN.",
+      "sheet": "PENSIÓN SIN-CON FIN.",
+      "icon": "compare"
+    },
+    {
+      "key": "incremento_pen",
+      "label": "INCREMENTO PEN",
+      "sheet": "INCREMENTO PEN",
+      "icon": "trending_up"
+    },
+    {
+      "key": "mod40_rec_vs_retro",
+      "label": "MOD 40 REC. VS RETRO.",
+      "sheet": "MOD 40 REC. VS RETRO.",
+      "icon": "compare_arrows"
+    },
+    {
+      "key": "proyecto_pension",
+      "label": "PROYECTO DE PENSIÓN",
+      "sheet": "PROYECTO DE PENSIÓN",
+      "icon": "summarize"
+    },
+    {
+      "key": "ai_chat",
+      "label": "ASISTENTE",
+      "sheet": "",
+      "icon": "smart_toy"
+    }
+  ],
+  "financial_rules": {
+    "base_year": 2024,
+    "uma_daily_2024": 108.57,
+    "min_wage_daily_2024": 248.93,
+    "inflation_annual_rate": 0.045,
+    "uma_projection_table": [
+      { "year": 2017, "uma": 75.49 },
+      { "year": 2018, "uma": 80.60 },
+      { "year": 2019, "uma": 84.49 },
+      { "year": 2020, "uma": 86.88 },
+      { "year": 2021, "uma": 89.62 },
+      { "year": 2022, "uma": 96.22 },
+      { "year": 2023, "uma": 103.74 },
+      { "year": 2024, "uma": 108.57 },
+      { "year": 2025, "uma": 128.1056 },
+      { "year": 2026, "uma": 133.8702 },
+      { "year": 2027, "uma": 139.8944 },
+      { "year": 2028, "uma": 146.1896 },
+      { "year": 2029, "uma": 128.1056 },
+      { "year": 2030, "uma": 133.8702 },
+      { "year": 2031, "uma": 139.8944 },
+      { "year": 2032, "uma": 146.1896 },
+      { "year": 2033, "uma": 152.7681 },
+      { "year": 2034, "uma": 159.6427 },
+      { "year": 2035, "uma": 166.8266 }
+    ],
+    "min_wage_projection_table": [
+      { "year": 2017, "min_wage": 80.04 },
+      { "year": 2018, "min_wage": 88.36 },
+      { "year": 2019, "min_wage": 102.68 },
+      { "year": 2020, "min_wage": 123.22 },
+      { "year": 2021, "min_wage": 141.70 },
+      { "year": 2022, "min_wage": 172.87 },
+      { "year": 2023, "min_wage": 207.44 },
+      { "year": 2024, "min_wage": 248.93 },
+      { "year": 2025, "min_wage": 278.80 },
+      { "year": 2026, "min_wage": 315.04 },
+      { "year": 2027, "min_wage": 332.99728 },
+      { "year": 2028, "min_wage": 351.97812496 },
+      { "year": 2029, "min_wage": 372.0408780827 },
+      { "year": 2030, "min_wage": 393.2472081334 },
+      { "year": 2031, "min_wage": 415.6622989970 },
+      { "year": 2032, "min_wage": 439.3550499998 },
+      { "year": 2033, "min_wage": 464.3582878498 },
+      { "year": 2034, "min_wage": 490.7067102371 },
+      { "year": 2035, "min_wage": 518.4769917206 }
+    ],
+    "monthly_inflation_rates": {
+      "2019": 0.0030333,
+      "2020": 0.002625,
+      "2021": 0.005,
+      "2022": 0.0065166,
+      "2023": 0.0038833,
+      "2024": 0.0043,
+      "default": 0.0036
+    },
+    "recargo_monthly_rate": 0.0147,
+    "recargo_monthly_rate_post_2026": 0.0207,
+    "recargo_year_threshold": 2026,
+    "max_uma_multiplier": 25,
+    "max_retroactive_years": 5,
+    "min_retroactive_years": 0,
+    "afore_recovery_rate": 0.1985,
+    "afore_retroactive_recovery_rate": 0.2,
+    "inflation_year_factors": [
+      {
+        "year": 2019,
+        "costo": 0
+      },
+      {
+        "year": 2020,
+        "costo": 0
+      },
+      {
+        "year": 2021,
+        "costo": 0
+      },
+      {
+        "year": 2022,
+        "costo": 0
+      },
+      {
+        "year": 2023,
+        "costo": 0
+      },
+      {
+        "year": 2024,
+        "costo": 0
+      },
+      {
+        "year": 2025,
+        "costo": 0
+      },
+      {
+        "year": 2026,
+        "costo": 0
+      },
+      {
+        "year": 2027,
+        "costo": 14474.996743625
+      },
+      {
+        "year": 2028,
+        "costo": 15492.01255038021
+      },
+      {
+        "year": 2029,
+        "costo": 16508.096170328125
+      },
+      {
+        "year": 2030,
+        "costo": 0
+      },
+      {
+        "year": 2031,
+        "costo": 0
+      }
+    ],
+    "costo_mod40_rates": [
+      {
+        "year_start": 2019,
+        "year_end": 2021,
+        "rate": 0.10075
+      },
+      {
+        "year_start": 2022,
+        "year_end": 2022,
+        "rate": 0.10075
+      },
+      {
+        "year_start": 2023,
+        "year_end": 2023,
+        "rate": 0.11166
+      },
+      {
+        "year_start": 2024,
+        "year_end": 2024,
+        "rate": 0.12256
+      },
+      {
+        "year_start": 2025,
+        "year_end": 2025,
+        "rate": 0.13347
+      },
+      {
+        "year_start": 2026,
+        "year_end": 2026,
+        "rate": 0.14438
+      },
+      {
+        "year_start": 2027,
+        "year_end": 2027,
+        "rate": 0.15528
+      },
+      {
+        "year_start": 2028,
+        "year_end": 2028,
+        "rate": 0.16619
+      },
+      {
+        "year_start": 2029,
+        "year_end": 2029,
+        "rate": 0.17709
+      },
+      {
+        "year_start": 2030,
+        "year_end": 9999,
+        "rate": 0.188
+      }
+    ],
+    "pension_age_percentages": [
+      {
+        "age": 65,
+        "percentage": 1.0,
+        "type": "vejez"
+      },
+      {
+        "age": 64,
+        "percentage": 0.95,
+        "type": "cesantia"
+      },
+      {
+        "age": 63,
+        "percentage": 0.9,
+        "type": "cesantia"
+      },
+      {
+        "age": 62,
+        "percentage": 0.85,
+        "type": "cesantia"
+      },
+      {
+        "age": 61,
+        "percentage": 0.8,
+        "type": "cesantia"
+      },
+      {
+        "age": 60,
+        "percentage": 0.75,
+        "type": "cesantia"
+      }
+    ],
+    "pension_age_dropdown": {
+      "min_age": 60,
+      "max_age": 65,
+      "fraccion_threshold": 0.51,
+      "fraccion_label": "6 meses y 1 día"
+    },
+    "edad_rounding_rule": {
+      "six_months_threshold": 0.51,
+      "six_months_epsilon": 1e-10,
+      "increment_half_threshold_ratio": 27,
+      "increment_half_threshold_denominator": 52,
+      "increment_quarter_threshold_ratio": 13,
+      "increment_quarter_threshold_denominator": 52,
+      "legal_basis": "Art. 167 LSS 1973: '6 meses y un día o más se computará como un año cumplido'"
+    },
+    "presidential_decree_rate": 0.11,
+    "aguinaldo_factor": 1.11,
+    "days_in_year": 365,
+    "weeks_per_year": 52,
+    "min_weeks_for_increment": 500,
+    "life_expectancy_years": 80,
+    "asignacion_esposa_percentage": 0.15,
+    "asignacion_hijos_percentage": 0.10,
+    "asignacion_padres_percentage": 0.10,
+    "ayuda_asistencial_no_beneficiarios": 0.15,
+    "ayuda_asistencial_un_padre": 0.10,
+    "financing_term_months": 60,
+    "financing_processing_months": 12,
+    "projection_p247": 16808886.144602332,
+    "projection_an247": 15846240.080560127,
+    "flujo_factor": 1.54,
+    "months_with_aguinaldo": 13,
+    "min_wage_growth_rate": 0.057,
+    "total_semanas_promedio": 250,
+    "capacidad_pago_porcentaje": 0.3,
+    "forecast_factor": 0.7195,
+    "segundo_fondeador_factor": 0.63,
+    "epsilon_valor": 1e-8,
+    "redondeo_credito": 1000,
+    "inflacion_anios_proyeccion": 5,
+    "veredicto_thresholds": [
+      { "max_meses": 16, "label": "Excelente Inversión" },
+      { "max_meses": 24, "label": "Buena Inversión" },
+      { "max_meses": 36, "label": "Inversión Aceptable" },
+      { "max_meses": 48, "label": "Riesgo Moderado" },
+      { "max_meses": 60, "label": "¡Riesgo Alto!" },
+      { "max_meses": 72, "label": "¡Ten cuidado!" }
+    ],
+    "veredicto_default": "No lo hagas",
+    "default_start_date": "2027-02-01",
+    "default_end_date": "2029-08-31",
+    "tasa_financiamiento": 0.39,
+    "tasa_descuento": 0.154,
+    "credit_table": [
+      {
+        "amount": 149000,
+        "monthly_payment": 5338
+      },
+      {
+        "amount": 150000,
+        "monthly_payment": 5373
+      },
+      {
+        "amount": 152000,
+        "monthly_payment": 5444
+      },
+      {
+        "amount": 159000,
+        "monthly_payment": 5709
+      },
+      {
+        "amount": 173000,
+        "monthly_payment": 6211
+      },
+      {
+        "amount": 175000,
+        "monthly_payment": 6274
+      },
+      {
+        "amount": 177000,
+        "monthly_payment": 6364
+      },
+      {
+        "amount": 178000,
+        "monthly_payment": 6403
+      },
+      {
+        "amount": 182000,
+        "monthly_payment": 6570
+      },
+      {
+        "amount": 185000,
+        "monthly_payment": 6660
+      },
+      {
+        "amount": 192000,
+        "monthly_payment": 6887
+      },
+      {
+        "amount": 198000,
+        "monthly_payment": 7097
+      },
+      {
+        "amount": 201000,
+        "monthly_payment": 7205
+      },
+      {
+        "amount": 215000,
+        "monthly_payment": 7707
+      },
+      {
+        "amount": 238000,
+        "monthly_payment": 8544
+      },
+      {
+        "amount": 239000,
+        "monthly_payment": 8562
+      },
+      {
+        "amount": 244000,
+        "monthly_payment": 8771
+      },
+      {
+        "amount": 245000,
+        "monthly_payment": 8807
+      },
+      {
+        "amount": 253000,
+        "monthly_payment": 9082
+      },
+      {
+        "amount": 276000,
+        "monthly_payment": 9910
+      },
+      {
+        "amount": 282000,
+        "monthly_payment": 10099
+      },
+      {
+        "amount": 284000,
+        "monthly_payment": 10196
+      },
+      {
+        "amount": 285000,
+        "monthly_payment": 10233
+      },
+      {
+        "amount": 287000,
+        "monthly_payment": 10279
+      },
+      {
+        "amount": 291000,
+        "monthly_payment": 10435
+      },
+      {
+        "amount": 309000,
+        "monthly_payment": 11067
+      },
+      {
+        "amount": 313000,
+        "monthly_payment": 11224
+      },
+      {
+        "amount": 316000,
+        "monthly_payment": 11388
+      },
+      {
+        "amount": 317000,
+        "monthly_payment": 11385
+      },
+      {
+        "amount": 320000,
+        "monthly_payment": 11461
+      },
+      {
+        "amount": 325000,
+        "monthly_payment": 11711
+      },
+      {
+        "amount": 340000,
+        "monthly_payment": 12197
+      },
+      {
+        "amount": 351000,
+        "monthly_payment": 12582
+      },
+      {
+        "amount": 451000,
+        "monthly_payment": 16175
+      },
+      {
+        "amount": 461000,
+        "monthly_payment": 16528
+      },
+      {
+        "amount": 509000,
+        "monthly_payment": 18245
+      },
+      {
+        "amount": 512000,
+        "monthly_payment": 18432
+      }
+    ],
+    "default_values": {
+      "fecha_nacimiento": "1969-01-30",
+      "edad_minima_pension": 60,
+      "semanas_descontadas_afore": 1500,
+      "tiene_esposa": true,
+      "numero_hijos": 1,
+      "numero_padres": 0,
+      "salario_promedio_250_semanas": 130.0,
+      "total_semanas_sin_mod40": 1960,
+      "edad_retiro": 60.51,
+      "semanas_antes_mod40": 1960,
+      "semanas_en_mod40": 130.0,
+      "total_semanas_con_mod40": 2090.0,
+      "salario_diario_promedio": 2897.19,
+      "uma_diaria": 128.11,
+      "salario_minimo_diario": 372.04,
+      "pension_year": 2029,
+      "semanas_cotizadas": 2090,
+      "salario_registrado": 3202.64,
+      "retroactive_years": 0.0,
+      "salario_diario": 2897.19,
+      "edad_retiro_sin_mod40": 60.51,
+      "participacion_banco_max": 0.5
+    },
+    "pension_actual": {
+      "nombre": "ESCOBAR LOPEZ LUIS ADAN",
+      "edad_pension": 60,
+      "conyuge": "SI",
+      "hijos_menores": 1,
+      "padres_dependientes": 0,
+      "edad_fecha_baja": 57.1183912387,
+      "semanas_cotizacion": 1960,
+      "salario_promedio": 2281.5311428571,
+      "anios_para_pensionarse": 2.8816087613,
+      "cuantia_basica_pension": 120167.1045287143,
+      "incrementos_anuales": 634112.5669746002,
+      "asignaciones_familiares": 56570.9753627486,
+      "ayuda_asistencial": 0,
+      "pension_minima_anio": 150732.361755214,
+      "total_pension_vejez": 754279.6715033145,
+      "porcentaje_edad": 0.75,
+      "total_pension": 622280.7289902344,
+      "aplica_pension_minima": "NO",
+      "importe_pension_anual": 622280.7289902344,
+      "importe_pension_mensual": 51856.7274158529,
+      "aguinaldo": 47142.4794689571,
+      "pension_mensual_actualizada": 54039.8956400603
+    },
+    "cuantia_basica_percentages": [
+      {
+        "umas_min": 0.0,
+        "umas_max": 1.0,
+        "percentage": 0.8
+      },
+      {
+        "umas_min": 1.01,
+        "umas_max": 1.25,
+        "percentage": 0.7711
+      },
+      {
+        "umas_min": 1.26,
+        "umas_max": 1.5,
+        "percentage": 0.5818
+      },
+      {
+        "umas_min": 1.51,
+        "umas_max": 1.75,
+        "percentage": 0.4923
+      },
+      {
+        "umas_min": 1.76,
+        "umas_max": 2.0,
+        "percentage": 0.4267
+      },
+      {
+        "umas_min": 2.01,
+        "umas_max": 2.25,
+        "percentage": 0.3765
+      },
+      {
+        "umas_min": 2.26,
+        "umas_max": 2.5,
+        "percentage": 0.3368
+      },
+      {
+        "umas_min": 2.51,
+        "umas_max": 2.75,
+        "percentage": 0.3048
+      },
+      {
+        "umas_min": 2.76,
+        "umas_max": 3.0,
+        "percentage": 0.2783
+      },
+      {
+        "umas_min": 3.01,
+        "umas_max": 3.25,
+        "percentage": 0.256
+      },
+      {
+        "umas_min": 3.26,
+        "umas_max": 3.5,
+        "percentage": 0.237
+      },
+      {
+        "umas_min": 3.51,
+        "umas_max": 3.75,
+        "percentage": 0.2207
+      },
+      {
+        "umas_min": 3.76,
+        "umas_max": 4.0,
+        "percentage": 0.2065
+      },
+      {
+        "umas_min": 4.01,
+        "umas_max": 4.25,
+        "percentage": 0.1939
+      },
+      {
+        "umas_min": 4.26,
+        "umas_max": 4.5,
+        "percentage": 0.1829
+      },
+      {
+        "umas_min": 4.51,
+        "umas_max": 4.75,
+        "percentage": 0.173
+      },
+      {
+        "umas_min": 4.76,
+        "umas_max": 5.0,
+        "percentage": 0.1641
+      },
+      {
+        "umas_min": 5.01,
+        "umas_max": 5.25,
+        "percentage": 0.1561
+      },
+      {
+        "umas_min": 5.26,
+        "umas_max": 5.5,
+        "percentage": 0.1488
+      },
+      {
+        "umas_min": 5.51,
+        "umas_max": 5.75,
+        "percentage": 0.1422
+      },
+      {
+        "umas_min": 5.76,
+        "umas_max": 6.0,
+        "percentage": 0.1362
+      },
+      {
+        "umas_min": 6.01,
+        "umas_max": 1000.0,
+        "percentage": 0.13
+      }
+    ],
+    "incremento_percentages": [
+      {
+        "umas_min": 0.0,
+        "umas_max": 1.0,
+        "percentage": 0.00563
+      },
+      {
+        "umas_min": 1.01,
+        "umas_max": 1.25,
+        "percentage": 0.00814
+      },
+      {
+        "umas_min": 1.26,
+        "umas_max": 1.5,
+        "percentage": 0.01178
+      },
+      {
+        "umas_min": 1.51,
+        "umas_max": 1.75,
+        "percentage": 0.0143
+      },
+      {
+        "umas_min": 1.76,
+        "umas_max": 2.0,
+        "percentage": 0.01615
+      },
+      {
+        "umas_min": 2.01,
+        "umas_max": 2.25,
+        "percentage": 0.01756
+      },
+      {
+        "umas_min": 2.26,
+        "umas_max": 2.5,
+        "percentage": 0.01868
+      },
+      {
+        "umas_min": 2.51,
+        "umas_max": 2.75,
+        "percentage": 0.01958
+      },
+      {
+        "umas_min": 2.76,
+        "umas_max": 3.0,
+        "percentage": 0.02033
+      },
+      {
+        "umas_min": 3.01,
+        "umas_max": 3.25,
+        "percentage": 0.02096
+      },
+      {
+        "umas_min": 3.26,
+        "umas_max": 3.5,
+        "percentage": 0.02149
+      },
+      {
+        "umas_min": 3.51,
+        "umas_max": 3.75,
+        "percentage": 0.02195
+      },
+      {
+        "umas_min": 3.76,
+        "umas_max": 4.0,
+        "percentage": 0.02235
+      },
+      {
+        "umas_min": 4.01,
+        "umas_max": 4.25,
+        "percentage": 0.02271
+      },
+      {
+        "umas_min": 4.26,
+        "umas_max": 4.5,
+        "percentage": 0.02302
+      },
+      {
+        "umas_min": 4.51,
+        "umas_max": 4.75,
+        "percentage": 0.0233
+      },
+      {
+        "umas_min": 4.76,
+        "umas_max": 5.0,
+        "percentage": 0.02355
+      },
+      {
+        "umas_min": 5.01,
+        "umas_max": 5.25,
+        "percentage": 0.02377
+      },
+      {
+        "umas_min": 5.26,
+        "umas_max": 5.5,
+        "percentage": 0.02398
+      },
+      {
+        "umas_min": 5.51,
+        "umas_max": 5.75,
+        "percentage": 0.02416
+      },
+      {
+        "umas_min": 5.76,
+        "umas_max": 6.0,
+        "percentage": 0.02433
+      },
+      {
+        "umas_min": 6.01,
+        "umas_max": 1000.0,
+        "percentage": 0.0245
+      }
+    ]
+  },
+  "test_scenarios": {
+    "base_user": {
+      "description": "Escenario del usuario con datos reales guardados",
+      "salario_promedio_250_semanas": 0.0,
+      "salario_registrado_mod40": 3202.64,
+      "semanas_en_mod40": 130.29,
+      "uma_diaria": 128.11,
+      "salario_minimo_diario": 372.04,
+      "pension_year": 2029,
+      "semanas_antes_mod40": 1960,
+      "semanas_cotizadas_con_mod40": 2090.29,
+      "edad_retiro": 60.51,
+      "edad_retiro_sin_mod40": 60.51,
+      "numero_padres": 0,
+      "periodos_semanas": [
+        {"periodo": "Mod40", "semanas": 130.29, "salario": 3202.64},
+        {"periodo": 2, "semanas": 1.4286, "salario": 2932.75},
+        {"periodo": 3, "semanas": 52.2857, "salario": 2714.25},
+        {"periodo": 4, "semanas": 52.4286, "salario": 2500.00},
+        {"periodo": 5, "semanas": 52.2857, "salario": 2200.00},
+        {"periodo": 6, "semanas": 52.2857, "salario": 2000.00},
+        {"periodo": 7, "semanas": 28.8571, "salario": 1900.00},
+        {"periodo": 8, "semanas": 10.4286, "salario": 1800.50}
+      ]
+    },
+    "senior_solo": {
+      "description": "66 anos, 2000 semanas, Sin Dependientes",
+      "salario_diario_promedio": 2336.6746,
+      "uma_diaria": 84.49,
+      "semanas_cotizadas": 2078,
+      "semanas_antes_mod40": 2000,
+      "tiene_esposa": false,
+      "numero_hijos": 0,
+      "numero_padres": 0,
+      "edad_retiro": 60.0,
+      "edad_retiro_sin_mod40": 66.0,
+      "expected_c30": 830495.82,
+      "expected_c26": 59691.89,
+      "expected_d16": 0.75,
+      "expected_sin_m40": 74455.46
+    },
+    "edad_media_padres": {
+      "description": "55 anos, 1500 semanas, 2 Padres",
+      "salario_diario_promedio": 2771.1389,
+      "uma_diaria": 139.8944,
+      "semanas_cotizadas": 1578,
+      "semanas_antes_mod40": 1500,
+      "tiene_esposa": false,
+      "numero_hijos": 0,
+      "numero_padres": 2,
+      "edad_retiro": 60.0,
+      "edad_retiro_sin_mod40": 63.0,
+      "expected_c30": 723597.50,
+      "expected_c26": 54269.81,
+      "expected_d16": 0.75,
+      "expected_sin_m40": 49541.20
+    },
+    "joven_familia": {
+      "description": "35 anos, 500 semanas, Esposa=SI, Hijos=2 (Mod40 no aplica)",
+      "salario_diario_promedio": 2281.53,
+      "uma_diaria": 128.10545275,
+      "semanas_cotizadas": 500,
+      "tiene_esposa": true,
+      "numero_hijos": 2,
+      "numero_padres": 0,
+      "edad_retiro_sin_mod40": 65.0,
+      "expected_sin_m40": 77030.20
+    }
+  },
+  "theme": {
+    "primary_color": "#004D40",
+    "accent_color": "#C5A059",
+    "background_light": "#F5F5F5",
+    "card_background": "#FFFFFF",
+    "text_primary": "#212121",
+    "text_secondary": "#616161",
+    "error_color": "#D32F2F"
+  },
+  "legal_notes": {
+    "pago_retroactivo": "Nota: el monto del pago retroactivo es una proyeccion que considera una tasa promedio de inflacion anual de 4.50% y un factor de recargos de 1.47% mensual (dato vigente en 2024). El calculo exacto puede variar hasta un 10% y se determina cuando se mandan a validar los datos con el IMSS.",
+    "fact_asig": "Las asignaciones familiares se calculan conforme a la Ley de 1973 del IMSS. El porcentaje de cuantia basica e incrementos se obtienen de la tabla de porcentajes segun el salario en UMAS.",
+    "pension_mod40": "El 100% de la pension se otorga a los 65 anos (Vejez). Antes de esa edad se considera Cesantia en Edad Avanzada con porcentajes reducidos.",
+    "costo_mod40": "Los costos de Modalidad 40 varian segun el ano y el salario registrado. La tasa de costo sobre salario registrado se actualiza anualmente.",
+    "inversion": "El analisis de inversion compara el flujo de pension con y sin Modalidad 40 hasta los 80 anos de edad.",
+    "financiamiento": "El financiamiento del pago retroactivo puede realizarse mediante banca regulada o segundo fondeador. Las tasas y plazos son referenciales."
+  }
+}

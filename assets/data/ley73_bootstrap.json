@@ -1,0 +1,4705 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-07-07T10:35:04.225430",
+  "source_file": "Calculadora ley 73 IMSS - Escobar Lopez Luis Adan.xlsm",
+  "navigation_sheets": [
+    "FACT. + ASIG. MOD.40",
+    "PENSION MOD. 40",
+    "COSTO MOD. 40",
+    "INVERSION",
+    "PAGO RETROACTIVO",
+    "FINANCIAMIENTO"
+  ],
+  "sheets": {
+    "FACT. + ASIG. MOD.40": {
+      "rows": 94,
+      "cols": 37,
+      "cells": {
+        "B1": "FACTORES Y ASIGNACIONES UTILIZADAS PARA DETERMINAR LA PENSIÓN",
+        "F1": "Importante: si tu proyección de pensión es para un año diferente a 2024, puedes considera usar el valor proyectado de la UMA diaria y del salario mínimo vigente para el año deseado. Considera que esta es una proyección y no representa una certeza sobre el valor real que tendrán estos elementos clave. La pensión solo se calcula con el 100% de certeza para el año vigente (2024).",
+        "B2": "2. FACTORES PARA DETERMINAR LA PENSIÓN",
+        "B3": "2.1 ELEMENTOS CLAVE",
+        "F3": "PROYECCIÓN DE LOS ELEMENTOS CLAVE",
+        "B4": "NUEVO SALARIO DIARIO PROMEDIO 250 SEMANAS COTIZADAS",
+        "C4": 2840.615712142857,
+        "F4": "AÑO EN EL QUE PLANEAS PENSIONARTE",
+        "G4": 2029,
+        "B5": "VALOR DE UMA DIARIA (1)",
+        "C5": 122.58895,
+        "D5": "INGRESAR DATOS",
+        "F5": "PROYECCIÓN DEL VALOR DE LA UMA DIAIRA",
+        "G5": 133.87019812375,
+        "B6": "SALARIO MÍNIMO DIARIO VIGENTE (2)",
+        "C6": 372.0408780827199,
+        "F6": "PROYECCIÓN DEL SALARIO MÍNIMO DIARIO",
+        "G6": 372.0408780827199,
+        "B7": "SALARIO PROPORCIONAL EN UMAS (3)",
+        "C7": 23.17,
+        "F7": "Nota: El valor de la UMA se proyecto con un incremento anual de 4.5%, resultado del promedio de inflación anual medido por el INPC desde el 2011 hasta 2024. El valor del salario mínimo diario se poyecto con un incremento anual de 5.70% resultado del promedio de incremento anual real del SMV desde 1977. Datos de INEGI y Repositorio UNAM.",
+        "B8": "(1) Para el año 2024 la UMA diaria es de: $108.57 pesos.",
+        "B9": "(2) Para el año 2024 el salario mínimo diario es de: $248.93 pesos.",
+        "B10": "(3) Resultado de dividir el salario base de cotización entre la UMA diaria.",
+        "B11": "2.2 CÁLCULO DE LA CUANTÍA BÁSICA DE PENSIÓN*",
+        "B12": "PORCENTAJE DE CUANTÍA BÁSICA (4)",
+        "C12": 0.13,
+        "B13": "CUANTÍA BÁSICA POR DÍA (5)",
+        "C13": 369.2800425785714,
+        "B14": "DÍAS EN EL AÑO",
+        "C14": 365,
+        "B15": "TOTAL CUANTÍA BÁSICA ANUAL",
+        "C15": 149613.80925070823,
+        "B16": "(4) El porcentaje de cuantía básica se asocia a la \"Tabla de porcentajes asignados a la ley del 1973 de pensiones IMSS\". Se asigna, localizando el resultado de \"Salario proporcional en UMAS\" en los rangos dentro de la tabla *Ver anexo*",
+        "B17": "(5) La cuantía básica por día se calcula multiplicando el % decuantía básica por el Salario promedio de las últimas 250 semanas cotizadas. *El resultado se anualiza multiplicandolo por los 365 días del año*",
+        "B18": "*La cuantía básica de pensión es un factor dentro de la ley de pensión de 1973 del IMSS que se utiliza para determinar el monto de las  pensiones.",
+        "B19": "2.3 CUANTÍA DE INCREMENTOS ANUALES",
+        "B20": "PORCENTAJE DE INCREMENTO A LA CUANTÍA BÁSICA (6)",
+        "C20": 0.0245,
+        "B21": "INCREMENTOS DIARIOS (7)",
+        "C21": 69.5950849475,
+        "B22": "DÍAS EN EL AÑO",
+        "C22": 365,
+        "B23": "INCREMENTO ANUAL",
+        "C23": 25402.2060058375,
+        "B24": "NÚMERO DE INCREMENTOS ANUALES (8)",
+        "C24": 30.66758241758242,
+        "B25": "NÚMERO DE INCREMENTOS ANUALES (REDONDEO ART. 167 LSS)",
+        "C25": 31,
+        "B26": "TOTAL DE INCREMENTOS ANUALES A LA CUANTÍA BÁSICA",
+        "C26": 874089.9086608684,
+        "B27": "(6) El porcentaje de incrementos a la cuantía básica se asocia a la \"Tabla de porcentajes asignados a la ley del 1973 de pensiones IMSS\" y se asigna, localizando el resultado de \"Salario proporcional en UMAS\" en los rangos dentro de la tabla *Ver Tabla Porcentajes*.",
+        "B28": "(7) Los incrementos diarios se calculan multiplicando el % de incrementos por el salario promedio de las últimas 250 semanas cotizadas. *El resultado se anualiza multiplicandolo por los 365 días del año*",
+        "B29": "(8) El número de incrementos anuales son el resultado de restarle 500 semanas cotizadas al número de semanas cotizadas totales, las semanas resultantes al afectuar esta resta se convierten a años y se multiplican por el resultado de \"Incrementos anuales\".",
+        "B30": "CUANTÍA TOTAL DE LA PENSIÓN POR VEJEZ (9)",
+        "C30": 1023703.7179115766,
+        "B31": "(9) Cuantía total de la pensión es la suma de: Total cuantía báscia + Total de incrementos anuales a la cuantía básica.",
+        "B32": "3. ASIGNACIONES FAMILIARES DE LA LEY 1973 DEL IMSS*",
+        "B33": "3.1 ASIGNACIÓN FAMILIAR POR ESPOSO(A) O CONCUBINATO (1)",
+        "B34": "CUANTÍA TOTAL DE LA PENSIÓN ANUAL",
+        "C34": 922255.601722141,
+        "B35": "+ 15% DE ASIGNACIÓN",
+        "C35": 0.15,
+        "B36": "TOTAL ASIGNACIÓN FAMILIAR ESPOSA (O)",
+        "C36": 0,
+        "B37": "*Dentro de la ley de 1973 de pensiones del IMSS hay asignaciones que se agregan a la suma de su pensión y dependiendo de la situación de la persona a pensionar se harán las bonificaciones aplicables.",
+        "B38": "(1) En caso de no contar con esposo(a) o concubinato, ni hijos menores de 16 años o estudiantes hasta los 25 años y si ninguno de los padres depende económicamente de usted, se aplica una asignacion bajo el concepto de \"Ayuda asistencial\" del +15% al monto de la pensión.",
+        "B39": "3.2 ASIGNACIÓN HIJOS MENORES DE EDAD O ESTUDIANTES MENORES DE 25 AÑOS (1)",
+        "B40": "CUANTÍA TOTAL DE LA PENSIÓN ANUAL",
+        "C40": 922255.601722141,
+        "B41": "+10% DE ASIGNACIÓN",
+        "C41": 0.1,
+        "B42": "* NÚMERO DE HIJOS",
+        "C42": 1,
+        "B43": "TOTAL ASIGNACIÓN FAMILIAR POR HIJOS",
+        "C43": 92225.56017221411,
+        "B44": "(1) En caso de no contar con esposo(a) o concubinato, ni hijos menores de 16 años o estudiantes hasta los 25 años y si ninguno de los padres depende económicamente de usted, se aplica una asignacion bajo el concepto de \"Ayuda asistencial\" del +15% al monto de la pensión.",
+        "B45": "3.3 ASIGNACIÓN POR PADRES DEPENDIENTES (APLICA SOLO A FALTA DE ESPOSO(A) O HIJOS) (1)",
+        "B46": "CUANTÍA TOTAL DE LA PENSIÓN ANUAL",
+        "C46": 922255.601722141,
+        "B47": "+10% DE ASIGNACIÓN POR CADA UNO",
+        "C47": 0.1,
+        "B48": "NÚMERO DE PADRES",
+        "C48": 0,
+        "B49": "TOTAL DE ASIGNACIÓN PADRES",
+        "C49": 0,
+        "B50": "(1) En caso de no contar con esposo(a) o concubinato, ni hijos menores de 16 años o estudiantes hasta los 25 años y si ninguno de los padres depende económicamente de usted, se aplica una asignacion bajo el concepto de \"Ayuda asistencial\" del +15% al monto de la pensión.",
+        "B52": "CUANTÍA TOTAL DE ASIGNACIONES FAMILIARES  (2)",
+        "B53": 81896.29743292615,
+        "B54": "(2)  La cuantía total de pensión más las asignaciones: Es el resultado de monto de la pensión más cada una de las asignaciones establecidas según sea el contexto del pensionado. En este caso se le agregó la bonificación del +15%, al monto de su pensión calculada.",
+        "B56": "3.4 AYUDA ASISTENCIAL (1)",
+        "B57": "CUANTÍA TOTAL DE LA PENSIÓN ANUAL",
+        "C57": 922255.601722141,
+        "B58": "+15% DE ASIGNACIÓN (SI NO HAY BENEFICIARIOS) Ó +10% (SI SOLO HAY 1 PADRE COMO BENEFICIARIO)",
+        "C58": 0,
+        "B59": "TOTAL DE ASIGNACIÓN AYUDA ASISTENCIAL",
+        "C59": 0,
+        "B60": "(1) En caso de no contar con esposo(a) o concubinato, ni hijos menores de 16 años o estudiantes hasta los 25 años y si ninguno de los padres depende económicamente de usted se aplica una asignacion bajo el concepto de \"Ayuda asistencial\" del +15% al monto de la pensión. Si el único beneficiario fuera un único padre/madre, se asigna un +10% de \"Ayuda asistencial\" al monto de la pensión.",
+        "B62": "CUANTÍA TOTAL DE LA PENSIÓN + ASIGNACIONES ANUAL  (2)",
+        "B63": 1105600.0153445029,
+        "B64": "(2)  La cuantía total de pensión más las asignaciones: Es el resultado de monto de la pensión más cada una de las asignaciones establecidas según sea el contexto del pensionado. En este caso se le agregó la bonificación del +15%, al monto de su pensión calculada.",
+        "B65": "4. ASIGANCIÓN POR DECRETO PRESIDENCIAL (2004)",
+        "B66": "4.1 ASIGNACIÓN DECRETO PRESIDENCIAL 11% (3)",
+        "B67": "CUANTÍA TOTAL DE LA PENSIÓN + ASIGNACIONES ANUAL",
+        "C67": 1105600.0153445029,
+        "B68": "+ 11% DE INCREMENTO A LA PENSIÓN",
+        "C68": 0.11,
+        "B69": "TOTAL DE ASIGNACIÓN POR DECRETO PRESIDENCIAL",
+        "C69": 121616.00168789532,
+        "B70": "(3) La asiganción por decreto presidencial establecida por el presidente \"Vicente Fox\" se le bonifica sin importar el contexto del pensionado. Este decreto asigna una bonificación del +11% al monto de la pensión.",
+        "B72": "TOTAL DE PENSIÓN POR VEJEZ (ANUAL)",
+        "C72": 900859.2717621875,
+        "B74": "TOTAL DE PENSIÓN POR VEJEZ (MES DE 30 DÍAS)",
+        "C74": 75071.60598018228,
+        "B75": "Elaborado por: tuplanderetiro.mx"
+      }
+    },
+    "PENSION MOD. 40": {
+      "rows": 30,
+      "cols": 27,
+      "cells": {
+        "B1": "CALCULADORA DE PENSIÓN POR                                                                           CESANTÍA EN EDAD AVANZADA Y VEJEZ",
+        "E1": "PORCENTAJE",
+        "B2": "Tabla de porcentaje de cuantía que corresponde respecto a la cuantía por vejez",
+        "E2": 0.75,
+        "B3": "Tipo de Pensión",
+        "C3": "Edad",
+        "D3": "Porcentaje de Pensión       por Vejez",
+        "E3": 0.85,
+        "B4": "Por vejez",
+        "C4": 65,
+        "D4": 1,
+        "E4": 0.9,
+        "B5": "Por cesantía en edad avanzada",
+        "C5": 64,
+        "D5": 0.95,
+        "E5": 0.95,
+        "C6": 63,
+        "D6": 0.9,
+        "E6": 1,
+        "C7": 62,
+        "D7": 0.85,
+        "E7": 1,
+        "C8": 61,
+        "D8": 0.8,
+        "E8": 1,
+        "C9": 60,
+        "D9": 0.75,
+        "E9": 1,
+        "B10": "Nota: El 100% de la pensión se otorga cuando se hace el tramite hasta los 65 años bajo el nombre de \"Pensión por vejez\"; si te retiras antes se conoce como pensión por \"Cesantía en edad avanzada\".",
+        "B11": "5. Calculadora de Pensión",
+        "E11": 0.75,
+        "B12": "TOTAL DE PENSIÓN ANUAL POR VEJEZ (100%)",
+        "D12": 1023703.7179115766,
+        "B14": "EDAD DE RETIRO EN AÑOS ENTEROS (PARA EL IMSS)",
+        "D14": 61,
+        "B16": "PORCENTAJE ASIGNADO POR EDAD DEL TRABAJADOR",
+        "D16": 0.8,
+        "B18": "PENSIÓN ANUAL MÍNIMA GARANTIZADA",
+        "D18": 150732.361755214,
+        "B20": "¿APLICA LA PENSIÓN MÍNIMA GARANTIZADA? (1)",
+        "D20": "NO",
+        "B21": "(8) Cuándo el resultado de la pensión calculada  es menor o igual a la pensión mínima garantizada, se asigna la pensión mínima garantizada, independientemente de la edad en la qeu se decida inciar el trámite de pensión.",
+        "B22": "IMPORTE DE PENSIÓN ANUAL",
+        "C23": 900859.2717621875,
+        "B25": "IMPORTE DE PENSIÓN POR MES DE 30 DÍAS",
+        "C26": 75071.60598018228,
+        "B27": "Monto de pensión calculado con base a lo estipulado en la Ley de 1973 de Seguro Social.",
+        "B29": "SI TE PENSIONASTE EN ENERO: PENSIÓN CON AJUSTE POR INFLACIÓN A PARTIR DE FEBRERO DEL MISMO AÑO",
+        "C30": "NO APLICA"
+      }
+    },
+    "COSTO MOD. 40": {
+      "rows": 19,
+      "cols": 16,
+      "cells": {
+        "B2": "COSTO DE LA MODALIDAD 40 (2019 A +2030)",
+        "B3": "CONCEPTO",
+        "C3": "SALARIO REGISTRADO",
+        "D3": "COSTO SOBRE EL SALARIO REGISTRADO (%)",
+        "E3": "DÍAS PAGADOS",
+        "F3": "CUOTA MENSUAL PROMEDIO",
+        "G3": "CUOTA ANUAL",
+        "B4": "COSTO MODALIDAD 40                     2019-2021",
+        "C4": 0,
+        "D4": 0.10075,
+        "E4": 0,
+        "F4": 0,
+        "G4": 0,
+        "B5": "COSTO MODALIDAD 40 2022",
+        "C5": 0,
+        "D5": 0.10075,
+        "E5": 0,
+        "F5": 0,
+        "G5": 0,
+        "B6": "COSTO MODALIDAD 40 2023",
+        "C6": 0,
+        "D6": 0.11166,
+        "E6": 0,
+        "F6": 0,
+        "G6": 0,
+        "B7": "COSTO MODALIDAD 40 2024",
+        "C7": 0,
+        "D7": 0.12256,
+        "E7": 0,
+        "F7": 0,
+        "G7": 0,
+        "B8": "COSTO MODALIDAD 40 2025",
+        "C8": 0,
+        "D8": 0.13347,
+        "E8": 0,
+        "F8": 0,
+        "G8": 0,
+        "B9": "COSTO MODALIDAD 40 2026",
+        "C9": 0,
+        "D9": 0.14438,
+        "E9": 0,
+        "F9": 0,
+        "G9": 0,
+        "B10": "COSTO MODALIDAD 40 2027",
+        "C10": 3064.72375,
+        "D10": 0.15528,
+        "E10": 334,
+        "F10": 14474.996743625,
+        "G10": 158947.36150260002,
+        "B11": "COSTO MODALIDAD 40 2028",
+        "C11": 3064.72375,
+        "D11": 0.16619,
+        "E11": 366,
+        "F11": 15492.01255038021,
+        "G11": 186413.477044575,
+        "B12": "COSTO MODALIDAD 40 2029",
+        "C12": 3064.72375,
+        "D12": 0.17709,
+        "E12": 243,
+        "F12": 16508.096170328125,
+        "G12": 131883.8587196625,
+        "B13": "COSTO MODALIDAD 40 2030",
+        "C13": 0,
+        "D13": 0.188,
+        "E13": 0,
+        "F13": 0,
+        "G13": 0,
+        "B14": "COSTO MODALIDAD 40           2031 EN ADELANTE",
+        "C14": 0,
+        "D14": 0.188,
+        "E14": 0,
+        "F14": 0,
+        "G14": 0,
+        "B15": "INVERSIÓN TOTAL EN MODALIDAD 40",
+        "G15": 477244.6972668376,
+        "B17": "MONTO APROXIMADO DE RECUPERACIÓN POR \"AFORE\"",
+        "G17": 94733.07240746726,
+        "B19": "INVERSIÓN EN MODALIDAD 40 - RECUPERACION DE LA AFORE",
+        "G19": 382511.6248593703
+      }
+    },
+    "INVERSION": {
+      "rows": 60,
+      "cols": 15,
+      "cells": {
+        "B2": "MEJORA DE PENSIÓN",
+        "D3": "SIN MODALIDAD 40",
+        "F3": "CON MODALIDAD 40",
+        "B4": "EDAD DE RETIRO",
+        "D4": 60,
+        "F4": 61,
+        "B5": "MONTO DE                               MEJORA DE PENSIÓN",
+        "F5": 21031.71034012201,
+        "B7": "ANÁLISIS DE LA INVERSIÓN",
+        "D8": "SIN MODALIDAD 40",
+        "F8": "CON MODALIDAD 40",
+        "B9": "PERIODOS DE RECUPERACIÓN DE LA INVERSIÓN (MESES)",
+        "D9": "--",
+        "F9": 18.187376046619292,
+        "B45": "PENSION MENSUAL                        POR MES DE 30 DIAS",
+        "D45": 54039.89564006028,
+        "F45": 75071.60598018228,
+        "B46": "FLUJOS DE PENSIÓN COBRADOS HASTA LOS 80 AÑOS",
+        "D46": 21637574.214280136,
+        "F46": 28082279.85366773,
+        "B48": "GANANCIA TOTAL GRACIAS A MODALIDAD 40",
+        "B49": "(MXN)",
+        "D49": 6444705.639387593,
+        "B50": "Tasa de Rendimiento Total",
+        "D50": 13.503985851065877,
+        "B52": "NUESTRO TERMÓMETRO DE INVERSIÓN",
+        "B53": "Buena Inversión"
+      }
+    },
+    "PAGO RETROACTIVO": {
+      "rows": 28,
+      "cols": 7,
+      "cells": {
+        "B2": "DATOS DEL PAGO RETROACTIVO",
+        "B3": "FECHA DE BAJA",
+        "E3": "2027-02-01T00:00:00",
+        "B4": "FECHA DE TÉRMINO (PAGO RETROACTIVO)",
+        "E4": "2029-08-31T00:00:00",
+        "B5": "AÑOS A PAGAR EN RETROACTIVO",
+        "E5": 2.5833333333333335,
+        "B7": "COSTO DE LA MODALIDAD 40 - PAGO RETROACTIVO",
+        "B8": "COSTO MODALIDAD 40",
+        "E8": 477244.6972668376,
+        "B9": "ACTUALIZACIONES",
+        "E9": 26644.61422612811,
+        "B10": "RECARGOS",
+        "E10": 153206.53180023667,
+        "B11": "COSTO TOTAL DE LA MODALIDAD 40 RETROACTIVA",
+        "E11": 657095.8432932023,
+        "B12": "% DE INCREMENTO EN EL COSTO POR PAGO RETROACTIVO",
+        "E12": 0.3768531050347244,
+        "B13": "Nota: el monto del pago retroactivo es una proyección que considera una tasa promedio de inflación anual de 4.50% y un factor de recargos de 1.47% mensual (dato vigente en 2024). El cálculo exacto puede variar hasta un 10% y se determina cuándo se mandan a validar los datos con el IMSS.",
+        "B15": "RECUPERACIÓN POR AFORE",
+        "B16": "MONTO APROXIMADO DE RECUPERACIÓN POR \"AFORE\"",
+        "E16": 131419.16865864047,
+        "B17": "M40 RETROACTIVA - RECUPERACION POR AFORE",
+        "E17": 525676.6746345619
+      }
+    },
+    "FINANCIAMIENTO": {
+      "rows": 66,
+      "cols": 8,
+      "cells": {
+        "B2": "FINANCIAMIENTO - PAGO RETROACTIVO",
+        "E2": "ANÁLISIS DE LA INVERSIÓN",
+        "B3": "INVERSIÓN TOTAL",
+        "C3": 657095.8432932023,
+        "E3": "PERIODOS DE RECUPERACIÓN DE LA INVERSIÓN (MESES)",
+        "F3": -162.00157489843753,
+        "B5": "PARTICIPACIONES",
+        "E5": "PENSION MENSUAL INMEDIATA (DURANTE 60 MESES)",
+        "F5": 52530.68123042617,
+        "B6": "BANCO",
+        "C6": 451447.6534776974,
+        "E6": "PENSIÓN MENSUAL AL LIQUIDAR FINANCIAMIENTO (60 MESES)",
+        "F6": 93552.87940311544,
+        "B7": "CUENTA PROPIA O SEGUNDO FONDEADOR",
+        "C7": 205648.18981550494,
+        "E7": "FLUJOS DE PENSIÓN COBRADOS HASTA LOS 80 AÑOS",
+        "F7": 27140566.975397754,
+        "B9": "PORCENTAJES DE PARTICIPACIÓN",
+        "E9": "NUESTRO TERMÓMETRO DE INVERSIÓN",
+        "B10": "BANCO REGULADO",
+        "C10": 0.6870347120370646,
+        "E10": "No lo hagas",
+        "B11": "CUENTA PROPIA O          SEGUNDO FONDEADOR",
+        "C11": 0.3129652879629354,
+        "E11": "Información sobre Financiamiento Regulado y/o Socios de Negocio/Comisionistas",
+        "E12": "https://wa.link/ix6fiu",
+        "B13": "COSTO DEL FINANCIAMIENTO (BANCO REGULADO)",
+        "B14": "MONTO DEL CRÉDITO",
+        "C14": 451447.6534776974,
+        "B15": "DURACIÓN DEL TRÁMITE      (MESES)",
+        "C15": 12,
+        "B16": "COSTO DE FINANCIAMIENTO DURANTE EL TRÁMITE",
+        "C16": 175998.702988873,
+        "B17": "MONTO MÁXIMO A PAGAR",
+        "C17": 627446.3564665704,
+        "B19": "¿CÓMO VOY A PAGAR EL FINANCIAMIENTO DEL BANCO?",
+        "B20": "MONTO DEL CRÉDITO",
+        "C20": 628000,
+        "B21": "PLAZO (MESES)",
+        "C21": 60,
+        "B22": "DESCUENTO MENSUAL                       A LA PENSIÓN MEJORADA",
+        "C22": 22540.92474975612
+      }
+    }
+  },
+  "historical": {
+    "uma_inflation_yearly": [
+      {
+        "year": 2019,
+        "costo": 0
+      },
+      {
+        "year": 2020,
+        "costo": 0
+      },
+      {
+        "year": 2021,
+        "costo": 0
+      },
+      {
+        "year": 2022,
+        "costo": 0
+      },
+      {
+        "year": 2023,
+        "costo": 0
+      },
+      {
+        "year": 2024,
+        "costo": 0
+      },
+      {
+        "year": 2025,
+        "costo": 0
+      },
+      {
+        "year": 2026,
+        "costo": 0
+      },
+      {
+        "year": 2027,
+        "costo": 14474.996743625
+      },
+      {
+        "year": 2028,
+        "costo": 15492.01255038021
+      },
+      {
+        "year": 2029,
+        "costo": 16508.096170328125
+      },
+      {
+        "year": 2030,
+        "costo": 0
+      },
+      {
+        "year": 2031,
+        "costo": 0
+      }
+    ],
+    "inflation_factors": [
+      {
+        "F2": "2027-01-28T00:00:00",
+        "G2": 31,
+        "H2": 31,
+        "I2": 14474.996743625,
+        "J2": 0.0036,
+        "K2": 0.11159999999999999,
+        "L2": 1615.40963658855,
+        "N2": "2027-01-28T00:00:00",
+        "O2": 31,
+        "P2": 31,
+        "Q2": 14474.996743625,
+        "R2": 0.0207,
+        "S2": 0.6416999999999999,
+        "T2": 9288.605410384162
+      },
+      {
+        "A3": "2021-2024",
+        "B3": 36,
+        "C3": 1.06456,
+        "D3": "#REF!",
+        "F3": "2027-02-28T00:00:00",
+        "G3": 30,
+        "H3": 30,
+        "I3": 14474.996743625,
+        "J3": 0.0036,
+        "K3": 0.108,
+        "L3": 1563.2996483115,
+        "N3": "2027-02-28T00:00:00",
+        "O3": 30,
+        "P3": 30,
+        "Q3": 14474.996743625,
+        "R3": 0.0207,
+        "S3": 0.621,
+        "T3": 8988.972977791125,
+        "V3": "Fecha de baja",
+        "W3": 2027
+      },
+      {
+        "A4": "2024-adelante",
+        "C4": 1.06384,
+        "F4": "2027-03-28T00:00:00",
+        "G4": 29,
+        "H4": 29,
+        "I4": 14474.996743625,
+        "J4": 0.0036,
+        "K4": 0.10439999999999999,
+        "L4": 1511.18966003445,
+        "N4": "2027-03-28T00:00:00",
+        "O4": 29,
+        "P4": 29,
+        "Q4": 14474.996743625,
+        "R4": 0.0207,
+        "S4": 0.6003,
+        "T4": 8689.340545198087,
+        "V4": "Fecha de término",
+        "W4": 2029
+      }
+    ],
+    "monthly_inflation_rates": {
+      "2027-01-28T00:00:00": 0.0036,
+      "2027-02-28T00:00:00": 0.0036,
+      "2027-03-28T00:00:00": 0.0036,
+      "2027-04-28T00:00:00": 0.0036,
+      "2027-05-28T00:00:00": 0.0036,
+      "2027-06-28T00:00:00": 0.0036,
+      "2027-07-28T00:00:00": 0.0036,
+      "2027-08-28T00:00:00": 0.0036,
+      "2027-09-28T00:00:00": 0.0036,
+      "2027-10-28T00:00:00": 0.0036,
+      "2027-11-28T00:00:00": 0.0036,
+      "2027-12-28T00:00:00": 0.0036,
+      "2028-01-28T00:00:00": 0.0036,
+      "2028-02-28T00:00:00": 0.0036,
+      "2028-03-28T00:00:00": 0.0036,
+      "2028-04-28T00:00:00": 0.0036,
+      "2028-05-28T00:00:00": 0.0036,
+      "2028-06-28T00:00:00": 0.0036,
+      "2028-07-28T00:00:00": 0.0036,
+      "2028-08-28T00:00:00": 0.0036,
+      "2028-09-28T00:00:00": 0.0036,
+      "2028-10-28T00:00:00": 0.0036,
+      "2028-11-28T00:00:00": 0.0036,
+      "2028-12-28T00:00:00": 0.0036,
+      "2029-01-28T00:00:00": 0.0036,
+      "2029-02-28T00:00:00": 0.0036,
+      "2029-03-30T00:00:00": 0.0036,
+      "2029-04-30T00:00:00": 0.0036,
+      "2029-05-30T00:00:00": 0.0036,
+      "2029-06-30T00:00:00": 0.0036,
+      "2029-07-31T00:00:00": 0.0036
+    },
+    "monthly_recargo_rates": {
+      "2027-01-28T00:00:00": 0.0207,
+      "2027-02-28T00:00:00": 0.0207,
+      "2027-03-28T00:00:00": 0.0207,
+      "2027-04-28T00:00:00": 0.0207,
+      "2027-05-28T00:00:00": 0.0207,
+      "2027-06-28T00:00:00": 0.0207,
+      "2027-07-28T00:00:00": 0.0207,
+      "2027-08-28T00:00:00": 0.0207,
+      "2027-09-28T00:00:00": 0.0207,
+      "2027-10-28T00:00:00": 0.0207,
+      "2027-11-28T00:00:00": 0.0207,
+      "2027-12-28T00:00:00": 0.0207,
+      "2028-01-28T00:00:00": 0.0207,
+      "2028-02-28T00:00:00": 0.0207,
+      "2028-03-28T00:00:00": 0.0207,
+      "2028-04-28T00:00:00": 0.0207,
+      "2028-05-28T00:00:00": 0.0207,
+      "2028-06-28T00:00:00": 0.0207,
+      "2028-07-28T00:00:00": 0.0207,
+      "2028-08-28T00:00:00": 0.0207,
+      "2028-09-28T00:00:00": 0.0207,
+      "2028-10-28T00:00:00": 0.0207,
+      "2028-11-28T00:00:00": 0.0207,
+      "2028-12-28T00:00:00": 0.0207,
+      "2029-01-28T00:00:00": 0.0207,
+      "2029-02-28T00:00:00": 0.0207,
+      "2029-03-30T00:00:00": 0.0207,
+      "2029-04-30T00:00:00": 0.0207,
+      "2029-05-30T00:00:00": 0.0207,
+      "2029-06-30T00:00:00": 0.0207,
+      "2029-07-31T00:00:00": 0.0207
+    },
+    "recargos_monthly_detail": [
+      {
+        "F2": "2027-01-28T00:00:00",
+        "G2": 31,
+        "H2": 31,
+        "I2": 14474.996743625,
+        "J2": 0.0036,
+        "K2": 0.11159999999999999,
+        "L2": 1615.40963658855,
+        "N2": "2027-01-28T00:00:00",
+        "O2": 31,
+        "P2": 31,
+        "Q2": 14474.996743625,
+        "R2": 0.0207,
+        "S2": 0.6416999999999999,
+        "T2": 9288.605410384162
+      },
+      {
+        "A3": "2021-2024",
+        "B3": 36,
+        "C3": 1.06456,
+        "D3": "#REF!",
+        "F3": "2027-02-28T00:00:00",
+        "G3": 30,
+        "H3": 30,
+        "I3": 14474.996743625,
+        "J3": 0.0036,
+        "K3": 0.108,
+        "L3": 1563.2996483115,
+        "N3": "2027-02-28T00:00:00",
+        "O3": 30,
+        "P3": 30,
+        "Q3": 14474.996743625,
+        "R3": 0.0207,
+        "S3": 0.621,
+        "T3": 8988.972977791125,
+        "V3": "Fecha de baja",
+        "W3": 2027
+      },
+      {
+        "A4": "2024-adelante",
+        "C4": 1.06384,
+        "F4": "2027-03-28T00:00:00",
+        "G4": 29,
+        "H4": 29,
+        "I4": 14474.996743625,
+        "J4": 0.0036,
+        "K4": 0.10439999999999999,
+        "L4": 1511.18966003445,
+        "N4": "2027-03-28T00:00:00",
+        "O4": 29,
+        "P4": 29,
+        "Q4": 14474.996743625,
+        "R4": 0.0207,
+        "S4": 0.6003,
+        "T4": 8689.340545198087,
+        "V4": "Fecha de término",
+        "W4": 2029
+      },
+      {
+        "F5": "2027-04-28T00:00:00",
+        "G5": 28,
+        "H5": 28,
+        "I5": 14474.996743625,
+        "J5": 0.0036,
+        "K5": 0.1008,
+        "L5": 1459.0796717574,
+        "N5": "2027-04-28T00:00:00",
+        "O5": 28,
+        "P5": 28,
+        "Q5": 14474.996743625,
+        "R5": 0.0207,
+        "S5": 0.5796,
+        "T5": 8389.70811260505
+      },
+      {
+        "F6": "2027-05-28T00:00:00",
+        "G6": 27,
+        "H6": 27,
+        "I6": 14474.996743625,
+        "J6": 0.0036,
+        "K6": 0.0972,
+        "L6": 1406.96968348035,
+        "N6": "2027-05-28T00:00:00",
+        "O6": 27,
+        "P6": 27,
+        "Q6": 14474.996743625,
+        "R6": 0.0207,
+        "S6": 0.5589,
+        "T6": 8090.0756800120125,
+        "V6": "Año Mod 40",
+        "W6": "Costo"
+      },
+      {
+        "F7": "2027-06-28T00:00:00",
+        "G7": 26,
+        "H7": 26,
+        "I7": 14474.996743625,
+        "J7": 0.0036,
+        "K7": 0.0936,
+        "L7": 1354.8596952033001,
+        "N7": "2027-06-28T00:00:00",
+        "O7": 26,
+        "P7": 26,
+        "Q7": 14474.996743625,
+        "R7": 0.0207,
+        "S7": 0.5382,
+        "T7": 7790.443247418975,
+        "V7": 2019,
+        "W7": 0
+      },
+      {
+        "F8": "2027-07-28T00:00:00",
+        "G8": 25,
+        "H8": 25,
+        "I8": 14474.996743625,
+        "J8": 0.0036,
+        "K8": 0.09,
+        "L8": 1302.74970692625,
+        "N8": "2027-07-28T00:00:00",
+        "O8": 25,
+        "P8": 25,
+        "Q8": 14474.996743625,
+        "R8": 0.0207,
+        "S8": 0.5175,
+        "T8": 7490.810814825937,
+        "V8": 2020,
+        "W8": 0
+      },
+      {
+        "F9": "2027-08-28T00:00:00",
+        "G9": 24,
+        "H9": 24,
+        "I9": 14474.996743625,
+        "J9": 0.0036,
+        "K9": 0.0864,
+        "L9": 1250.6397186492002,
+        "N9": "2027-08-28T00:00:00",
+        "O9": 24,
+        "P9": 24,
+        "Q9": 14474.996743625,
+        "R9": 0.0207,
+        "S9": 0.4968,
+        "T9": 7191.178382232901,
+        "V9": 2021,
+        "W9": 0
+      },
+      {
+        "F10": "2027-09-28T00:00:00",
+        "G10": 23,
+        "H10": 23,
+        "I10": 14474.996743625,
+        "J10": 0.0036,
+        "K10": 0.0828,
+        "L10": 1198.52973037215,
+        "N10": "2027-09-28T00:00:00",
+        "O10": 23,
+        "P10": 23,
+        "Q10": 14474.996743625,
+        "R10": 0.0207,
+        "S10": 0.47609999999999997,
+        "T10": 6891.545949639863,
+        "V10": 2022,
+        "W10": 0
+      },
+      {
+        "F11": "2027-10-28T00:00:00",
+        "G11": 22,
+        "H11": 22,
+        "I11": 14474.996743625,
+        "J11": 0.0036,
+        "K11": 0.07919999999999999,
+        "L11": 1146.4197420951,
+        "N11": "2027-10-28T00:00:00",
+        "O11": 22,
+        "P11": 22,
+        "Q11": 14474.996743625,
+        "R11": 0.0207,
+        "S11": 0.45539999999999997,
+        "T11": 6591.913517046825,
+        "V11": 2023,
+        "W11": 0
+      },
+      {
+        "F12": "2027-11-28T00:00:00",
+        "G12": 21,
+        "H12": 21,
+        "I12": 14474.996743625,
+        "J12": 0.0036,
+        "K12": 0.0756,
+        "L12": 1094.30975381805,
+        "N12": "2027-11-28T00:00:00",
+        "O12": 21,
+        "P12": 21,
+        "Q12": 14474.996743625,
+        "R12": 0.0207,
+        "S12": 0.4347,
+        "T12": 6292.281084453787,
+        "V12": 2024,
+        "W12": 0
+      },
+      {
+        "F13": "2027-12-28T00:00:00",
+        "G13": 20,
+        "H13": 20,
+        "I13": 14474.996743625,
+        "J13": 0.0036,
+        "K13": 0.072,
+        "L13": 1042.199765541,
+        "N13": "2027-12-28T00:00:00",
+        "O13": 20,
+        "P13": 20,
+        "Q13": 14474.996743625,
+        "R13": 0.0207,
+        "S13": 0.414,
+        "T13": 5992.64865186075,
+        "V13": 2025,
+        "W13": 0
+      },
+      {
+        "F14": "2028-01-28T00:00:00",
+        "G14": 19,
+        "H14": 19,
+        "I14": 15492.01255038021,
+        "J14": 0.0036,
+        "K14": 0.0684,
+        "L14": 1059.6536584460064,
+        "N14": "2028-01-28T00:00:00",
+        "O14": 19,
+        "P14": 19,
+        "Q14": 15492.01255038021,
+        "R14": 0.0207,
+        "S14": 0.3933,
+        "T14": 6093.008536064536,
+        "V14": 2026,
+        "W14": 0
+      },
+      {
+        "F15": "2028-02-28T00:00:00",
+        "G15": 18,
+        "H15": 18,
+        "I15": 15492.01255038021,
+        "J15": 0.0036,
+        "K15": 0.0648,
+        "L15": 1003.8824132646375,
+        "N15": "2028-02-28T00:00:00",
+        "O15": 18,
+        "P15": 18,
+        "Q15": 15492.01255038021,
+        "R15": 0.0207,
+        "S15": 0.3726,
+        "T15": 5772.323876271666,
+        "V15": 2027,
+        "W15": 14474.996743625
+      },
+      {
+        "F16": "2028-03-28T00:00:00",
+        "G16": 17,
+        "H16": 17,
+        "I16": 15492.01255038021,
+        "J16": 0.0036,
+        "K16": 0.0612,
+        "L16": 948.1111680832688,
+        "N16": "2028-03-28T00:00:00",
+        "O16": 17,
+        "P16": 17,
+        "Q16": 15492.01255038021,
+        "R16": 0.0207,
+        "S16": 0.3519,
+        "T16": 5451.639216478796,
+        "V16": 2028,
+        "W16": 15492.01255038021
+      },
+      {
+        "F17": "2028-04-28T00:00:00",
+        "G17": 16,
+        "H17": 16,
+        "I17": 15492.01255038021,
+        "J17": 0.0036,
+        "K17": 0.0576,
+        "L17": 892.3399229019001,
+        "N17": "2028-04-28T00:00:00",
+        "O17": 16,
+        "P17": 16,
+        "Q17": 15492.01255038021,
+        "R17": 0.0207,
+        "S17": 0.3312,
+        "T17": 5130.954556685925,
+        "V17": 2029,
+        "W17": 16508.096170328125
+      },
+      {
+        "F18": "2028-05-28T00:00:00",
+        "G18": 15,
+        "H18": 15,
+        "I18": 15492.01255038021,
+        "J18": 0.0036,
+        "K18": 0.054,
+        "L18": 836.5686777205314,
+        "N18": "2028-05-28T00:00:00",
+        "O18": 15,
+        "P18": 15,
+        "Q18": 15492.01255038021,
+        "R18": 0.0207,
+        "S18": 0.3105,
+        "T18": 4810.269896893055,
+        "V18": 2030,
+        "W18": 0
+      },
+      {
+        "F19": "2028-06-28T00:00:00",
+        "G19": 14,
+        "H19": 14,
+        "I19": 15492.01255038021,
+        "J19": 0.0036,
+        "K19": 0.0504,
+        "L19": 780.7974325391626,
+        "N19": "2028-06-28T00:00:00",
+        "O19": 14,
+        "P19": 14,
+        "Q19": 15492.01255038021,
+        "R19": 0.0207,
+        "S19": 0.2898,
+        "T19": 4489.585237100185,
+        "V19": 2031,
+        "W19": 0
+      },
+      {
+        "F20": "2028-07-28T00:00:00",
+        "G20": 13,
+        "H20": 13,
+        "I20": 15492.01255038021,
+        "J20": 0.0036,
+        "K20": 0.0468,
+        "L20": 725.0261873577939,
+        "N20": "2028-07-28T00:00:00",
+        "O20": 13,
+        "P20": 13,
+        "Q20": 15492.01255038021,
+        "R20": 0.0207,
+        "S20": 0.2691,
+        "T20": 4168.900577307315
+      },
+      {
+        "F21": "2028-08-28T00:00:00",
+        "G21": 12,
+        "H21": 12,
+        "I21": 15492.01255038021,
+        "J21": 0.0036,
+        "K21": 0.0432,
+        "L21": 669.2549421764251,
+        "N21": "2028-08-28T00:00:00",
+        "O21": 12,
+        "P21": 12,
+        "Q21": 15492.01255038021,
+        "R21": 0.0207,
+        "S21": 0.2484,
+        "T21": 3848.2159175144443
+      },
+      {
+        "F22": "2028-09-28T00:00:00",
+        "G22": 11,
+        "H22": 11,
+        "I22": 15492.01255038021,
+        "J22": 0.0036,
+        "K22": 0.039599999999999996,
+        "L22": 613.4836969950562,
+        "N22": "2028-09-28T00:00:00",
+        "O22": 11,
+        "P22": 11,
+        "Q22": 15492.01255038021,
+        "R22": 0.0207,
+        "S22": 0.22769999999999999,
+        "T22": 3527.5312577215736
+      },
+      {
+        "F23": "2028-10-28T00:00:00",
+        "G23": 10,
+        "H23": 10,
+        "I23": 15492.01255038021,
+        "J23": 0.0036,
+        "K23": 0.036,
+        "L23": 557.7124518136875,
+        "N23": "2028-10-28T00:00:00",
+        "O23": 10,
+        "P23": 10,
+        "Q23": 15492.01255038021,
+        "R23": 0.0207,
+        "S23": 0.207,
+        "T23": 3206.8465979287034
+      },
+      {
+        "F24": "2028-11-28T00:00:00",
+        "G24": 9,
+        "H24": 9,
+        "I24": 15492.01255038021,
+        "J24": 0.0036,
+        "K24": 0.0324,
+        "L24": 501.94120663231877,
+        "N24": "2028-11-28T00:00:00",
+        "O24": 9,
+        "P24": 9,
+        "Q24": 15492.01255038021,
+        "R24": 0.0207,
+        "S24": 0.1863,
+        "T24": 2886.161938135833
+      },
+      {
+        "F25": "2028-12-28T00:00:00",
+        "G25": 8,
+        "H25": 8,
+        "I25": 15492.01255038021,
+        "J25": 0.0036,
+        "K25": 0.0288,
+        "L25": 446.16996145095004,
+        "N25": "2028-12-28T00:00:00",
+        "O25": 8,
+        "P25": 8,
+        "Q25": 15492.01255038021,
+        "R25": 0.0207,
+        "S25": 0.1656,
+        "T25": 2565.4772783429626
+      },
+      {
+        "F26": "2029-01-28T00:00:00",
+        "G26": 7,
+        "H26": 7,
+        "I26": 16508.096170328125,
+        "J26": 0.0036,
+        "K26": 0.0252,
+        "L26": 416.00402349226874,
+        "N26": "2029-01-28T00:00:00",
+        "O26": 7,
+        "P26": 7,
+        "Q26": 16508.096170328125,
+        "R26": 0.0207,
+        "S26": 0.1449,
+        "T26": 2392.023135080545
+      },
+      {
+        "F27": "2029-02-28T00:00:00",
+        "G27": 6,
+        "H27": 6,
+        "I27": 16508.096170328125,
+        "J27": 0.0036,
+        "K27": 0.0216,
+        "L27": 356.5748772790875,
+        "N27": "2029-02-28T00:00:00",
+        "O27": 6,
+        "P27": 6,
+        "Q27": 16508.096170328125,
+        "R27": 0.0207,
+        "S27": 0.1242,
+        "T27": 2050.3055443547532
+      },
+      {
+        "F28": "2029-03-30T00:00:00",
+        "G28": 5,
+        "H28": 5,
+        "I28": 16508.096170328125,
+        "J28": 0.0036,
+        "K28": 0.018,
+        "L28": 297.1457310659062,
+        "N28": "2029-03-30T00:00:00",
+        "O28": 5,
+        "P28": 5,
+        "Q28": 16508.096170328125,
+        "R28": 0.0207,
+        "S28": 0.1035,
+        "T28": 1708.5879536289608
+      },
+      {
+        "F29": "2029-04-30T00:00:00",
+        "G29": 4,
+        "H29": 4,
+        "I29": 16508.096170328125,
+        "J29": 0.0036,
+        "K29": 0.0144,
+        "L29": 237.716584852725,
+        "N29": "2029-04-30T00:00:00",
+        "O29": 4,
+        "P29": 4,
+        "Q29": 16508.096170328125,
+        "R29": 0.0207,
+        "S29": 0.0828,
+        "T29": 1366.8703629031686
+      },
+      {
+        "F30": "2029-05-30T00:00:00",
+        "G30": 3,
+        "H30": 3,
+        "I30": 16508.096170328125,
+        "J30": 0.0036,
+        "K30": 0.0108,
+        "L30": 178.28743863954375,
+        "N30": "2029-05-30T00:00:00",
+        "O30": 3,
+        "P30": 3,
+        "Q30": 16508.096170328125,
+        "R30": 0.0207,
+        "S30": 0.0621,
+        "T30": 1025.1527721773766
+      },
+      {
+        "F31": "2029-06-30T00:00:00",
+        "G31": 2,
+        "H31": 2,
+        "I31": 16508.096170328125,
+        "J31": 0.0036,
+        "K31": 0.0072,
+        "L31": 118.8582924263625,
+        "N31": "2029-06-30T00:00:00",
+        "O31": 2,
+        "P31": 2,
+        "Q31": 16508.096170328125,
+        "R31": 0.0207,
+        "S31": 0.0414,
+        "T31": 683.4351814515843
+      },
+      {
+        "F32": "2029-07-31T00:00:00",
+        "G32": 1,
+        "H32": 1,
+        "I32": 16508.096170328125,
+        "J32": 0.0036,
+        "K32": 0.0036,
+        "L32": 59.42914621318125,
+        "N32": "2029-07-31T00:00:00",
+        "O32": 1,
+        "P32": 1,
+        "Q32": 16508.096170328125,
+        "R32": 0.0207,
+        "S32": 0.0207,
+        "T32": 341.71759072579215
+      },
+      {
+        "G33": 0,
+        "H33": 0,
+        "I33": "#VALUE!",
+        "J33": "#VALUE!",
+        "K33": "#VALUE!",
+        "L33": "#VALUE!",
+        "O33": 0,
+        "P33": 0,
+        "Q33": "#VALUE!",
+        "R33": "#VALUE!",
+        "S33": "#VALUE!",
+        "T33": "#VALUE!"
+      },
+      {
+        "G34": 0,
+        "H34": 0,
+        "I34": "#VALUE!",
+        "J34": "#VALUE!",
+        "K34": "#VALUE!",
+        "L34": "#VALUE!",
+        "O34": 0,
+        "P34": 0,
+        "Q34": "#VALUE!",
+        "R34": "#VALUE!",
+        "S34": "#VALUE!",
+        "T34": "#VALUE!"
+      },
+      {
+        "G35": 0,
+        "H35": 0,
+        "I35": "#VALUE!",
+        "J35": "#VALUE!",
+        "K35": "#VALUE!",
+        "L35": "#VALUE!",
+        "O35": 0,
+        "P35": 0,
+        "Q35": "#VALUE!",
+        "R35": "#VALUE!",
+        "S35": "#VALUE!",
+        "T35": "#VALUE!"
+      },
+      {
+        "G36": 0,
+        "H36": 0,
+        "I36": "#VALUE!",
+        "J36": "#VALUE!",
+        "K36": "#VALUE!",
+        "L36": "#VALUE!",
+        "O36": 0,
+        "P36": 0,
+        "Q36": "#VALUE!",
+        "R36": "#VALUE!",
+        "S36": "#VALUE!",
+        "T36": "#VALUE!"
+      },
+      {
+        "G37": 0,
+        "H37": 0,
+        "I37": "#VALUE!",
+        "J37": "#VALUE!",
+        "K37": "#VALUE!",
+        "L37": "#VALUE!",
+        "O37": 0,
+        "P37": 0,
+        "Q37": "#VALUE!",
+        "R37": "#VALUE!",
+        "S37": "#VALUE!",
+        "T37": "#VALUE!"
+      },
+      {
+        "G38": 0,
+        "H38": 0,
+        "I38": "#VALUE!",
+        "J38": "#VALUE!",
+        "K38": "#VALUE!",
+        "L38": "#VALUE!",
+        "O38": 0,
+        "P38": 0,
+        "Q38": "#VALUE!",
+        "R38": "#VALUE!",
+        "S38": "#VALUE!",
+        "T38": "#VALUE!"
+      },
+      {
+        "G39": 0,
+        "H39": 0,
+        "I39": "#VALUE!",
+        "J39": "#VALUE!",
+        "K39": "#VALUE!",
+        "L39": "#VALUE!",
+        "O39": 0,
+        "P39": 0,
+        "Q39": "#VALUE!",
+        "R39": "#VALUE!",
+        "S39": "#VALUE!",
+        "T39": "#VALUE!"
+      },
+      {
+        "G40": 0,
+        "H40": 0,
+        "I40": "#VALUE!",
+        "J40": "#VALUE!",
+        "K40": "#VALUE!",
+        "L40": "#VALUE!",
+        "O40": 0,
+        "P40": 0,
+        "Q40": "#VALUE!",
+        "R40": "#VALUE!",
+        "S40": "#VALUE!",
+        "T40": "#VALUE!"
+      },
+      {
+        "G41": 0,
+        "H41": 0,
+        "I41": "#VALUE!",
+        "J41": "#VALUE!",
+        "K41": "#VALUE!",
+        "L41": "#VALUE!",
+        "O41": 0,
+        "P41": 0,
+        "Q41": "#VALUE!",
+        "R41": "#VALUE!",
+        "S41": "#VALUE!",
+        "T41": "#VALUE!"
+      },
+      {
+        "G42": 0,
+        "H42": 0,
+        "I42": "#VALUE!",
+        "J42": "#VALUE!",
+        "K42": "#VALUE!",
+        "L42": "#VALUE!",
+        "O42": 0,
+        "P42": 0,
+        "Q42": "#VALUE!",
+        "R42": "#VALUE!",
+        "S42": "#VALUE!",
+        "T42": "#VALUE!"
+      },
+      {
+        "G43": 0,
+        "H43": 0,
+        "I43": "#VALUE!",
+        "J43": "#VALUE!",
+        "K43": "#VALUE!",
+        "L43": "#VALUE!",
+        "O43": 0,
+        "P43": 0,
+        "Q43": "#VALUE!",
+        "R43": "#VALUE!",
+        "S43": "#VALUE!",
+        "T43": "#VALUE!"
+      },
+      {
+        "G44": 0,
+        "H44": 0,
+        "I44": "#VALUE!",
+        "J44": "#VALUE!",
+        "K44": "#VALUE!",
+        "L44": "#VALUE!",
+        "O44": 0,
+        "P44": 0,
+        "Q44": "#VALUE!",
+        "R44": "#VALUE!",
+        "S44": "#VALUE!",
+        "T44": "#VALUE!"
+      },
+      {
+        "G45": 0,
+        "H45": 0,
+        "I45": "#VALUE!",
+        "J45": "#VALUE!",
+        "K45": "#VALUE!",
+        "L45": "#VALUE!",
+        "O45": 0,
+        "P45": 0,
+        "Q45": "#VALUE!",
+        "R45": "#VALUE!",
+        "S45": "#VALUE!",
+        "T45": "#VALUE!"
+      },
+      {
+        "G46": 0,
+        "H46": 0,
+        "I46": "#VALUE!",
+        "J46": "#VALUE!",
+        "K46": "#VALUE!",
+        "L46": "#VALUE!",
+        "O46": 0,
+        "P46": 0,
+        "Q46": "#VALUE!",
+        "R46": "#VALUE!",
+        "S46": "#VALUE!",
+        "T46": "#VALUE!"
+      },
+      {
+        "G47": 0,
+        "H47": 0,
+        "I47": "#VALUE!",
+        "J47": "#VALUE!",
+        "K47": "#VALUE!",
+        "L47": "#VALUE!",
+        "O47": 0,
+        "P47": 0,
+        "Q47": "#VALUE!",
+        "R47": "#VALUE!",
+        "S47": "#VALUE!",
+        "T47": "#VALUE!"
+      },
+      {
+        "G48": 0,
+        "H48": 0,
+        "I48": "#VALUE!",
+        "J48": "#VALUE!",
+        "K48": "#VALUE!",
+        "L48": "#VALUE!",
+        "O48": 0,
+        "P48": 0,
+        "Q48": "#VALUE!",
+        "R48": "#VALUE!",
+        "S48": "#VALUE!",
+        "T48": "#VALUE!"
+      },
+      {
+        "G49": 0,
+        "H49": 0,
+        "I49": "#VALUE!",
+        "J49": "#VALUE!",
+        "K49": "#VALUE!",
+        "L49": "#VALUE!",
+        "O49": 0,
+        "P49": 0,
+        "Q49": "#VALUE!",
+        "R49": "#VALUE!",
+        "S49": "#VALUE!",
+        "T49": "#VALUE!"
+      },
+      {
+        "G50": 0,
+        "H50": 0,
+        "I50": "#VALUE!",
+        "J50": "#VALUE!",
+        "K50": "#VALUE!",
+        "L50": "#VALUE!",
+        "O50": 0,
+        "P50": 0,
+        "Q50": "#VALUE!",
+        "R50": "#VALUE!",
+        "S50": "#VALUE!",
+        "T50": "#VALUE!"
+      },
+      {
+        "G51": 0,
+        "H51": 0,
+        "I51": "#VALUE!",
+        "J51": "#VALUE!",
+        "K51": "#VALUE!",
+        "L51": "#VALUE!",
+        "O51": 0,
+        "P51": 0,
+        "Q51": "#VALUE!",
+        "R51": "#VALUE!",
+        "S51": "#VALUE!",
+        "T51": "#VALUE!"
+      },
+      {
+        "G52": 0,
+        "H52": 0,
+        "I52": "#VALUE!",
+        "J52": "#VALUE!",
+        "K52": "#VALUE!",
+        "L52": "#VALUE!",
+        "O52": 0,
+        "P52": 0,
+        "Q52": "#VALUE!",
+        "R52": "#VALUE!",
+        "S52": "#VALUE!",
+        "T52": "#VALUE!"
+      },
+      {
+        "G53": 0,
+        "H53": 0,
+        "I53": "#VALUE!",
+        "J53": "#VALUE!",
+        "K53": "#VALUE!",
+        "L53": "#VALUE!",
+        "O53": 0,
+        "P53": 0,
+        "Q53": "#VALUE!",
+        "R53": "#VALUE!",
+        "S53": "#VALUE!",
+        "T53": "#VALUE!"
+      },
+      {
+        "G54": 0,
+        "H54": 0,
+        "I54": "#VALUE!",
+        "J54": "#VALUE!",
+        "K54": "#VALUE!",
+        "L54": "#VALUE!",
+        "O54": 0,
+        "P54": 0,
+        "Q54": "#VALUE!",
+        "R54": "#VALUE!",
+        "S54": "#VALUE!",
+        "T54": "#VALUE!"
+      },
+      {
+        "G55": 0,
+        "H55": 0,
+        "I55": "#VALUE!",
+        "J55": "#VALUE!",
+        "K55": "#VALUE!",
+        "L55": "#VALUE!",
+        "O55": 0,
+        "P55": 0,
+        "Q55": "#VALUE!",
+        "R55": "#VALUE!",
+        "S55": "#VALUE!",
+        "T55": "#VALUE!"
+      },
+      {
+        "G56": 0,
+        "H56": 0,
+        "I56": "#VALUE!",
+        "J56": "#VALUE!",
+        "K56": "#VALUE!",
+        "L56": "#VALUE!",
+        "O56": 0,
+        "P56": 0,
+        "Q56": "#VALUE!",
+        "R56": "#VALUE!",
+        "S56": "#VALUE!",
+        "T56": "#VALUE!"
+      },
+      {
+        "G57": 0,
+        "H57": 0,
+        "I57": "#VALUE!",
+        "J57": "#VALUE!",
+        "K57": "#VALUE!",
+        "L57": "#VALUE!",
+        "O57": 0,
+        "P57": 0,
+        "Q57": "#VALUE!",
+        "R57": "#VALUE!",
+        "S57": "#VALUE!",
+        "T57": "#VALUE!"
+      },
+      {
+        "G58": 0,
+        "H58": 0,
+        "I58": "#VALUE!",
+        "J58": "#VALUE!",
+        "K58": "#VALUE!",
+        "L58": "#VALUE!",
+        "O58": 0,
+        "P58": 0,
+        "Q58": "#VALUE!",
+        "R58": "#VALUE!",
+        "S58": "#VALUE!",
+        "T58": "#VALUE!"
+      },
+      {
+        "G59": 0,
+        "H59": 0,
+        "I59": "#VALUE!",
+        "J59": "#VALUE!",
+        "K59": "#VALUE!",
+        "L59": "#VALUE!",
+        "O59": 0,
+        "P59": 0,
+        "Q59": "#VALUE!",
+        "R59": "#VALUE!",
+        "S59": "#VALUE!",
+        "T59": "#VALUE!"
+      },
+      {
+        "G60": 0,
+        "H60": 0,
+        "I60": "#VALUE!",
+        "J60": "#VALUE!",
+        "K60": "#VALUE!",
+        "L60": "#VALUE!",
+        "O60": 0,
+        "P60": 0,
+        "Q60": "#VALUE!",
+        "R60": "#VALUE!",
+        "S60": "#VALUE!",
+        "T60": "#VALUE!"
+      },
+      {
+        "G61": 0,
+        "H61": 0,
+        "I61": "#VALUE!",
+        "J61": "#VALUE!",
+        "K61": "#VALUE!",
+        "L61": "#VALUE!",
+        "O61": 0,
+        "P61": 0,
+        "Q61": "#VALUE!",
+        "R61": "#VALUE!",
+        "S61": "#VALUE!",
+        "T61": "#VALUE!"
+      }
+    ]
+  },
+  "porcentajes_tabla": [
+    [
+      {
+        "cell": "R1",
+        "value": "MOD 40"
+      },
+      {
+        "cell": "X1",
+        "value": "Bullet 1"
+      },
+      {
+        "cell": "AA1",
+        "value": "Crédito final"
+      },
+      {
+        "cell": "AG1",
+        "value": "Edad"
+      },
+      {
+        "cell": "AH1",
+        "value": "Edad de Retiro"
+      }
+    ],
+    [
+      {
+        "cell": "A2",
+        "value": "Tabla de cuantia básica e incrementos salariales"
+      },
+      {
+        "cell": "F2",
+        "value": "Tabla de edad de retiro"
+      },
+      {
+        "cell": "G2",
+        "value": "Edades permitidas de acuerdo a edad"
+      },
+      {
+        "cell": "H2",
+        "value": "Hijos menores a 25"
+      },
+      {
+        "cell": "I2",
+        "value": "Padres"
+      },
+      {
+        "cell": "J2",
+        "value": "Planeas seguir trabajando"
+      },
+      {
+        "cell": "K2",
+        "value": "Edad modalidad 40"
+      },
+      {
+        "cell": "L2",
+        "value": "Edades permitidas"
+      },
+      {
+        "cell": "M2",
+        "value": "Meses"
+      },
+      {
+        "cell": "N2",
+        "value": "Año"
+      },
+      {
+        "cell": "O2",
+        "value": "Proyección UMA"
+      },
+      {
+        "cell": "P2",
+        "value": "Proyección Salario Mínimo"
+      },
+      {
+        "cell": "R2",
+        "value": "AÑOS"
+      },
+      {
+        "cell": "S2",
+        "value": "MESES"
+      },
+      {
+        "cell": "U2",
+        "value": 1
+      },
+      {
+        "cell": "X2",
+        "value": "Monto crédito Final"
+      },
+      {
+        "cell": "Y2",
+        "value": "Monto del crédito inicial"
+      },
+      {
+        "cell": "AA2",
+        "value": "Monto crédito Final"
+      },
+      {
+        "cell": "AB2",
+        "value": "Descuento Mensual"
+      },
+      {
+        "cell": "AD2",
+        "value": "Descuento mensual"
+      },
+      {
+        "cell": "AE2",
+        "value": "Monto de crédito"
+      },
+      {
+        "cell": "AG2",
+        "value": 47
+      },
+      {
+        "cell": "AH2",
+        "value": 60
+      }
+    ],
+    [
+      {
+        "cell": "A3",
+        "value": 0
+      },
+      {
+        "cell": "B3",
+        "value": 1
+      },
+      {
+        "cell": "C3",
+        "value": 0.8
+      },
+      {
+        "cell": "D3",
+        "value": 0.00563
+      },
+      {
+        "cell": "F3",
+        "value": 57.1183912386707
+      },
+      {
+        "cell": "H3",
+        "value": 0
+      },
+      {
+        "cell": "I3",
+        "value": 0
+      },
+      {
+        "cell": "J3",
+        "value": "SI"
+      },
+      {
+        "cell": "K3",
+        "value": "INMEDIATAMENTE"
+      },
+      {
+        "cell": "L3",
+        "value": 57.1183912386707
+      },
+      {
+        "cell": "M3",
+        "value": 0
+      },
+      {
+        "cell": "N3",
+        "value": 2017
+      },
+      {
+        "cell": "O3",
+        "value": 75.49
+      },
+      {
+        "cell": "P3",
+        "value": 80.04
+      },
+      {
+        "cell": "R3",
+        "value": 0
+      },
+      {
+        "cell": "S3",
+        "value": 0
+      },
+      {
+        "cell": "U3",
+        "value": 2
+      },
+      {
+        "cell": "X3",
+        "value": 627446.3564665704
+      },
+      {
+        "cell": "Y3",
+        "value": 451447.6534776974
+      },
+      {
+        "cell": "AA3",
+        "value": 149000
+      },
+      {
+        "cell": "AB3",
+        "value": 5338
+      },
+      {
+        "cell": "AD3",
+        "value": 22521.481794054685
+      },
+      {
+        "cell": "AE3",
+        "value": 627446.3564665704
+      },
+      {
+        "cell": "AG3",
+        "value": 47.5
+      },
+      {
+        "cell": "AH3",
+        "value": 60.5
+      }
+    ],
+    [
+      {
+        "cell": "A4",
+        "value": 1.01
+      },
+      {
+        "cell": "B4",
+        "value": 1.25
+      },
+      {
+        "cell": "C4",
+        "value": 0.7711
+      },
+      {
+        "cell": "D4",
+        "value": 0.00814
+      },
+      {
+        "cell": "F4",
+        "value": 60
+      },
+      {
+        "cell": "G4",
+        "value": 60
+      },
+      {
+        "cell": "H4",
+        "value": 1
+      },
+      {
+        "cell": "I4",
+        "value": 1
+      },
+      {
+        "cell": "J4",
+        "value": "NO"
+      },
+      {
+        "cell": "K4",
+        "value": 53
+      },
+      {
+        "cell": "M4",
+        "value": 1
+      },
+      {
+        "cell": "N4",
+        "value": 2018
+      },
+      {
+        "cell": "O4",
+        "value": 80.6
+      },
+      {
+        "cell": "P4",
+        "value": 88.36
+      },
+      {
+        "cell": "R4",
+        "value": 1
+      },
+      {
+        "cell": "S4",
+        "value": 1
+      },
+      {
+        "cell": "U4",
+        "value": 3
+      },
+      {
+        "cell": "AA4",
+        "value": 150000
+      },
+      {
+        "cell": "AB4",
+        "value": 5373
+      },
+      {
+        "cell": "AG4",
+        "value": 48
+      },
+      {
+        "cell": "AH4",
+        "value": 61
+      }
+    ],
+    [
+      {
+        "cell": "A5",
+        "value": 1.26
+      },
+      {
+        "cell": "B5",
+        "value": 1.5
+      },
+      {
+        "cell": "C5",
+        "value": 0.5818
+      },
+      {
+        "cell": "D5",
+        "value": 0.011780000000000002
+      },
+      {
+        "cell": "F5",
+        "value": 60.51
+      },
+      {
+        "cell": "G5",
+        "value": 60.51
+      },
+      {
+        "cell": "H5",
+        "value": 2
+      },
+      {
+        "cell": "I5",
+        "value": 2
+      },
+      {
+        "cell": "K5",
+        "value": 54
+      },
+      {
+        "cell": "M5",
+        "value": 2
+      },
+      {
+        "cell": "N5",
+        "value": 2019
+      },
+      {
+        "cell": "O5",
+        "value": 84.49
+      },
+      {
+        "cell": "P5",
+        "value": 102.68
+      },
+      {
+        "cell": "R5",
+        "value": 2
+      },
+      {
+        "cell": "S5",
+        "value": 2
+      },
+      {
+        "cell": "U5",
+        "value": 4
+      },
+      {
+        "cell": "AA5",
+        "value": 152000
+      },
+      {
+        "cell": "AB5",
+        "value": 5444
+      },
+      {
+        "cell": "AG5",
+        "value": 48.5
+      },
+      {
+        "cell": "AH5",
+        "value": 61.5
+      }
+    ],
+    [
+      {
+        "cell": "A6",
+        "value": 1.51
+      },
+      {
+        "cell": "B6",
+        "value": 1.75
+      },
+      {
+        "cell": "C6",
+        "value": 0.4923
+      },
+      {
+        "cell": "D6",
+        "value": 0.0143
+      },
+      {
+        "cell": "F6",
+        "value": 61
+      },
+      {
+        "cell": "G6",
+        "value": 61
+      },
+      {
+        "cell": "H6",
+        "value": 3
+      },
+      {
+        "cell": "K6",
+        "value": 55
+      },
+      {
+        "cell": "M6",
+        "value": 3
+      },
+      {
+        "cell": "N6",
+        "value": 2020
+      },
+      {
+        "cell": "O6",
+        "value": 86.88
+      },
+      {
+        "cell": "P6",
+        "value": 123.22
+      },
+      {
+        "cell": "R6",
+        "value": 3
+      },
+      {
+        "cell": "S6",
+        "value": 3
+      },
+      {
+        "cell": "U6",
+        "value": 5
+      },
+      {
+        "cell": "AA6",
+        "value": 159000
+      },
+      {
+        "cell": "AB6",
+        "value": 5709
+      },
+      {
+        "cell": "AG6",
+        "value": 49
+      },
+      {
+        "cell": "AH6",
+        "value": 62
+      }
+    ],
+    [
+      {
+        "cell": "A7",
+        "value": 1.76
+      },
+      {
+        "cell": "B7",
+        "value": 2
+      },
+      {
+        "cell": "C7",
+        "value": 0.4267
+      },
+      {
+        "cell": "D7",
+        "value": 0.01615
+      },
+      {
+        "cell": "F7",
+        "value": 61.51
+      },
+      {
+        "cell": "G7",
+        "value": 61.51
+      },
+      {
+        "cell": "H7",
+        "value": 4
+      },
+      {
+        "cell": "K7",
+        "value": 56
+      },
+      {
+        "cell": "M7",
+        "value": 4
+      },
+      {
+        "cell": "N7",
+        "value": 2021
+      },
+      {
+        "cell": "O7",
+        "value": 89.62
+      },
+      {
+        "cell": "P7",
+        "value": 141.7
+      },
+      {
+        "cell": "R7",
+        "value": 4
+      },
+      {
+        "cell": "S7",
+        "value": 4
+      },
+      {
+        "cell": "U7",
+        "value": 6
+      },
+      {
+        "cell": "AA7",
+        "value": 173000
+      },
+      {
+        "cell": "AB7",
+        "value": 6211
+      },
+      {
+        "cell": "AG7",
+        "value": 49.5
+      },
+      {
+        "cell": "AH7",
+        "value": 62.5
+      }
+    ],
+    [
+      {
+        "cell": "A8",
+        "value": 2.01
+      },
+      {
+        "cell": "B8",
+        "value": 2.25
+      },
+      {
+        "cell": "C8",
+        "value": 0.3765
+      },
+      {
+        "cell": "D8",
+        "value": 0.01756
+      },
+      {
+        "cell": "F8",
+        "value": 62
+      },
+      {
+        "cell": "G8",
+        "value": 62
+      },
+      {
+        "cell": "H8",
+        "value": 5
+      },
+      {
+        "cell": "K8",
+        "value": 57
+      },
+      {
+        "cell": "M8",
+        "value": 5
+      },
+      {
+        "cell": "N8",
+        "value": 2022
+      },
+      {
+        "cell": "O8",
+        "value": 96.22
+      },
+      {
+        "cell": "P8",
+        "value": 172.87
+      },
+      {
+        "cell": "R8",
+        "value": 5
+      },
+      {
+        "cell": "S8",
+        "value": 5
+      },
+      {
+        "cell": "U8",
+        "value": 7
+      },
+      {
+        "cell": "AA8",
+        "value": 175000
+      },
+      {
+        "cell": "AB8",
+        "value": 6274
+      },
+      {
+        "cell": "AG8",
+        "value": 50
+      },
+      {
+        "cell": "AH8",
+        "value": 63
+      }
+    ],
+    [
+      {
+        "cell": "A9",
+        "value": 2.26
+      },
+      {
+        "cell": "B9",
+        "value": 2.5
+      },
+      {
+        "cell": "C9",
+        "value": 0.3368
+      },
+      {
+        "cell": "D9",
+        "value": 0.01868
+      },
+      {
+        "cell": "F9",
+        "value": 62.51
+      },
+      {
+        "cell": "G9",
+        "value": 62.51
+      },
+      {
+        "cell": "K9",
+        "value": 58
+      },
+      {
+        "cell": "L9",
+        "value": 58
+      },
+      {
+        "cell": "M9",
+        "value": 6
+      },
+      {
+        "cell": "N9",
+        "value": 2023
+      },
+      {
+        "cell": "O9",
+        "value": 103.74
+      },
+      {
+        "cell": "P9",
+        "value": 207.44
+      },
+      {
+        "cell": "S9",
+        "value": 6
+      },
+      {
+        "cell": "U9",
+        "value": 8
+      },
+      {
+        "cell": "AA9",
+        "value": 177000
+      },
+      {
+        "cell": "AB9",
+        "value": 6364
+      },
+      {
+        "cell": "AG9",
+        "value": 50.5
+      },
+      {
+        "cell": "AH9",
+        "value": 63.5
+      }
+    ],
+    [
+      {
+        "cell": "A10",
+        "value": 2.51
+      },
+      {
+        "cell": "B10",
+        "value": 2.75
+      },
+      {
+        "cell": "C10",
+        "value": 0.3048
+      },
+      {
+        "cell": "D10",
+        "value": 0.01958
+      },
+      {
+        "cell": "F10",
+        "value": 63
+      },
+      {
+        "cell": "G10",
+        "value": 63
+      },
+      {
+        "cell": "K10",
+        "value": 59
+      },
+      {
+        "cell": "L10",
+        "value": 59
+      },
+      {
+        "cell": "M10",
+        "value": 7
+      },
+      {
+        "cell": "N10",
+        "value": 2024
+      },
+      {
+        "cell": "O10",
+        "value": 108.57
+      },
+      {
+        "cell": "P10",
+        "value": 248.93
+      },
+      {
+        "cell": "S10",
+        "value": 7
+      },
+      {
+        "cell": "U10",
+        "value": 9
+      },
+      {
+        "cell": "AA10",
+        "value": 178000
+      },
+      {
+        "cell": "AB10",
+        "value": 6403
+      },
+      {
+        "cell": "AG10",
+        "value": 51
+      },
+      {
+        "cell": "AH10",
+        "value": 64
+      }
+    ],
+    [
+      {
+        "cell": "A11",
+        "value": 2.76
+      },
+      {
+        "cell": "B11",
+        "value": 3
+      },
+      {
+        "cell": "C11",
+        "value": 0.2783
+      },
+      {
+        "cell": "D11",
+        "value": 0.02033
+      },
+      {
+        "cell": "F11",
+        "value": 63.51
+      },
+      {
+        "cell": "G11",
+        "value": 63.51
+      },
+      {
+        "cell": "K11",
+        "value": 60
+      },
+      {
+        "cell": "L11",
+        "value": 60
+      },
+      {
+        "cell": "M11",
+        "value": 8
+      },
+      {
+        "cell": "N11",
+        "value": 2025
+      },
+      {
+        "cell": "O11",
+        "value": 113.14
+      },
+      {
+        "cell": "P11",
+        "value": 278.8
+      },
+      {
+        "cell": "S11",
+        "value": 8
+      },
+      {
+        "cell": "U11",
+        "value": 10
+      },
+      {
+        "cell": "AA11",
+        "value": 182000
+      },
+      {
+        "cell": "AB11",
+        "value": 6570
+      },
+      {
+        "cell": "AG11",
+        "value": 51.5
+      },
+      {
+        "cell": "AH11",
+        "value": 64.5
+      }
+    ],
+    [
+      {
+        "cell": "A12",
+        "value": 3.01
+      },
+      {
+        "cell": "B12",
+        "value": 3.25
+      },
+      {
+        "cell": "C12",
+        "value": 0.256
+      },
+      {
+        "cell": "D12",
+        "value": 0.02096
+      },
+      {
+        "cell": "F12",
+        "value": 64
+      },
+      {
+        "cell": "G12",
+        "value": 64
+      },
+      {
+        "cell": "K12",
+        "value": 61
+      },
+      {
+        "cell": "L12",
+        "value": 61
+      },
+      {
+        "cell": "M12",
+        "value": 9
+      },
+      {
+        "cell": "N12",
+        "value": 2026
+      },
+      {
+        "cell": "O12",
+        "value": 117.31
+      },
+      {
+        "cell": "P12",
+        "value": 315.04
+      },
+      {
+        "cell": "S12",
+        "value": 9
+      },
+      {
+        "cell": "U12",
+        "value": "NO APLICA"
+      },
+      {
+        "cell": "AA12",
+        "value": 185000
+      },
+      {
+        "cell": "AB12",
+        "value": 6660
+      },
+      {
+        "cell": "AG12",
+        "value": 52
+      },
+      {
+        "cell": "AH12",
+        "value": 65
+      }
+    ],
+    [
+      {
+        "cell": "A13",
+        "value": 3.26
+      },
+      {
+        "cell": "B13",
+        "value": 3.5
+      },
+      {
+        "cell": "C13",
+        "value": 0.237
+      },
+      {
+        "cell": "D13",
+        "value": 0.02149
+      },
+      {
+        "cell": "F13",
+        "value": 64.51
+      },
+      {
+        "cell": "G13",
+        "value": 64.51
+      },
+      {
+        "cell": "K13",
+        "value": 62
+      },
+      {
+        "cell": "L13",
+        "value": 62
+      },
+      {
+        "cell": "M13",
+        "value": 10
+      },
+      {
+        "cell": "N13",
+        "value": 2027
+      },
+      {
+        "cell": "O13",
+        "value": 122.58895
+      },
+      {
+        "cell": "P13",
+        "value": 332.99728
+      },
+      {
+        "cell": "S13",
+        "value": 10
+      },
+      {
+        "cell": "AA13",
+        "value": 192000
+      },
+      {
+        "cell": "AB13",
+        "value": 6887
+      },
+      {
+        "cell": "AG13",
+        "value": 52.5
+      }
+    ],
+    [
+      {
+        "cell": "A14",
+        "value": 3.51
+      },
+      {
+        "cell": "B14",
+        "value": 3.75
+      },
+      {
+        "cell": "C14",
+        "value": 0.2207
+      },
+      {
+        "cell": "D14",
+        "value": 0.021950000000000004
+      },
+      {
+        "cell": "F14",
+        "value": 65
+      },
+      {
+        "cell": "G14",
+        "value": 65
+      },
+      {
+        "cell": "K14",
+        "value": 63
+      },
+      {
+        "cell": "L14",
+        "value": 63
+      },
+      {
+        "cell": "M14",
+        "value": 11
+      },
+      {
+        "cell": "N14",
+        "value": 2028
+      },
+      {
+        "cell": "O14",
+        "value": 128.10545274999998
+      },
+      {
+        "cell": "P14",
+        "value": 351.97812495999995
+      },
+      {
+        "cell": "S14",
+        "value": 11
+      },
+      {
+        "cell": "AA14",
+        "value": 198000
+      },
+      {
+        "cell": "AB14",
+        "value": 7097
+      },
+      {
+        "cell": "AG14",
+        "value": 53
+      }
+    ],
+    [
+      {
+        "cell": "A15",
+        "value": 3.76
+      },
+      {
+        "cell": "B15",
+        "value": 4
+      },
+      {
+        "cell": "C15",
+        "value": 0.2065
+      },
+      {
+        "cell": "D15",
+        "value": 0.02235
+      },
+      {
+        "cell": "F15",
+        "value": 65.51
+      },
+      {
+        "cell": "G15",
+        "value": 65.51
+      },
+      {
+        "cell": "K15",
+        "value": 64
+      },
+      {
+        "cell": "L15",
+        "value": 64
+      },
+      {
+        "cell": "N15",
+        "value": 2029
+      },
+      {
+        "cell": "O15",
+        "value": 133.87019812375
+      },
+      {
+        "cell": "P15",
+        "value": 372.0408780827199
+      },
+      {
+        "cell": "AA15",
+        "value": 201000
+      },
+      {
+        "cell": "AB15",
+        "value": 7205
+      },
+      {
+        "cell": "AG15",
+        "value": 53.5
+      }
+    ],
+    [
+      {
+        "cell": "A16",
+        "value": 4.01
+      },
+      {
+        "cell": "B16",
+        "value": 4.25
+      },
+      {
+        "cell": "C16",
+        "value": 0.1939
+      },
+      {
+        "cell": "D16",
+        "value": 0.022709999999999998
+      },
+      {
+        "cell": "F16",
+        "value": 66
+      },
+      {
+        "cell": "G16",
+        "value": 66
+      },
+      {
+        "cell": "K16",
+        "value": 65
+      },
+      {
+        "cell": "L16",
+        "value": 65
+      },
+      {
+        "cell": "N16",
+        "value": 2030
+      },
+      {
+        "cell": "O16",
+        "value": 139.89435703931872
+      },
+      {
+        "cell": "P16",
+        "value": 393.2472081334349
+      },
+      {
+        "cell": "AA16",
+        "value": 215000
+      },
+      {
+        "cell": "AB16",
+        "value": 7707
+      },
+      {
+        "cell": "AG16",
+        "value": 54
+      }
+    ],
+    [
+      {
+        "cell": "A17",
+        "value": 4.26
+      },
+      {
+        "cell": "B17",
+        "value": 4.5
+      },
+      {
+        "cell": "C17",
+        "value": 0.1829
+      },
+      {
+        "cell": "D17",
+        "value": 0.02302
+      },
+      {
+        "cell": "F17",
+        "value": 66.51
+      },
+      {
+        "cell": "G17",
+        "value": 66.51
+      },
+      {
+        "cell": "K17",
+        "value": 66
+      },
+      {
+        "cell": "L17",
+        "value": 66
+      },
+      {
+        "cell": "N17",
+        "value": 2031
+      },
+      {
+        "cell": "O17",
+        "value": 146.18960310608804
+      },
+      {
+        "cell": "P17",
+        "value": 415.6622989970407
+      },
+      {
+        "cell": "AA17",
+        "value": 238000
+      },
+      {
+        "cell": "AB17",
+        "value": 8544
+      },
+      {
+        "cell": "AG17",
+        "value": 54.5
+      }
+    ],
+    [
+      {
+        "cell": "A18",
+        "value": 4.51
+      },
+      {
+        "cell": "B18",
+        "value": 4.75
+      },
+      {
+        "cell": "C18",
+        "value": 0.173
+      },
+      {
+        "cell": "D18",
+        "value": 0.0233
+      },
+      {
+        "cell": "F18",
+        "value": 67
+      },
+      {
+        "cell": "G18",
+        "value": 67
+      },
+      {
+        "cell": "K18",
+        "value": 67
+      },
+      {
+        "cell": "L18",
+        "value": 67
+      },
+      {
+        "cell": "N18",
+        "value": 2032
+      },
+      {
+        "cell": "O18",
+        "value": 152.768135245862
+      },
+      {
+        "cell": "P18",
+        "value": 439.35505003987197
+      },
+      {
+        "cell": "AA18",
+        "value": 239000
+      },
+      {
+        "cell": "AB18",
+        "value": 8562
+      },
+      {
+        "cell": "AG18",
+        "value": 55
+      }
+    ],
+    [
+      {
+        "cell": "A19",
+        "value": 4.76
+      },
+      {
+        "cell": "B19",
+        "value": 5
+      },
+      {
+        "cell": "C19",
+        "value": 0.1641
+      },
+      {
+        "cell": "D19",
+        "value": 0.02355
+      },
+      {
+        "cell": "F19",
+        "value": 67.51
+      },
+      {
+        "cell": "G19",
+        "value": 67.51
+      },
+      {
+        "cell": "K19",
+        "value": 68
+      },
+      {
+        "cell": "L19",
+        "value": 68
+      },
+      {
+        "cell": "N19",
+        "value": 2033
+      },
+      {
+        "cell": "O19",
+        "value": 159.64270133192576
+      },
+      {
+        "cell": "P19",
+        "value": 464.39828789214465
+      },
+      {
+        "cell": "AA19",
+        "value": 244000
+      },
+      {
+        "cell": "AB19",
+        "value": 8771
+      },
+      {
+        "cell": "AG19",
+        "value": 55.5
+      }
+    ],
+    [
+      {
+        "cell": "A20",
+        "value": 5.01
+      },
+      {
+        "cell": "B20",
+        "value": 5.25
+      },
+      {
+        "cell": "C20",
+        "value": 0.1561
+      },
+      {
+        "cell": "D20",
+        "value": 0.02377
+      },
+      {
+        "cell": "F20",
+        "value": 68
+      },
+      {
+        "cell": "G20",
+        "value": 68
+      },
+      {
+        "cell": "K20",
+        "value": 69
+      },
+      {
+        "cell": "L20",
+        "value": 69
+      },
+      {
+        "cell": "N20",
+        "value": 2034
+      },
+      {
+        "cell": "O20",
+        "value": 166.8266228918624
+      },
+      {
+        "cell": "P20",
+        "value": 490.86899030199686
+      },
+      {
+        "cell": "AA20",
+        "value": 245000
+      },
+      {
+        "cell": "AB20",
+        "value": 8807
+      },
+      {
+        "cell": "AG20",
+        "value": 56
+      }
+    ],
+    [
+      {
+        "cell": "A21",
+        "value": 5.26
+      },
+      {
+        "cell": "B21",
+        "value": 5.5
+      },
+      {
+        "cell": "C21",
+        "value": 0.1488
+      },
+      {
+        "cell": "D21",
+        "value": 0.02398
+      },
+      {
+        "cell": "F21",
+        "value": 68.51
+      },
+      {
+        "cell": "G21",
+        "value": 68.51
+      },
+      {
+        "cell": "K21",
+        "value": 70
+      },
+      {
+        "cell": "L21",
+        "value": 70
+      },
+      {
+        "cell": "N21",
+        "value": 2035
+      },
+      {
+        "cell": "O21",
+        "value": 174.3338209219962
+      },
+      {
+        "cell": "P21",
+        "value": 518.8485227492107
+      },
+      {
+        "cell": "AA21",
+        "value": 253000
+      },
+      {
+        "cell": "AB21",
+        "value": 9082
+      },
+      {
+        "cell": "AG21",
+        "value": 56.5
+      }
+    ],
+    [
+      {
+        "cell": "A22",
+        "value": 5.51
+      },
+      {
+        "cell": "B22",
+        "value": 5.75
+      },
+      {
+        "cell": "C22",
+        "value": 0.1422
+      },
+      {
+        "cell": "D22",
+        "value": 0.02416
+      },
+      {
+        "cell": "F22",
+        "value": 69
+      },
+      {
+        "cell": "G22",
+        "value": 69
+      },
+      {
+        "cell": "N22",
+        "value": 2036
+      },
+      {
+        "cell": "O22",
+        "value": 182.178842863486
+      },
+      {
+        "cell": "P22",
+        "value": 548.4228885459157
+      },
+      {
+        "cell": "AA22",
+        "value": 276000
+      },
+      {
+        "cell": "AB22",
+        "value": 9910
+      },
+      {
+        "cell": "AG22",
+        "value": 57
+      }
+    ],
+    [
+      {
+        "cell": "A23",
+        "value": 5.76
+      },
+      {
+        "cell": "B23",
+        "value": 6
+      },
+      {
+        "cell": "C23",
+        "value": 0.1362
+      },
+      {
+        "cell": "D23",
+        "value": 0.024330000000000004
+      },
+      {
+        "cell": "F23",
+        "value": 69.51
+      },
+      {
+        "cell": "G23",
+        "value": 69.51
+      },
+      {
+        "cell": "N23",
+        "value": 2037
+      },
+      {
+        "cell": "O23",
+        "value": 190.37689079234286
+      },
+      {
+        "cell": "P23",
+        "value": 579.6829931930329
+      },
+      {
+        "cell": "AA23",
+        "value": 282000
+      },
+      {
+        "cell": "AB23",
+        "value": 10099
+      },
+      {
+        "cell": "AG23",
+        "value": 57.5
+      }
+    ],
+    [
+      {
+        "cell": "A24",
+        "value": 6.01
+      },
+      {
+        "cell": "C24",
+        "value": 0.13
+      },
+      {
+        "cell": "D24",
+        "value": 0.0245
+      },
+      {
+        "cell": "F24",
+        "value": 70
+      },
+      {
+        "cell": "G24",
+        "value": 70
+      },
+      {
+        "cell": "N24",
+        "value": 2038
+      },
+      {
+        "cell": "O24",
+        "value": 198.94385087799827
+      },
+      {
+        "cell": "P24",
+        "value": 612.7249238050357
+      },
+      {
+        "cell": "AA24",
+        "value": 284000
+      },
+      {
+        "cell": "AB24",
+        "value": 10196
+      },
+      {
+        "cell": "AG24",
+        "value": 58
+      }
+    ],
+    [
+      {
+        "cell": "N25",
+        "value": 2039
+      },
+      {
+        "cell": "O25",
+        "value": 207.89632416750817
+      },
+      {
+        "cell": "P25",
+        "value": 647.6502444619227
+      },
+      {
+        "cell": "AA25",
+        "value": 285000
+      },
+      {
+        "cell": "AB25",
+        "value": 10233
+      },
+      {
+        "cell": "AG25",
+        "value": 58.5
+      }
+    ],
+    [
+      {
+        "cell": "N26",
+        "value": 2040
+      },
+      {
+        "cell": "O26",
+        "value": 217.251658755046
+      },
+      {
+        "cell": "P26",
+        "value": 684.5663083962523
+      },
+      {
+        "cell": "AA26",
+        "value": 287000
+      },
+      {
+        "cell": "AB26",
+        "value": 10279
+      },
+      {
+        "cell": "AG26",
+        "value": 59
+      }
+    ],
+    [
+      {
+        "cell": "N27",
+        "value": 2041
+      },
+      {
+        "cell": "O27",
+        "value": 227.02798339902307
+      },
+      {
+        "cell": "P27",
+        "value": 723.5865879748387
+      },
+      {
+        "cell": "AA27",
+        "value": 291000
+      },
+      {
+        "cell": "AB27",
+        "value": 10435
+      },
+      {
+        "cell": "AG27",
+        "value": 59.5
+      }
+    ],
+    [
+      {
+        "cell": "G28",
+        "value": "Comisión por apertura"
+      },
+      {
+        "cell": "N28",
+        "value": 2042
+      },
+      {
+        "cell": "O28",
+        "value": 237.2442426519791
+      },
+      {
+        "cell": "P28",
+        "value": 764.8310234894045
+      },
+      {
+        "cell": "AA28",
+        "value": 309000
+      },
+      {
+        "cell": "AB28",
+        "value": 11067
+      },
+      {
+        "cell": "AG28",
+        "value": 60
+      }
+    ],
+    [
+      {
+        "cell": "A29",
+        "value": "Salario UMAS"
+      },
+      {
+        "cell": "G29",
+        "value": "CREDITO"
+      },
+      {
+        "cell": "H29",
+        "value": 454781.76458997576
+      },
+      {
+        "cell": "N29",
+        "value": 2043
+      },
+      {
+        "cell": "O29",
+        "value": 247.92023357131816
+      },
+      {
+        "cell": "P29",
+        "value": 808.4263918283006
+      },
+      {
+        "cell": "AA29",
+        "value": 313000
+      },
+      {
+        "cell": "AB29",
+        "value": 11224
+      }
+    ],
+    [
+      {
+        "cell": "A30",
+        "value": 1
+      },
+      {
+        "cell": "B30",
+        "value": 133.87019812375
+      },
+      {
+        "cell": "G30",
+        "value": "PLAZO"
+      },
+      {
+        "cell": "H30",
+        "value": 9
+      },
+      {
+        "cell": "AA30",
+        "value": 316000
+      },
+      {
+        "cell": "AB30",
+        "value": 11388
+      }
+    ],
+    [
+      {
+        "cell": "A31",
+        "value": 2
+      },
+      {
+        "cell": "B31",
+        "value": 267.7403962475
+      },
+      {
+        "cell": "G31",
+        "value": "CUOTA"
+      },
+      {
+        "cell": "H31",
+        "value": 59010.15688235528
+      },
+      {
+        "cell": "AA31",
+        "value": 317000
+      },
+      {
+        "cell": "AB31",
+        "value": 11385
+      }
+    ],
+    [
+      {
+        "cell": "A32",
+        "value": 3
+      },
+      {
+        "cell": "B32",
+        "value": 401.61059437124993
+      },
+      {
+        "cell": "G32",
+        "value": "TASA FIJA"
+      },
+      {
+        "cell": "H32",
+        "value": 0.0322
+      },
+      {
+        "cell": "O32",
+        "value": 1
+      },
+      {
+        "cell": "P32",
+        "value": 18013.210575525973
+      },
+      {
+        "cell": "Q32",
+        "value": 0.039608471530881206
+      },
+      {
+        "cell": "AA32",
+        "value": 320000
+      },
+      {
+        "cell": "AB32",
+        "value": 11461
+      }
+    ],
+    [
+      {
+        "cell": "A33",
+        "value": 4
+      },
+      {
+        "cell": "B33",
+        "value": 535.480792495
+      },
+      {
+        "cell": "G33",
+        "value": "Seguro de vida"
+      },
+      {
+        "cell": "H33",
+        "value": 3200
+      },
+      {
+        "cell": "O33",
+        "value": 2
+      },
+      {
+        "cell": "P33",
+        "value": 36026.421151051945
+      },
+      {
+        "cell": "Q33",
+        "value": 0.07921694306176241
+      },
+      {
+        "cell": "AA33",
+        "value": 325000
+      },
+      {
+        "cell": "AB33",
+        "value": 11711
+      }
+    ],
+    [
+      {
+        "cell": "A34",
+        "value": 5
+      },
+      {
+        "cell": "B34",
+        "value": 669.35099061875
+      },
+      {
+        "cell": "K34",
+        "value": "SALDO"
+      },
+      {
+        "cell": "O34",
+        "value": 3
+      },
+      {
+        "cell": "P34",
+        "value": 54039.63172657792
+      },
+      {
+        "cell": "Q34",
+        "value": 0.11882541459264362
+      },
+      {
+        "cell": "AA34",
+        "value": 340000
+      },
+      {
+        "cell": "AB34",
+        "value": 12197
+      }
+    ],
+    [
+      {
+        "cell": "A35",
+        "value": 6
+      },
+      {
+        "cell": "B35",
+        "value": 803.2211887424999
+      },
+      {
+        "cell": "G35",
+        "value": "MES"
+      },
+      {
+        "cell": "H35",
+        "value": "CUOTA FIJA"
+      },
+      {
+        "cell": "I35",
+        "value": "INTERESES"
+      },
+      {
+        "cell": "J35",
+        "value": "AMORTIZACION"
+      },
+      {
+        "cell": "K35",
+        "value": 454781.76458997576
+      },
+      {
+        "cell": "O35",
+        "value": 4
+      },
+      {
+        "cell": "P35",
+        "value": 72052.84230210389
+      },
+      {
+        "cell": "Q35",
+        "value": 0.15843388612352483
+      },
+      {
+        "cell": "AA35",
+        "value": 351000
+      },
+      {
+        "cell": "AB35",
+        "value": 12582
+      }
+    ],
+    [
+      {
+        "cell": "A36",
+        "value": 7
+      },
+      {
+        "cell": "B36",
+        "value": 937.0913868662499
+      },
+      {
+        "cell": "G36",
+        "value": 0
+      },
+      {
+        "cell": "K36",
+        "value": 469425.737409773
+      },
+      {
+        "cell": "O36",
+        "value": 5
+      },
+      {
+        "cell": "P36",
+        "value": 90066.05287762986
+      },
+      {
+        "cell": "Q36",
+        "value": 0.198042357654406
+      },
+      {
+        "cell": "AA36",
+        "value": 451000
+      },
+      {
+        "cell": "AB36",
+        "value": 16175
+      }
+    ],
+    [
+      {
+        "cell": "A37",
+        "value": 8
+      },
+      {
+        "cell": "B37",
+        "value": 1070.96158499
+      },
+      {
+        "cell": "G37",
+        "value": 1
+      },
+      {
+        "cell": "H37",
+        "value": 0
+      },
+      {
+        "cell": "I37",
+        "value": 14643.97281979722
+      },
+      {
+        "cell": "J37",
+        "value": -14643.97281979722
+      },
+      {
+        "cell": "K37",
+        "value": 484541.2461543677
+      },
+      {
+        "cell": "O37",
+        "value": 6
+      },
+      {
+        "cell": "P37",
+        "value": 108079.26345315584
+      },
+      {
+        "cell": "Q37",
+        "value": 0.23765082918528724
+      },
+      {
+        "cell": "AA37",
+        "value": 461000
+      },
+      {
+        "cell": "AB37",
+        "value": 16528
+      }
+    ],
+    [
+      {
+        "cell": "A38",
+        "value": 9
+      },
+      {
+        "cell": "B38",
+        "value": 1204.83178311375
+      },
+      {
+        "cell": "G38",
+        "value": 2
+      },
+      {
+        "cell": "H38",
+        "value": 0
+      },
+      {
+        "cell": "I38",
+        "value": 15115.50874459469
+      },
+      {
+        "cell": "J38",
+        "value": -15115.50874459469
+      },
+      {
+        "cell": "K38",
+        "value": 500143.4742805383
+      },
+      {
+        "cell": "O38",
+        "value": 7
+      },
+      {
+        "cell": "P38",
+        "value": 126092.47402868181
+      },
+      {
+        "cell": "Q38",
+        "value": 0.27725930071616844
+      },
+      {
+        "cell": "AA38",
+        "value": 509000
+      },
+      {
+        "cell": "AB38",
+        "value": 18245
+      }
+    ],
+    [
+      {
+        "cell": "A39",
+        "value": 10
+      },
+      {
+        "cell": "B39",
+        "value": 1338.7019812375
+      },
+      {
+        "cell": "G39",
+        "value": 3
+      },
+      {
+        "cell": "H39",
+        "value": 0
+      },
+      {
+        "cell": "I39",
+        "value": 15602.22812617064
+      },
+      {
+        "cell": "J39",
+        "value": -15602.22812617064
+      },
+      {
+        "cell": "K39",
+        "value": 516248.0941523717
+      },
+      {
+        "cell": "O39",
+        "value": 8
+      },
+      {
+        "cell": "P39",
+        "value": 144105.68460420778
+      },
+      {
+        "cell": "Q39",
+        "value": 0.31686777224704965
+      },
+      {
+        "cell": "AA39",
+        "value": 512000
+      },
+      {
+        "cell": "AB39",
+        "value": 18432
+      }
+    ],
+    [
+      {
+        "cell": "A40",
+        "value": 11
+      },
+      {
+        "cell": "B40",
+        "value": 1472.57217936125
+      },
+      {
+        "cell": "G40",
+        "value": 4
+      },
+      {
+        "cell": "H40",
+        "value": 0
+      },
+      {
+        "cell": "I40",
+        "value": 16104.619871833334
+      },
+      {
+        "cell": "J40",
+        "value": -16104.619871833334
+      },
+      {
+        "cell": "K40",
+        "value": 532871.282784078
+      },
+      {
+        "cell": "O40",
+        "value": 9
+      },
+      {
+        "cell": "P40",
+        "value": 162118.89517973375
+      },
+      {
+        "cell": "Q40",
+        "value": 0.3564762437779308
+      }
+    ],
+    [
+      {
+        "cell": "A41",
+        "value": 12
+      },
+      {
+        "cell": "B41",
+        "value": 1606.4423774849997
+      },
+      {
+        "cell": "G41",
+        "value": 5
+      },
+      {
+        "cell": "H41",
+        "value": 0
+      },
+      {
+        "cell": "I41",
+        "value": 16623.18863170637
+      },
+      {
+        "cell": "J41",
+        "value": -16623.18863170637
+      },
+      {
+        "cell": "K41",
+        "value": 550029.7380897254
+      },
+      {
+        "cell": "O41",
+        "value": 10
+      },
+      {
+        "cell": "P41",
+        "value": 180132.10575525972
+      },
+      {
+        "cell": "Q41",
+        "value": 0.396084715308812
+      }
+    ],
+    [
+      {
+        "cell": "A42",
+        "value": 13
+      },
+      {
+        "cell": "B42",
+        "value": 1740.3125756087497
+      },
+      {
+        "cell": "G42",
+        "value": 6
+      },
+      {
+        "cell": "H42",
+        "value": 0
+      },
+      {
+        "cell": "I42",
+        "value": 17158.455305647312
+      },
+      {
+        "cell": "J42",
+        "value": -17158.455305647312
+      },
+      {
+        "cell": "K42",
+        "value": 567740.6956562145
+      },
+      {
+        "cell": "O42",
+        "value": 11
+      },
+      {
+        "cell": "P42",
+        "value": 198145.3163307857
+      },
+      {
+        "cell": "Q42",
+        "value": 0.4356931868396932
+      }
+    ],
+    [
+      {
+        "cell": "A43",
+        "value": 14
+      },
+      {
+        "cell": "B43",
+        "value": 1874.1827737324998
+      },
+      {
+        "cell": "G43",
+        "value": 7
+      },
+      {
+        "cell": "H43",
+        "value": 0
+      },
+      {
+        "cell": "I43",
+        "value": 17710.957566489156
+      },
+      {
+        "cell": "J43",
+        "value": -17710.957566489156
+      },
+      {
+        "cell": "K43",
+        "value": 586021.9460563445
+      },
+      {
+        "cell": "O43",
+        "value": 12
+      },
+      {
+        "cell": "P43",
+        "value": 216158.5269063117
+      },
+      {
+        "cell": "Q43",
+        "value": 0.4753016583705745
+      }
+    ],
+    [
+      {
+        "cell": "A44",
+        "value": 15
+      },
+      {
+        "cell": "B44",
+        "value": 2008.0529718562498
+      },
+      {
+        "cell": "G44",
+        "value": 8
+      },
+      {
+        "cell": "H44",
+        "value": 0
+      },
+      {
+        "cell": "I44",
+        "value": 18281.250400130106
+      },
+      {
+        "cell": "J44",
+        "value": -18281.250400130106
+      },
+      {
+        "cell": "K44",
+        "value": 604891.8527193589
+      }
+    ],
+    [
+      {
+        "cell": "A45",
+        "value": 16
+      },
+      {
+        "cell": "B45",
+        "value": 2141.92316998
+      },
+      {
+        "cell": "G45",
+        "value": 9
+      },
+      {
+        "cell": "H45",
+        "value": 0
+      },
+      {
+        "cell": "I45",
+        "value": 18869.906663014295
+      },
+      {
+        "cell": "J45",
+        "value": -18869.906663014295
+      },
+      {
+        "cell": "K45",
+        "value": 624369.3703769222
+      },
+      {
+        "cell": "L45",
+        "value": 16678.898681042567
+      }
+    ],
+    [
+      {
+        "cell": "A46",
+        "value": 17
+      },
+      {
+        "cell": "B46",
+        "value": 2275.79336810375
+      },
+      {
+        "cell": "G46",
+        "value": 10
+      },
+      {
+        "cell": "H46",
+        "value": 0
+      },
+      {
+        "cell": "I46",
+        "value": 19477.517657563356
+      },
+      {
+        "cell": "J46",
+        "value": -19477.517657563356
+      },
+      {
+        "cell": "K46",
+        "value": 644474.0641030591
+      },
+      {
+        "cell": "L46",
+        "value": 18013.210575525973
+      }
+    ],
+    [
+      {
+        "cell": "A47",
+        "value": 18
+      },
+      {
+        "cell": "B47",
+        "value": 2409.6635662275
+      },
+      {
+        "cell": "G47",
+        "value": 11
+      },
+      {
+        "cell": "H47",
+        "value": 0
+      },
+      {
+        "cell": "I47",
+        "value": 20104.693726136895
+      },
+      {
+        "cell": "J47",
+        "value": -20104.693726136895
+      },
+      {
+        "cell": "K47",
+        "value": 665226.1289671776
+      }
+    ],
+    [
+      {
+        "cell": "A48",
+        "value": 19
+      },
+      {
+        "cell": "B48",
+        "value": 2543.53376435125
+      },
+      {
+        "cell": "G48",
+        "value": 12
+      },
+      {
+        "cell": "H48",
+        "value": 0
+      },
+      {
+        "cell": "I48",
+        "value": 20752.064864118503
+      },
+      {
+        "cell": "J48",
+        "value": -20752.064864118503
+      }
+    ],
+    [
+      {
+        "cell": "A49",
+        "value": 20
+      },
+      {
+        "cell": "B49",
+        "value": 2677.403962475
+      }
+    ],
+    [
+      {
+        "cell": "A50",
+        "value": 21
+      },
+      {
+        "cell": "B50",
+        "value": 2811.27416059875
+      }
+    ],
+    [
+      {
+        "cell": "A51",
+        "value": 22
+      },
+      {
+        "cell": "B51",
+        "value": 2945.1443587225
+      },
+      {
+        "cell": "C51",
+        "value": 22
+      }
+    ],
+    [
+      {
+        "cell": "A52",
+        "value": 23
+      },
+      {
+        "cell": "B52",
+        "value": 3079.01455684625
+      },
+      {
+        "cell": "C52",
+        "value": 23
+      },
+      {
+        "cell": "I52",
+        "value": 619462.1966819534
+      },
+      {
+        "cell": "O52",
+        "value": 0
+      }
+    ],
+    [
+      {
+        "cell": "A53",
+        "value": 24
+      },
+      {
+        "cell": "B53",
+        "value": 3212.8847549699994
+      },
+      {
+        "cell": "C53",
+        "value": 24
+      }
+    ],
+    [
+      {
+        "cell": "A54",
+        "value": 25
+      },
+      {
+        "cell": "B54",
+        "value": 3346.7549530937495
+      },
+      {
+        "cell": "C54",
+        "value": 25
+      }
+    ],
+    [
+      {
+        "cell": "G56",
+        "value": "CAPACIDAD DE CRÉDITO"
+      },
+      {
+        "cell": "H56",
+        "value": 22521.481794054685
+      }
+    ],
+    [
+      {
+        "cell": "G57",
+        "value": "Tasa (IVA incl.)"
+      },
+      {
+        "cell": "H57",
+        "value": 0.028999999999999998
+      },
+      {
+        "cell": "Q57",
+        "value": "#REF!"
+      }
+    ],
+    [
+      {
+        "cell": "G58",
+        "value": "Plazo"
+      },
+      {
+        "cell": "H58",
+        "value": 60
+      }
+    ],
+    [
+      {
+        "cell": "G59",
+        "value": "Crédito"
+      },
+      {
+        "cell": "H59",
+        "value": 626647.9581634641
+      }
+    ],
+    [
+      {
+        "cell": "G61",
+        "value": "1er crédito"
+      },
+      {
+        "cell": "H61",
+        "value": 454781.76458997576
+      }
+    ],
+    [
+      {
+        "cell": "L65",
+        "value": 60
+      }
+    ],
+    [
+      {
+        "cell": "J66",
+        "value": "PLAZO EN MESES"
+      },
+      {
+        "cell": "L66",
+        "value": 0.35159999999999997
+      }
+    ],
+    [
+      {
+        "cell": "J67",
+        "value": "TASA"
+      },
+      {
+        "cell": "L67",
+        "value": "#NUM!"
+      }
+    ],
+    [
+      {
+        "cell": "J68",
+        "value": "NUEVO CRÉDITO"
+      }
+    ],
+    [
+      {
+        "cell": "G72",
+        "value": "CREDITO"
+      },
+      {
+        "cell": "H72",
+        "value": 205648.18981550494
+      }
+    ],
+    [
+      {
+        "cell": "G73",
+        "value": "PLAZO"
+      },
+      {
+        "cell": "H73",
+        "value": 9
+      }
+    ],
+    [
+      {
+        "cell": "G74",
+        "value": "CUOTA"
+      },
+      {
+        "cell": "H74",
+        "value": 13549.747930563986
+      }
+    ],
+    [
+      {
+        "cell": "G75",
+        "value": "TASA FIJA"
+      },
+      {
+        "cell": "H75",
+        "value": 0.06588799999999999
+      },
+      {
+        "cell": "O75",
+        "value": 1
+      },
+      {
+        "cell": "P75",
+        "value": 13549.747930563986
+      },
+      {
+        "cell": "Q75",
+        "value": 0.029793956102835896
+      }
+    ],
+    [
+      {
+        "cell": "O76",
+        "value": 2
+      },
+      {
+        "cell": "P76",
+        "value": 27099.495861127973
+      },
+      {
+        "cell": "Q76",
+        "value": 0.05958791220567179
+      }
+    ],
+    [
+      {
+        "cell": "K77",
+        "value": "SALDO"
+      },
+      {
+        "cell": "O77",
+        "value": 3
+      },
+      {
+        "cell": "P77",
+        "value": 40649.24379169196
+      },
+      {
+        "cell": "Q77",
+        "value": 0.0893818683085077
+      }
+    ],
+    [
+      {
+        "cell": "G78",
+        "value": "MES"
+      },
+      {
+        "cell": "H78",
+        "value": "CUOTA FIJA"
+      },
+      {
+        "cell": "I78",
+        "value": "INTERESES"
+      },
+      {
+        "cell": "J78",
+        "value": "AMORTIZACION"
+      },
+      {
+        "cell": "K78",
+        "value": 205648.18981550494
+      },
+      {
+        "cell": "O78",
+        "value": 4
+      },
+      {
+        "cell": "P78",
+        "value": 54198.991722255945
+      },
+      {
+        "cell": "Q78",
+        "value": 0.11917582441134358
+      }
+    ],
+    [
+      {
+        "cell": "G79",
+        "value": 0
+      },
+      {
+        "cell": "K79",
+        "value": 219197.93774606893
+      },
+      {
+        "cell": "O79",
+        "value": 5
+      },
+      {
+        "cell": "P79",
+        "value": 67748.73965281993
+      },
+      {
+        "cell": "Q79",
+        "value": 0.14896978051417947
+      }
+    ],
+    [
+      {
+        "cell": "G80",
+        "value": 1
+      },
+      {
+        "cell": "H80",
+        "value": 0
+      },
+      {
+        "cell": "I80",
+        "value": 13549.747930563986
+      },
+      {
+        "cell": "J80",
+        "value": -13549.747930563986
+      },
+      {
+        "cell": "K80",
+        "value": 226256.11134149236
+      },
+      {
+        "cell": "O80",
+        "value": 6
+      },
+      {
+        "cell": "P80",
+        "value": 81298.48758338392
+      },
+      {
+        "cell": "Q80",
+        "value": 0.1787637366170154
+      }
+    ],
+    [
+      {
+        "cell": "G81",
+        "value": 2
+      },
+      {
+        "cell": "H81",
+        "value": 0
+      },
+      {
+        "cell": "I81",
+        "value": 7058.173595423419
+      },
+      {
+        "cell": "J81",
+        "value": -7058.173595423419
+      },
+      {
+        "cell": "K81",
+        "value": 233541.5581266884
+      },
+      {
+        "cell": "O81",
+        "value": 7
+      },
+      {
+        "cell": "P81",
+        "value": 94848.2355139479
+      },
+      {
+        "cell": "Q81",
+        "value": 0.20855769271985128
+      }
+    ],
+    [
+      {
+        "cell": "G82",
+        "value": 3
+      },
+      {
+        "cell": "H82",
+        "value": 0
+      },
+      {
+        "cell": "I82",
+        "value": 7285.4467851960535
+      },
+      {
+        "cell": "J82",
+        "value": -7285.4467851960535
+      },
+      {
+        "cell": "K82",
+        "value": 241061.59629836777
+      },
+      {
+        "cell": "O82",
+        "value": 8
+      },
+      {
+        "cell": "P82",
+        "value": 108397.98344451189
+      },
+      {
+        "cell": "Q82",
+        "value": 0.23835164882268717
+      }
+    ],
+    [
+      {
+        "cell": "G83",
+        "value": 4
+      },
+      {
+        "cell": "H83",
+        "value": 0
+      },
+      {
+        "cell": "I83",
+        "value": 7520.038171679366
+      },
+      {
+        "cell": "J83",
+        "value": -7520.038171679366
+      },
+      {
+        "cell": "K83",
+        "value": 248823.7796991752
+      },
+      {
+        "cell": "O83",
+        "value": 9
+      },
+      {
+        "cell": "P83",
+        "value": 121947.73137507588
+      },
+      {
+        "cell": "Q83",
+        "value": 0.2681456049255231
+      }
+    ],
+    [
+      {
+        "cell": "G84",
+        "value": 5
+      },
+      {
+        "cell": "H84",
+        "value": 0
+      },
+      {
+        "cell": "I84",
+        "value": 7762.183400807442
+      },
+      {
+        "cell": "J84",
+        "value": -7762.183400807442
+      },
+      {
+        "cell": "K84",
+        "value": 256835.90540548865
+      },
+      {
+        "cell": "O84",
+        "value": 10
+      },
+      {
+        "cell": "P84",
+        "value": 135497.47930563986
+      },
+      {
+        "cell": "Q84",
+        "value": 0.29793956102835895
+      }
+    ],
+    [
+      {
+        "cell": "G85",
+        "value": 6
+      },
+      {
+        "cell": "H85",
+        "value": 0
+      },
+      {
+        "cell": "I85",
+        "value": 8012.125706313442
+      },
+      {
+        "cell": "J85",
+        "value": -8012.125706313442
+      },
+      {
+        "cell": "K85",
+        "value": 265106.02155954536
+      },
+      {
+        "cell": "O85",
+        "value": 11
+      },
+      {
+        "cell": "P85",
+        "value": 149047.22723620385
+      },
+      {
+        "cell": "Q85",
+        "value": 0.32773351713119486
+      }
+    ],
+    [
+      {
+        "cell": "G86",
+        "value": 7
+      },
+      {
+        "cell": "H86",
+        "value": 0
+      },
+      {
+        "cell": "I86",
+        "value": 8270.116154056734
+      },
+      {
+        "cell": "J86",
+        "value": -8270.116154056734
+      },
+      {
+        "cell": "K86",
+        "value": 273642.4354537627
+      },
+      {
+        "cell": "O86",
+        "value": 12
+      },
+      {
+        "cell": "P86",
+        "value": 162596.97516676784
+      },
+      {
+        "cell": "Q86",
+        "value": 0.3575274732340308
+      }
+    ],
+    [
+      {
+        "cell": "G87",
+        "value": 8
+      },
+      {
+        "cell": "H87",
+        "value": 0
+      },
+      {
+        "cell": "I87",
+        "value": 8536.413894217361
+      },
+      {
+        "cell": "J87",
+        "value": -8536.413894217361
+      },
+      {
+        "cell": "K87",
+        "value": 282453.72187537386
+      }
+    ],
+    [
+      {
+        "cell": "G88",
+        "value": 9
+      },
+      {
+        "cell": "H88",
+        "value": 0
+      },
+      {
+        "cell": "I88",
+        "value": 8811.28642161116
+      },
+      {
+        "cell": "J88",
+        "value": -8811.28642161116
+      },
+      {
+        "cell": "L88",
+        "value": 8533.948006652101
+      }
+    ],
+    [
+      {
+        "cell": "L89",
+        "value": 9216.663847184269
+      }
+    ]
+  ],
+  "pago_retroactivo": {
+    "formulas": {
+      "E3": "=+'SAL. PROM MOD 40'!B22",
+      "E4": "=+'SAL. PROM MOD 40'!C22",
+      "E5": "=+'SAL. PROM MOD 40'!E8+'SAL. PROM MOD 40'!F8/12",
+      "E8": "=+'COSTO MOD. 40'!G15",
+      "E9": "=+'2'!L62",
+      "E10": "=+'2'!T62",
+      "E11": "=+E8+E9+E10",
+      "E12": "=+(E9+E10)/'COSTO MOD. 40'!G15",
+      "E16": "=+E11*20%",
+      "E17": "=E11-E16"
+    },
+    "values": {
+      "B2": "DATOS DEL PAGO RETROACTIVO",
+      "B3": "FECHA DE BAJA",
+      "E3": "2027-02-01T00:00:00",
+      "B4": "FECHA DE TÉRMINO (PAGO RETROACTIVO)",
+      "E4": "2029-08-31T00:00:00",
+      "B5": "AÑOS A PAGAR EN RETROACTIVO",
+      "E5": 2.5833333333333335,
+      "B7": "COSTO DE LA MODALIDAD 40 - PAGO RETROACTIVO",
+      "B8": "COSTO MODALIDAD 40",
+      "E8": 477244.6972668376,
+      "B9": "ACTUALIZACIONES",
+      "E9": 26644.61422612811,
+      "B10": "RECARGOS",
+      "E10": 153206.53180023667,
+      "B11": "COSTO TOTAL DE LA MODALIDAD 40 RETROACTIVA",
+      "E11": 657095.8432932023,
+      "B12": "% DE INCREMENTO EN EL COSTO POR PAGO RETROACTIVO",
+      "E12": 0.3768531050347244,
+      "B13": "Nota: el monto del pago retroactivo es una proyección que considera una tasa promedio de inflación anual de 4.50% y un factor de recargos de 1.47% mensual (dato vigente en 2024). El cálculo exacto puede variar hasta un 10% y se determina cuándo se mandan a validar los datos con el IMSS.",
+      "B15": "RECUPERACIÓN POR AFORE",
+      "B16": "MONTO APROXIMADO DE RECUPERACIÓN POR \"AFORE\"",
+      "E16": 131419.16865864047,
+      "B17": "M40 RETROACTIVA - RECUPERACION POR AFORE",
+      "E17": 525676.6746345619
+    }
+  },
+  "costo_mod40_rates": [
+    {
+      "B4": "COSTO MODALIDAD 40                     2019-2021",
+      "C4": 0,
+      "D4": 0.10075,
+      "E4": 0,
+      "F4": 0,
+      "G4": 0
+    },
+    {
+      "B5": "COSTO MODALIDAD 40 2022",
+      "C5": 0,
+      "D5": 0.10075,
+      "E5": 0,
+      "F5": 0,
+      "G5": 0
+    },
+    {
+      "B6": "COSTO MODALIDAD 40 2023",
+      "C6": 0,
+      "D6": 0.11166,
+      "E6": 0,
+      "F6": 0,
+      "G6": 0
+    },
+    {
+      "B7": "COSTO MODALIDAD 40 2024",
+      "C7": 0,
+      "D7": 0.12256,
+      "E7": 0,
+      "F7": 0,
+      "G7": 0
+    },
+    {
+      "B8": "COSTO MODALIDAD 40 2025",
+      "C8": 0,
+      "D8": 0.13347,
+      "E8": 0,
+      "F8": 0,
+      "G8": 0
+    },
+    {
+      "B9": "COSTO MODALIDAD 40 2026",
+      "C9": 0,
+      "D9": 0.14438,
+      "E9": 0,
+      "F9": 0,
+      "G9": 0
+    },
+    {
+      "B10": "COSTO MODALIDAD 40 2027",
+      "C10": 3064.72375,
+      "D10": 0.15528,
+      "E10": 334,
+      "F10": 14474.996743625,
+      "G10": 158947.36150260002
+    },
+    {
+      "B11": "COSTO MODALIDAD 40 2028",
+      "C11": 3064.72375,
+      "D11": 0.16619,
+      "E11": 366,
+      "F11": 15492.01255038021,
+      "G11": 186413.477044575
+    },
+    {
+      "B12": "COSTO MODALIDAD 40 2029",
+      "C12": 3064.72375,
+      "D12": 0.17709,
+      "E12": 243,
+      "F12": 16508.096170328125,
+      "G12": 131883.8587196625
+    },
+    {
+      "B13": "COSTO MODALIDAD 40 2030",
+      "C13": 0,
+      "D13": 0.188,
+      "E13": 0,
+      "F13": 0,
+      "G13": 0
+    },
+    {
+      "B14": "COSTO MODALIDAD 40           2031 EN ADELANTE",
+      "C14": 0,
+      "D14": 0.188,
+      "E14": 0,
+      "F14": 0,
+      "G14": 0
+    }
+  ]
+}

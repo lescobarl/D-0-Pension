@@ -1,0 +1,35 @@
+# ============================================================================
+# CLAVE DE OFUSCACION DE LA API KEY (OpenRouter) - Proyecto D-0-Pension
+# ============================================================================
+#
+# Esta clave se usa para ofuscar la API key de OpenRouter que viaja dentro
+# de la app (base64 + XOR). La key ofuscada se guarda en:
+#       assets/config/api_key.json  ->  campo "openrouter_api_key_obfuscated"
+#
+# IMPORTANTE - LEE ESTO:
+#   * La ofuscacion NO es seguridad real. Solo disuade la extraccion casual.
+#     La app tiene que poder reconstruir la key en tiempo de ejecucion, asi
+#     que cualquier persona decidida puede recuperarla. Es un parche temporal
+#     mientras se migra a un backend proxy.
+#   * Esta clave DEBE coincidir con la que esta en el codigo Dart:
+#       lib/core/ai/api_key_obfuscator.dart  ->  const String _xorKey = "KEY-OFUSCACION";
+#     Si cambias una, cambia la otra.
+#
+# ----------------------------------------------------------------------------
+# CLAVE XOR (la que tienes que recordar / encontrar facilmente):
+# ----------------------------------------------------------------------------
+XOR_KEY=KEY-OFUSCACION
+#
+# ----------------------------------------------------------------------------
+# COMO REGENERAR LA KEY OFUSCADA (cuando renueves tu key de OpenRouter):
+# ----------------------------------------------------------------------------
+#   * Opcion A (recomendada): la key nueva ya esta en assets/config/api_key.json
+#     (campo "openrouter_api_key"):            python scripts/ofuscar_api_key.py --update
+#
+#   * Opcion B: pasarla como argumento:        python scripts/ofuscar_api_key.py TU_NUEVA_KEY --update
+#
+#   * Solo mostrar el valor ofuscado (sin escribir): python scripts/ofuscar_api_key.py TU_NUEVA_KEY
+#
+#   * Verificar que una key ofuscada regresa al valor original:
+#       python scripts/ofuscar_api_key.py --decode "<VALOR_BASE64>"
+# ============================================================================

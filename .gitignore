@@ -1,0 +1,124 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# ---------------------------------------------------------------
+# Scratch / diagnostic artifacts (constraint #7: no scratch in repo)
+# ---------------------------------------------------------------
+# Python virtual env
+/.venv/
+
+# Office lock files
+~$*
+
+# Root scratch files (underscore-prefixed / temp html / debug logs)
+/_*
+/debug.log
+/temp_*.html
+/read_local_storage.html
+
+# Backup snapshots (no git -> tar.gz / folder backups kept locally)
+/respaldo_*/
+/respaldo_*.tar.gz
+
+# Generated validation outputs
+/cross_validate_scenarios_output.json
+/excel_real_scenarios_output.json
+/simple_scenarios.json
+/identical_scenarios_output/
+
+# One-off diagnostic scripts in scripts/ (functional tools are kept)
+/scripts/analisis_*.py
+/scripts/analy*.py
+/scripts/buscar_*.py
+/scripts/calc_*.py
+/scripts/check_*.py
+/scripts/compare_*.py
+/scripts/crear_*.py
+/scripts/cross_*.py
+/scripts/debug_*.py
+/scripts/deep_dive_*.py
+/scripts/diagnostico_*.py
+/scripts/direct_*.py
+/scripts/dump_*.py
+/scripts/escenario*.py
+/scripts/excel_*.py
+/scripts/explore_*.py
+/scripts/extract_*.py
+/scripts/extraer_*.py
+/scripts/final_*.py
+/scripts/find_*.py
+/scripts/fix_*.py
+/scripts/generate_*.py
+/scripts/get_*.py
+/scripts/investigate_*.py
+/scripts/leer_*.py
+/scripts/make_*.py
+/scripts/minimal_*.py
+/scripts/ofuscar_api_key.py
+/scripts/print_*.py
+/scripts/python_*.py
+/scripts/re_*.py
+/scripts/read_*.py
+/scripts/recalcular_*.py
+/scripts/replicar_*.py
+/scripts/replicate_*.py
+/scripts/run_*.py
+/scripts/save_*.py
+/scripts/solve_*.py
+/scripts/test_*.py
+/scripts/trace_*.py
+/scripts/try_*.py
+/scripts/unprotect_*.py
+/scripts/validar_*.py
+/scripts/validate_*.py
+/scripts/verificar_*.py
+/scripts/win32com_*.py
+/scripts/write_*.py
+
+# One-off diagnostic scripts in test/
+/test/*.py
+/test/*.txt
+/test/find_excel_pension.py

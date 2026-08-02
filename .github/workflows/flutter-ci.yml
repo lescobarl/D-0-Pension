@@ -1,0 +1,66 @@
+name: Flutter CI
+
+on:
+  # Constraint #4: no direct commits/pushes to main/master.
+  # CI runs on PRs targeting main/master and on pushes to feature/* branches.
+  push:
+    branches: [ 'feature/**' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.22.0'
+        channel: 'stable'
+    
+    - name: Install dependencies
+      run: flutter pub get
+    
+    - name: Analyze code
+      # Fail only on errors; pre-existing info/warnings are tracked separately
+      # (e.g. avoid_print in diagnostic *_test.dart files).
+      run: flutter analyze --no-fatal-infos --no-fatal-warnings
+    
+    - name: Run tests
+      run: flutter test --coverage
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        fail_ci_if_error: false
+  
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [android, web]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.22.0'
+        channel: 'stable'
+    
+    - name: Install dependencies
+      run: flutter pub get
+    
+    - name: Build ${{ matrix.platform }}
+      run: |
+        if [ "${{ matrix.platform }}" = "android" ]; then
+          flutter build apk --release
+        elif [ "${{ matrix.platform }}" = "web" ]; then
+          flutter build web --release
+        fi
