@@ -172,9 +172,6 @@ void main() {
 
     test('3.2 Non-Mod40 period salarioDiario updated', () {
       final original = provider.salarioPromedio250Semanas;
-      // Find a non-Mod40 period
-      final nonMod40Period = provider.periodos.firstWhere((p) => !p.esMod40);
-      final originalNonMod40Salario = nonMod40Period.salarioDiario;
 
       provider.setSalarioPromedio250Semanas(original + 500.0);
 
@@ -232,8 +229,6 @@ void main() {
   // ===========================================================================
   group('6. setStartDate/setEndDate', () {
     test('6.1 Changing dates recalculates costo and retroactivo', () {
-      final originalCosto = provider.costoMod40Calculation?.inversionTotal ?? 0;
-
       // Change dates to a shorter period
       provider.setStartDate(DateTime(2028, 1, 1));
       provider.setEndDate(DateTime(2028, 6, 30));
@@ -367,7 +362,6 @@ void main() {
       if (edadRetiro > 0) provider.setEdadRetiro(edadRetiro);
 
       // 4. Set semanas
-      final semanasCot = (p(datosGenMod40['semanas_cot_m40'])).toInt();
       final semanasAntes = (p(datosGenMod40['semanas_antes_m40'])).toInt();
       final semanasEn = (p(datosGenMod40['semanas_en_m40'])).toInt();
       if (semanasAntes > 0) provider.setSemanasAntesMod40(semanasAntes.toDouble());

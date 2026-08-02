@@ -4,11 +4,17 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/models/periodo_salarial.dart';
+import '../core/utils/pii_cipher.dart';
 
 /// Service for persisting user input data locally using SharedPreferences.
 ///
 /// Implements the Repository pattern to abstract storage away from business logic.
 /// Default values are provided by the caller (from metadata) rather than hardcoded.
+///
+/// Datos personales (PII) — fechas de nacimiento/cálculo, salarios, periodos
+/// salariales, composición familiar y edad de retiro — se guardan ofuscados en
+/// reposo mediante [PiiCipher] (base64 + XOR, ver `KEY-PII-OFUSCACION.txt`).
+/// Los valores de configuración no personales se mantienen como tipos nativos.
 class PersistenceService {
   static const _keyRetroactiveYears = 'retroactive_years';
   static const _keyCostoModalidad40 = 'costo_modalidad_40';
@@ -43,8 +49,56 @@ class PersistenceService {
   //      Old persisted values like 60.5, 61.5 are no longer valid.
   // v11: default_values in app_metadata.json changed from person-specific
   //      (ESCOBAR LOPEZ LUIS ADAN) to generic/common defaults.
-  static const _kDataVersion = 12;
+  // v12: pre-PII-obfuscation data format (plain native types).
+  // v13: PII fields (fechas, salarios, periodos, familia, edad) are stored
+  //      obfuscated at rest via PiiCipher; legacy plaintext values are
+  //      re-written in the obfuscated format — data preserved, never discarded.
+  static const _kDataVersion = 13;
   static const _keyDataVersion = 'data_version';
+
+  // ── DATOS GEN. persistence keys ──
+  static const _keyFechaCalculoYear = 'fecha_calculo_year';
+  static const _keyFechaCalculoMonth = 'fecha_calculo_month';
+  static const _keyFechaCalculoDay = 'fecha_calculo_day';
+  static const _keyFechaNacimientoYear = 'fecha_nacimiento_year';
+  static const _keyFechaNacimientoMonth = 'fecha_nacimiento_month';
+  static const _keyFechaNacimientoDay = 'fecha_nacimiento_day';
+  static const _keyEdadMinimaPension = 'edad_minima_pension';
+  static const _keySemanasDescontadasAfore = 'semanas_descontadas_afore';
+  static const _keySalarioPromedio250Semanas = 'salario_promedio_250_semanas';
+  static const _keyTotalSemanasSinMod40 = 'total_semanas_sin_mod40';
+  static const _keySemanasAntesMod40 = 'semanas_antes_mod40';
+  static const _keySemanasEnMod40 = 'semanas_en_mod40';
+
+  // ── PII keys obfuscated at rest (v13+) ──
+  // Keys that hold personal numeric data (doubles and ints).
+  static const List<String> _piiNumericKeys = [
+    _keySalarioDiario,
+    _keyStartDateYear,
+    _keyStartDateMonth,
+    _keyEndDateYear,
+    _keyEndDateMonth,
+    _keySalarioMinimoDiario,
+    _keySalarioDiarioPromedio,
+    _keyEdadRetiro,
+    _keySalarioRegistrado,
+    _keyFechaCalculoYear,
+    _keyFechaCalculoMonth,
+    _keyFechaCalculoDay,
+    _keyFechaNacimientoYear,
+    _keyFechaNacimientoMonth,
+    _keyFechaNacimientoDay,
+    _keySalarioPromedio250Semanas,
+    _keyNumeroHijos,
+    _keyNumeroPadres,
+  ];
+
+  // Keys that hold personal boolean data.
+  static const List<String> _piiBoolKeys = [
+    _keyTieneEsposa,
+  ];
+
+  static const _keyPeriodos = 'periodos_salariales';
 
   final SharedPreferences _prefs;
 
@@ -60,6 +114,36 @@ class PersistenceService {
     if (stored != _kDataVersion) {
       debugPrint('[PERSIST] Data version mismatch: stored=$stored, expected=$_kDataVersion — updating version, preserving data');
       _prefs.setInt(_keyDataVersion, _kDataVersion);
+      _encryptLegacyPii();
+    }
+  }
+
+  /// v13 migration: rewrites legacy plaintext PII values into the obfuscated
+  /// format. Legacy formats are native double/int/bool (numeric/date/family
+  /// fields) and a plain JSON string (periodos, which starts with '[').
+  /// Already-obfuscated values are left untouched — the operation is
+  /// idempotent and never discards data.
+  void _encryptLegacyPii() {
+    for (final key in _piiNumericKeys) {
+      final raw = _prefs.get(key);
+      if (raw == null) continue;
+      if (raw is double) {
+        _prefs.setString(key, PiiCipher.encodeDouble(raw));
+      } else if (raw is int) {
+        _prefs.setString(key, PiiCipher.encodeInt(raw));
+      }
+    }
+    for (final key in _piiBoolKeys) {
+      final raw = _prefs.get(key);
+      if (raw is bool) {
+        _prefs.setString(key, PiiCipher.encodeBool(raw));
+      }
+    }
+    final rawPeriodos = _prefs.get(_keyPeriodos);
+    if (rawPeriodos is String &&
+        rawPeriodos.isNotEmpty &&
+        rawPeriodos.startsWith('[')) {
+      _prefs.setString(_keyPeriodos, PiiCipher.encode(rawPeriodos));
     }
   }
 
@@ -75,6 +159,54 @@ class PersistenceService {
       return _prefs.getDouble(key) ?? defaultValue;
     } catch (e) {
       debugPrint('[PERSIST] Error reading double key=$key: $e — using default=$defaultValue');
+      return defaultValue;
+    }
+  }
+
+  /// Safely load an obfuscated double (PII). Transparently accepts legacy
+  /// plaintext (native double/int from versions <= 12) and v13+ obfuscated
+  /// strings. Returns [defaultValue] when the value is missing or corrupt.
+  double _safeGetEncryptedDouble(String key, double defaultValue) {
+    try {
+      final raw = _prefs.get(key);
+      if (raw == null) return defaultValue;
+      if (raw is double) return raw; // legacy plain
+      if (raw is int) return raw.toDouble(); // legacy plain
+      if (raw is String) return PiiCipher.decodeDouble(raw); // v13+ obfuscated
+      return defaultValue;
+    } catch (e) {
+      debugPrint('[PERSIST] Error reading obfuscated double key=$key: $e — using default=$defaultValue');
+      return defaultValue;
+    }
+  }
+
+  /// Safely load an obfuscated int (PII). Accepts legacy plaintext and v13+
+  /// obfuscated strings. Returns [defaultValue] when missing or corrupt.
+  int _safeGetEncryptedInt(String key, int defaultValue) {
+    try {
+      final raw = _prefs.get(key);
+      if (raw == null) return defaultValue;
+      if (raw is int) return raw; // legacy plain
+      if (raw is double) return raw.toInt(); // legacy plain
+      if (raw is String) return PiiCipher.decodeInt(raw); // v13+ obfuscated
+      return defaultValue;
+    } catch (e) {
+      debugPrint('[PERSIST] Error reading obfuscated int key=$key: $e — using default=$defaultValue');
+      return defaultValue;
+    }
+  }
+
+  /// Safely load an obfuscated bool (PII). Accepts legacy plaintext and v13+
+  /// obfuscated strings. Returns [defaultValue] when missing or corrupt.
+  bool _safeGetEncryptedBool(String key, bool defaultValue) {
+    try {
+      final raw = _prefs.get(key);
+      if (raw == null) return defaultValue;
+      if (raw is bool) return raw; // legacy plain
+      if (raw is String) return PiiCipher.decodeBool(raw); // v13+ obfuscated
+      return defaultValue;
+    } catch (e) {
+      debugPrint('[PERSIST] Error reading obfuscated bool key=$key: $e — using default=$defaultValue');
       return defaultValue;
     }
   }
@@ -111,45 +243,47 @@ class PersistenceService {
     return _safeGetDouble(_keyCostoModalidad40, defaultValue);
   }
 
-  /// Save salario diario.
+  /// Save salario diario (obfuscated at rest — PII).
   Future<void> saveSalarioDiario(double salario) async {
-    await _prefs.setDouble(_keySalarioDiario, salario);
+    await _prefs.setString(_keySalarioDiario, PiiCipher.encodeDouble(salario));
   }
 
   /// Load salario diario. Returns [defaultValue] if no saved value.
   double loadSalarioDiario({required double defaultValue}) {
-    return _safeGetDouble(_keySalarioDiario, defaultValue);
+    return _safeGetEncryptedDouble(_keySalarioDiario, defaultValue);
   }
 
-  /// Save start date.
+  /// Save start date (obfuscated at rest — PII).
   Future<void> saveStartDate(DateTime date) async {
-    await _prefs.setInt(_keyStartDateYear, date.year);
-    await _prefs.setInt(_keyStartDateMonth, date.month);
+    await _prefs.setString(_keyStartDateYear, PiiCipher.encodeInt(date.year));
+    await _prefs.setString(_keyStartDateMonth, PiiCipher.encodeInt(date.month));
   }
 
   /// Load start date. Returns [defaultValue] if no saved value.
   DateTime loadStartDate({required DateTime defaultValue}) {
-    final year = _prefs.getInt(_keyStartDateYear);
-    final month = _prefs.getInt(_keyStartDateMonth);
-    if (year == null || month == null) {
+    if (!_prefs.containsKey(_keyStartDateYear) ||
+        !_prefs.containsKey(_keyStartDateMonth)) {
       return defaultValue;
     }
+    final year = _safeGetEncryptedInt(_keyStartDateYear, defaultValue.year);
+    final month = _safeGetEncryptedInt(_keyStartDateMonth, defaultValue.month);
     return DateTime(year, month, 1);
   }
 
-  /// Save end date.
+  /// Save end date (obfuscated at rest — PII).
   Future<void> saveEndDate(DateTime date) async {
-    await _prefs.setInt(_keyEndDateYear, date.year);
-    await _prefs.setInt(_keyEndDateMonth, date.month);
+    await _prefs.setString(_keyEndDateYear, PiiCipher.encodeInt(date.year));
+    await _prefs.setString(_keyEndDateMonth, PiiCipher.encodeInt(date.month));
   }
 
   /// Load end date. Returns [defaultValue] if no saved value.
   DateTime loadEndDate({required DateTime defaultValue}) {
-    final year = _prefs.getInt(_keyEndDateYear);
-    final month = _prefs.getInt(_keyEndDateMonth);
-    if (year == null || month == null) {
+    if (!_prefs.containsKey(_keyEndDateYear) ||
+        !_prefs.containsKey(_keyEndDateMonth)) {
       return defaultValue;
     }
+    final year = _safeGetEncryptedInt(_keyEndDateYear, defaultValue.year);
+    final month = _safeGetEncryptedInt(_keyEndDateMonth, defaultValue.month);
     return DateTime(year, month, 31);
   }
 
@@ -173,28 +307,30 @@ class PersistenceService {
     return _safeGetDouble(_keyUmaDiaria, defaultValue);
   }
 
-  /// Save salario minimo diario.
+  /// Save salario minimo diario (obfuscated at rest — PII).
   Future<void> saveSalarioMinimoDiario(double value) async {
-    await _prefs.setDouble(_keySalarioMinimoDiario, value);
+    await _prefs.setString(
+        _keySalarioMinimoDiario, PiiCipher.encodeDouble(value));
   }
 
   /// Load salario minimo diario. Returns [defaultValue] if no saved value.
   double loadSalarioMinimoDiario({required double defaultValue}) {
-    return _safeGetDouble(_keySalarioMinimoDiario, defaultValue);
+    return _safeGetEncryptedDouble(_keySalarioMinimoDiario, defaultValue);
   }
 
   // ═══════════════════════════════════════════════
   // NEW: Persistence for previously missing fields
   // ═══════════════════════════════════════════════
 
-  /// Save salario diario promedio.
+  /// Save salario diario promedio (obfuscated at rest — PII).
   Future<void> saveSalarioDiarioPromedio(double value) async {
-    await _prefs.setDouble(_keySalarioDiarioPromedio, value);
+    await _prefs.setString(
+        _keySalarioDiarioPromedio, PiiCipher.encodeDouble(value));
   }
 
   /// Load salario diario promedio. Returns [defaultValue] if no saved value.
   double loadSalarioDiarioPromedio({required double defaultValue}) {
-    return _safeGetDouble(_keySalarioDiarioPromedio, defaultValue);
+    return _safeGetEncryptedDouble(_keySalarioDiarioPromedio, defaultValue);
   }
 
   /// Save semanas cotizadas.
@@ -207,54 +343,55 @@ class PersistenceService {
     return _prefs.getInt(_keySemanasCotizadas) ?? defaultValue;
   }
 
-  /// Save tiene esposa.
+  /// Save tiene esposa (obfuscated at rest — PII).
   Future<void> saveTieneEsposa(bool value) async {
-    await _prefs.setBool(_keyTieneEsposa, value);
+    await _prefs.setString(_keyTieneEsposa, PiiCipher.encodeBool(value));
   }
 
   /// Load tiene esposa. Returns [defaultValue] if no saved value.
   bool loadTieneEsposa({required bool defaultValue}) {
-    return _prefs.getBool(_keyTieneEsposa) ?? defaultValue;
+    return _safeGetEncryptedBool(_keyTieneEsposa, defaultValue);
   }
 
-  /// Save numero de hijos.
+  /// Save numero de hijos (obfuscated at rest — PII).
   Future<void> saveNumeroHijos(int value) async {
-    await _prefs.setInt(_keyNumeroHijos, value);
+    await _prefs.setString(_keyNumeroHijos, PiiCipher.encodeInt(value));
   }
 
   /// Load numero de hijos. Returns [defaultValue] if no saved value.
   int loadNumeroHijos({required int defaultValue}) {
-    return _prefs.getInt(_keyNumeroHijos) ?? defaultValue;
+    return _safeGetEncryptedInt(_keyNumeroHijos, defaultValue);
   }
 
-  /// Save numero de padres.
+  /// Save numero de padres (obfuscated at rest — PII).
   Future<void> saveNumeroPadres(int value) async {
-    await _prefs.setInt(_keyNumeroPadres, value);
+    await _prefs.setString(_keyNumeroPadres, PiiCipher.encodeInt(value));
   }
 
   /// Load numero de padres. Returns [defaultValue] if no saved value.
   int loadNumeroPadres({required int defaultValue}) {
-    return _prefs.getInt(_keyNumeroPadres) ?? defaultValue;
+    return _safeGetEncryptedInt(_keyNumeroPadres, defaultValue);
   }
 
-  /// Save edad de retiro (unified: con M40 and sin M40 use the same value).
+  /// Save edad de retiro (obfuscated at rest — PII, derivada de la fecha de
+  /// nacimiento; unified: con M40 and sin M40 use the same value).
   Future<void> saveEdadRetiro(double value) async {
-    await _prefs.setDouble(_keyEdadRetiro, value);
+    await _prefs.setString(_keyEdadRetiro, PiiCipher.encodeDouble(value));
   }
 
   /// Load edad de retiro. Returns [defaultValue] if no saved value.
   double loadEdadRetiro({required double defaultValue}) {
-    return _safeGetDouble(_keyEdadRetiro, defaultValue);
+    return _safeGetEncryptedDouble(_keyEdadRetiro, defaultValue);
   }
 
-  /// Save salario registrado.
+  /// Save salario registrado (obfuscated at rest — PII).
   Future<void> saveSalarioRegistrado(double value) async {
-    await _prefs.setDouble(_keySalarioRegistrado, value);
+    await _prefs.setString(_keySalarioRegistrado, PiiCipher.encodeDouble(value));
   }
 
   /// Load salario registrado. Returns [defaultValue] if no saved value.
   double loadSalarioRegistrado({required double defaultValue}) {
-    return _safeGetDouble(_keySalarioRegistrado, defaultValue);
+    return _safeGetEncryptedDouble(_keySalarioRegistrado, defaultValue);
   }
 
   /// Save participacion banco max.
@@ -311,52 +448,50 @@ class PersistenceService {
   // DATOS GEN. persistence
   // ═══════════════════════════════════════════════
 
-  static const _keyFechaCalculoYear = 'fecha_calculo_year';
-  static const _keyFechaCalculoMonth = 'fecha_calculo_month';
-  static const _keyFechaCalculoDay = 'fecha_calculo_day';
-  static const _keyFechaNacimientoYear = 'fecha_nacimiento_year';
-  static const _keyFechaNacimientoMonth = 'fecha_nacimiento_month';
-  static const _keyFechaNacimientoDay = 'fecha_nacimiento_day';
-  static const _keyEdadMinimaPension = 'edad_minima_pension';
-  static const _keySemanasDescontadasAfore = 'semanas_descontadas_afore';
-  static const _keySalarioPromedio250Semanas = 'salario_promedio_250_semanas';
-  static const _keyTotalSemanasSinMod40 = 'total_semanas_sin_mod40';
-  static const _keySemanasAntesMod40 = 'semanas_antes_mod40';
-  static const _keySemanasEnMod40 = 'semanas_en_mod40';
-
-  /// Save fecha de cálculo.
+  /// Save fecha de cálculo (obfuscated at rest — PII).
   Future<void> saveFechaCalculo(DateTime value) async {
-    await _prefs.setInt(_keyFechaCalculoYear, value.year);
-    await _prefs.setInt(_keyFechaCalculoMonth, value.month);
-    await _prefs.setInt(_keyFechaCalculoDay, value.day);
+    await _prefs.setString(_keyFechaCalculoYear, PiiCipher.encodeInt(value.year));
+    await _prefs.setString(
+        _keyFechaCalculoMonth, PiiCipher.encodeInt(value.month));
+    await _prefs.setString(_keyFechaCalculoDay, PiiCipher.encodeInt(value.day));
   }
 
   /// Load fecha de cálculo. Returns [defaultValue] if no saved value.
   DateTime loadFechaCalculo({required DateTime defaultValue}) {
-    final year = _prefs.getInt(_keyFechaCalculoYear);
-    final month = _prefs.getInt(_keyFechaCalculoMonth);
-    final day = _prefs.getInt(_keyFechaCalculoDay);
-    if (year == null || month == null || day == null) {
+    if (!_prefs.containsKey(_keyFechaCalculoYear) ||
+        !_prefs.containsKey(_keyFechaCalculoMonth) ||
+        !_prefs.containsKey(_keyFechaCalculoDay)) {
       return defaultValue;
     }
+    final year = _safeGetEncryptedInt(_keyFechaCalculoYear, defaultValue.year);
+    final month =
+        _safeGetEncryptedInt(_keyFechaCalculoMonth, defaultValue.month);
+    final day = _safeGetEncryptedInt(_keyFechaCalculoDay, defaultValue.day);
     return DateTime(year, month, day);
   }
 
-  /// Save fecha de nacimiento.
+  /// Save fecha de nacimiento (obfuscated at rest — PII).
   Future<void> saveFechaNacimiento(DateTime value) async {
-    await _prefs.setInt(_keyFechaNacimientoYear, value.year);
-    await _prefs.setInt(_keyFechaNacimientoMonth, value.month);
-    await _prefs.setInt(_keyFechaNacimientoDay, value.day);
+    await _prefs.setString(
+        _keyFechaNacimientoYear, PiiCipher.encodeInt(value.year));
+    await _prefs.setString(
+        _keyFechaNacimientoMonth, PiiCipher.encodeInt(value.month));
+    await _prefs.setString(
+        _keyFechaNacimientoDay, PiiCipher.encodeInt(value.day));
   }
 
   /// Load fecha de nacimiento. Returns [defaultValue] if no saved value.
   DateTime loadFechaNacimiento({required DateTime defaultValue}) {
-    final year = _prefs.getInt(_keyFechaNacimientoYear);
-    final month = _prefs.getInt(_keyFechaNacimientoMonth);
-    final day = _prefs.getInt(_keyFechaNacimientoDay);
-    if (year == null || month == null || day == null) {
+    if (!_prefs.containsKey(_keyFechaNacimientoYear) ||
+        !_prefs.containsKey(_keyFechaNacimientoMonth) ||
+        !_prefs.containsKey(_keyFechaNacimientoDay)) {
       return defaultValue;
     }
+    final year =
+        _safeGetEncryptedInt(_keyFechaNacimientoYear, defaultValue.year);
+    final month =
+        _safeGetEncryptedInt(_keyFechaNacimientoMonth, defaultValue.month);
+    final day = _safeGetEncryptedInt(_keyFechaNacimientoDay, defaultValue.day);
     return DateTime(year, month, day);
   }
 
@@ -380,14 +515,15 @@ class PersistenceService {
     return _prefs.getInt(_keySemanasDescontadasAfore) ?? defaultValue;
   }
 
-  /// Save salario promedio 250 semanas.
+  /// Save salario promedio 250 semanas (obfuscated at rest — PII).
   Future<void> saveSalarioPromedio250Semanas(double value) async {
-    await _prefs.setDouble(_keySalarioPromedio250Semanas, value);
+    await _prefs.setString(
+        _keySalarioPromedio250Semanas, PiiCipher.encodeDouble(value));
   }
 
   /// Load salario promedio 250 semanas. Returns [defaultValue] if no saved value.
   double loadSalarioPromedio250Semanas({required double defaultValue}) {
-    return _safeGetDouble(_keySalarioPromedio250Semanas, defaultValue);
+    return _safeGetEncryptedDouble(_keySalarioPromedio250Semanas, defaultValue);
   }
 
   /// Save total semanas sin Mod40.
@@ -404,20 +540,35 @@ class PersistenceService {
   // PERIODOS SALARIALES (SAL. PROM MOD 40 desglose)
   // ═══════════════════════════════════════════════
 
-  static const _keyPeriodos = 'periodos_salariales';
-
-  /// Save the list of salary periods as a JSON string.
+  /// Save the list of salary periods as an obfuscated JSON string (PII).
   Future<void> savePeriodos(List<PeriodoSalarial> periodos) async {
     final jsonList = periodos.map((p) => p.toJson()).toList();
     final jsonString = jsonEncode(jsonList);
-    await _prefs.setString(_keyPeriodos, jsonString);
+    await _prefs.setString(_keyPeriodos, PiiCipher.encode(jsonString));
   }
 
-  /// Load the list of salary periods from JSON string.
-  /// Returns an empty list if no saved data.
+  /// Load the list of salary periods from an obfuscated JSON string.
+  /// Transparently accepts legacy plain JSON (versions <= 12) and v13+
+  /// obfuscated strings. Returns an empty list if no saved data or on corruption.
   List<PeriodoSalarial> loadPeriodos() {
-    final jsonString = _prefs.getString(_keyPeriodos);
-    if (jsonString == null || jsonString.isEmpty) return [];
+    final raw = _prefs.get(_keyPeriodos);
+    if (raw == null) return [];
+
+    String jsonString;
+    if (raw is String && raw.startsWith('[')) {
+      jsonString = raw; // legacy plain JSON
+    } else if (raw is String) {
+      try {
+        jsonString = PiiCipher.decode(raw); // v13+ obfuscated
+      } catch (e) {
+        debugPrint('[PERSIST] Error decoding periodos: $e — returning empty list');
+        return [];
+      }
+    } else {
+      jsonString = raw.toString();
+    }
+
+    if (jsonString.isEmpty) return [];
     try {
       final jsonList = jsonDecode(jsonString) as List<dynamic>;
       return jsonList

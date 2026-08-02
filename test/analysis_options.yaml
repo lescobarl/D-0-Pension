@@ -1,0 +1,29 @@
+# Scoped analyzer configuration for the test/ tree.
+#
+# The diagnostic/validation tests under test/ are scripting-style: they emit
+# extensive console output, declare local helper closures (often with a
+# leading underscore), build strings by concatenation and use compact
+# one-statement control flow for readability. These conventions clash with the
+# production-facing `flutter_lints` style rules, so the purely-stylistic rules
+# below are disabled here — the production code in lib/ keeps the full lint set.
+#
+# Disabled rules and the reason:
+#   - avoid_print: diagnostic print() output is intentional (e.g. the
+#     "ALL CONSISTENCY CHECKS PASSED" report in app_defaults_test.dart).
+#   - no_leading_underscores_for_local_identifiers: local helper closures in
+#     tests commonly use an underscore prefix (_parseDouble, _compareValues...).
+#   - prefer_interpolation_to_compose_strings: concatenation is used to keep
+#     long diagnostic reports readable.
+#   - curly_braces_in_flow_control_structures: compact single-statement guards.
+#   - avoid_relative_lib_imports: tests import lib/ via relative paths.
+#   - unnecessary_brace_in_string_interps: cosmetic braces in interpolations.
+include: ../analysis_options.yaml
+
+linter:
+  rules:
+    avoid_print: false
+    no_leading_underscores_for_local_identifiers: false
+    prefer_interpolation_to_compose_strings: false
+    curly_braces_in_flow_control_structures: false
+    avoid_relative_lib_imports: false
+    unnecessary_brace_in_string_interps: false

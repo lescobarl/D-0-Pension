@@ -17,8 +17,6 @@ void main() {
   });
 
   test('COMPARAR App vs Excel - FACT + ASIG MOD.40', () {
-    final rules = evaluator.metadata.financialRules;
-
     // INPUTS - Mismos que el Excel
     const salarioDiarioPromedio = 2840.6157121429;  // C4
     const umaDiaria = 122.58895;                     // C5

@@ -43,6 +43,7 @@ jobs:
           test/widget_test.dart \
           test/validacion_cambios_recientes_test.dart \
           test/unit/pension_constants_test.dart \
+          test/pii_cipher_test.dart \
           --timeout 30s
     
     - name: Upload coverage to Codecov

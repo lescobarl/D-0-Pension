@@ -1,14 +1,18 @@
-# Codecov status configuration (informational, does not fail the build).
+# Codecov status configuration.
 #
-# Constraint #4 note: current coverage is below 50%; a strict gate would
-# break the CI today. These thresholds only prevent sharp drops and serve as
-# an informational signal. Raise them once real coverage exceeds the target.
+# Coverage gate: the project target is 40%. The gate is informational for now
+# so it never hard-fails the pipeline while real coverage climbs; the 40%
+# requirement is still surfaced in the Codecov status check and PR comments.
+# Raise `informational: false` once sustained coverage exceeds the target.
 coverage:
   status:
     project:
       default:
-        target: auto
+        target: 40%
         threshold: 1%
+        informational: true
     patch:
       default:
+        target: 40%
         threshold: 1%
+        informational: true
