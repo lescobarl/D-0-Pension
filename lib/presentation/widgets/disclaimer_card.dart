@@ -67,10 +67,13 @@ class _DisclaimerDialog extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Esta calculadora de pensiones por la Ley 73 y de Modalidad 40 fue '
-                      'diseñada como una herramienta de estimación. Los resultados '
-                      'dependen completamente de los datos ingresados por el usuario y '
-                      'no constituyen asesoría financiera personalizada.',
+                      'Esta calculadora de pensiones por la Ley 1973 y Modalidad 40 es '
+                      'una herramienta de estimación con fines informativos. Los '
+                      'resultados se generan a partir de los datos que tú ingresas y de '
+                      'las tablas vigentes incluidas en la aplicación (UMA, salario '
+                      'mínimo e inflación); no son un cálculo oficial ni constituyen '
+                      'asesoría financiera, fiscal o legal personalizada. El monto '
+                      'definitivo lo determina el IMSS al validar tu expediente.',
                       style: TextStyle(
                         fontSize: AppTheme.fontSizeBodySmall,
                         color: AppTheme.textSecondary,
@@ -83,10 +86,10 @@ class _DisclaimerDialog extends StatelessWidget {
                       iconColor: AppTheme.successColor,
                       title: 'Esta herramienta SÍ puede ayudarte a:',
                       items: const [
-                        'Estimar tu pensión mensual por Ley 73 con o sin Modalidad 40.',
+                        'Estimar tu pensión mensual por Ley 73, con o sin Modalidad 40, conforme a la fórmula vigente.',
                         'Calcular inversión, retorno, pago retroactivo y flujos de pensión.',
                         'Comparar hasta 10 escenarios diferentes con proyección gráfica (versión PRO).',
-                        'Calcular el flujo de pensiones cobradas con actualización por inflación (versión PRO).',
+                        'Proyectar el flujo de pensiones cobradas con actualización por inflación (versión PRO).',
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -95,9 +98,10 @@ class _DisclaimerDialog extends StatelessWidget {
                       iconColor: AppTheme.errorColor,
                       title: 'Esta herramienta NO puede:',
                       items: const [
-                        'Predecir con exactitud cambios futuros en leyes o indicadores económicos.',
-                        'Reemplazar una asesoría financiera personalizada.',
-                        'Garantizar los resultados si hay errores en los datos que ingresas.',
+                        'Garantizar montos exactos: el resultado puede variar (hasta ~10%) y solo se confirma cuando el IMSS valida tus datos.',
+                        'Predecir con exactitud cambios futuros en leyes, tasas o indicadores económicos.',
+                        'Sustituir la asesoría de un profesional ni la resolución oficial del IMSS.',
+                        'Corregir datos equivocados: el resultado depende de la información que captures.',
                       ],
                     ),
                   ],

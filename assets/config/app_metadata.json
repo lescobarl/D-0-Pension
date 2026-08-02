@@ -857,7 +857,7 @@
     "error_color": "#D32F2F"
   },
   "legal_notes": {
-    "pago_retroactivo": "Nota: el monto del pago retroactivo es una proyeccion que considera una tasa promedio de inflacion anual de 4.50% y un factor de recargos de 1.47% mensual (dato vigente en 2024). El calculo exacto puede variar hasta un 10% y se determina cuando se mandan a validar los datos con el IMSS.",
+    "pago_retroactivo": "Nota: el monto del pago retroactivo es una proyeccion que considera una tasa promedio de inflacion anual de 4.50% y un factor de recargos mensual del 1.47% (vigente hasta 2026; 2.07% a partir de 2027). El calculo exacto puede variar hasta un 10% y se determina cuando se mandan a validar los datos con el IMSS.",
     "fact_asig": "Las asignaciones familiares se calculan conforme a la Ley de 1973 del IMSS. El porcentaje de cuantia basica e incrementos se obtienen de la tabla de porcentajes segun el salario en UMAS.",
     "pension_mod40": "El 100% de la pension se otorga a los 65 anos (Vejez). Antes de esa edad se considera Cesantia en Edad Avanzada con porcentajes reducidos.",
     "costo_mod40": "Los costos de Modalidad 40 varian segun el ano y el salario registrado. La tasa de costo sobre salario registrado se actualiza anualmente.",
