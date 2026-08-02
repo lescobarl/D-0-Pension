@@ -510,11 +510,50 @@ class AiChatService extends ChangeNotifier {
       return match.group(1)?.trim();
     }
 
-    // Try to find JSON object directly
-    final jsonRegex = RegExp(r'\{[\s\S]*\}');
-    final jsonMatch = jsonRegex.firstMatch(text);
-    if (jsonMatch != null) {
-      return jsonMatch.group(0);
+    // Try to find a JSON object via balanced-brace scan.
+    return _extractBalancedJson(text);
+  }
+
+  /// Extract the first balanced `{...}` JSON object from [text].
+  ///
+  /// More robust than a greedy regex: it stops at the matching closing brace,
+  /// so trailing prose after the JSON (e.g. "Estos son tus datos actualizados.")
+  /// does not corrupt the parse. Handles nested objects/arrays and strings
+  /// containing braces.
+  String? _extractBalancedJson(String text) {
+    var inString = false;
+    var escape = false;
+    var depth = 0;
+    int? start;
+
+    for (var i = 0; i < text.length; i++) {
+      final ch = text[i];
+
+      if (inString) {
+        if (escape) {
+          escape = false;
+        } else if (ch == r'\') {
+          escape = true;
+        } else if (ch == '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (ch == '"') {
+        inString = true;
+        continue;
+      }
+
+      if (ch == '{') {
+        if (depth == 0) start = i;
+        depth++;
+      } else if (ch == '}') {
+        depth--;
+        if (depth == 0 && start != null) {
+          return text.substring(start, i + 1);
+        }
+      }
     }
 
     return null;

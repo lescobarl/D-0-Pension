@@ -122,3 +122,6 @@ app.*.map.json
 /test/*.py
 /test/*.txt
 /test/find_excel_pension.py
+
+# Golden test failure artifacts (generated when a pixel test fails locally)
+/test/failures/

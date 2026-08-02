@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/ai/api_key_obfuscator.dart';
 import '../../core/ai/fair_use_policy.dart';
+import '../../core/ai/field_extractor.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/error_handler.dart';
 import '../../services/ai_chat_service.dart';
@@ -37,6 +38,7 @@ class _AiChatViewState extends State<AiChatView> {
   bool _initialized = false;
   bool _showUsage = false;
   String? _lastAppliedMessage;
+  bool _lastAppliedIsWarning = false;
 
   String _apiKey = '';
 
@@ -109,21 +111,45 @@ class _AiChatViewState extends State<AiChatView> {
     _textController.clear();
     final result = await _chatService.sendMessage(text);
 
-    if (result is AiFillFields && result.setFields.isNotEmpty) {
-      _lastAppliedMessage =
-          '✅ Datos aplicados: ${result.setFields.length} campo(s) actualizado(s).';
+    if (result is AiFillFields) {
+      if (result.setFields.isNotEmpty) {
+        final details = result.setFields
+            .map((f) =>
+                '• ${FieldExtractor.fieldLabel(f)}: ${_formatAppliedValue(result.values, f)}')
+            .join('\n');
+        _lastAppliedMessage = '✅ Datos aplicados en la calculadora:\n$details';
+        _lastAppliedIsWarning = false;
+      } else {
+        _lastAppliedMessage =
+            '⚠️ No pude aplicar ningún campo. Repítelo claro, por ejemplo: '
+            '"Pon mi edad de retiro en 63 años".';
+        _lastAppliedIsWarning = true;
+      }
       setState(() {});
     } else if (result is AiError) {
       _lastAppliedMessage = '⚠️ ${result.error}';
+      _lastAppliedIsWarning = true;
       setState(() {});
     }
 
     _scrollToBottom();
   }
 
+  String _formatAppliedValue(Map<String, dynamic> values, String field) {
+    final v = FieldExtractor.valueFor(values, field);
+    if (v == null) return 'actualizado';
+    if (v is num) {
+      return v == v.roundToDouble() ? v.toStringAsFixed(0) : '$v';
+    }
+    return '$v';
+  }
+
   Future<void> _startNewSession() async {
     await _chatService.startNewSession();
-    setState(() => _lastAppliedMessage = null);
+    setState(() {
+      _lastAppliedMessage = null;
+      _lastAppliedIsWarning = false;
+    });
     _scrollToBottom();
   }
 
@@ -358,29 +384,36 @@ class _AiChatViewState extends State<AiChatView> {
   // ──────────────────────────────────────────────
 
   Widget _buildAppliedNotification() {
+    final isWarning = _lastAppliedIsWarning;
+    final Color background =
+        isWarning ? Colors.amber.shade50 : Colors.green.shade50;
+    final Color foreground =
+        isWarning ? Colors.orange.shade800 : Colors.green;
+    final IconData icon =
+        isWarning ? Icons.warning_amber_rounded : Icons.check_circle;
     return Card(
-      color: Colors.green.shade50,
+      color: background,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 20),
+            Icon(icon, color: foreground, size: 20),
             const SizedBox(width: 8),
             Expanded(
               child: SelectionArea(
                 child: SelectableText(
                   _lastAppliedMessage!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: AppTheme.fontSizeBody,
-                    color: Colors.green,
+                    color: foreground,
                   ),
                 ),
               ),
             ),
             IconButton(
               onPressed: () => setState(() => _lastAppliedMessage = null),
-              icon: const Icon(Icons.close, color: Colors.green, size: 18),
+              icon: Icon(Icons.close, color: foreground, size: 18),
               tooltip: 'Cerrar aviso',
             ),
           ],
