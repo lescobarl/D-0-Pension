@@ -44,6 +44,9 @@ jobs:
           test/validacion_cambios_recientes_test.dart \
           test/unit/pension_constants_test.dart \
           test/pii_cipher_test.dart \
+          test/theme_golden_test.dart \
+          test/pension_card_golden_test.dart \
+          test/home_tabs_golden_test.dart \
           --timeout 30s
     
     - name: Upload coverage to Codecov

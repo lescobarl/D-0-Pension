@@ -609,6 +609,10 @@ class _CapturaViewState extends State<CapturaView> {
             child: DropdownButton<double>(
               value: multiplier,
               isDense: true,
+              // isExpanded evita el overflow horizontal: el texto seleccionado
+              // se ajusta (con ellipsis) al ancho asignado por el Expanded en
+              // lugar de dimensionarse por su contenido intrínseco.
+              isExpanded: true,
               underline: const SizedBox(),
               items: List.generate(25, (i) => i + 1).map((v) {
                 final val = v.toDouble();
@@ -616,6 +620,7 @@ class _CapturaViewState extends State<CapturaView> {
                   value: val,
                   child: Text(
                     '$v UMAs',
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: AppTheme.fontSizeBody),
                   ),
                 );
