@@ -17,6 +17,14 @@ class PensionConstants {
   static const int maxEdadRetiro = 75;
   static const int minAnoPension = 2020;
   static const int maxAnoPension = 2100;
+
+  // Requisitos legales (Ley del Seguro Social 1973)
+  /// Mínimo de semanas cotizadas para acceder a pensión (Art. 154 y 162 LSS 1973).
+  static const int minSemanasLey73 = 500;
+  /// Edad mínima para Cesantía en Edad Avanzada (Art. 154 LSS 1973).
+  static const int minEdadPensionLey73 = 60;
+  /// Edad para pensión de Vejez al 100% (Art. 162 LSS 1973).
+  static const int edadVejezLey73 = 65;
   
   // Default values
   static const double defaultUmaDiaria = 133.87;
@@ -45,4 +53,8 @@ class PensionConstants {
   static const String errorSemanasInvalid = 'Número de semanas inválido (1-2500)';
   static const String errorEdadInvalid = 'Edad de retiro inválida (60-75)';
   static const String errorAnoInvalid = 'Año de pensión inválido (2020-2100)';
+  static const String errorMinSemanasLey73 =
+      'Se requieren mínimo 500 semanas cotizadas para acceder a pensión (Ley 73, Art. 154/162)';
+  static const String errorEdadRetiroNoAlcanzada =
+      'Debes haber cumplido la edad de retiro seleccionada para que la pensión aplique (Ley 73)';
 }

@@ -153,7 +153,28 @@ class InputValidator {
     
     return ValidationResult.valid();
   }
-  
+
+  /// Calcula la edad actual (años con fracción decimal) entre [fechaNacimiento]
+  /// y [fechaCalculo]. Usa 365.25 días por año para manejar años bisiestos.
+  static double calcularEdadActual(DateTime fechaNacimiento, DateTime fechaCalculo) {
+    if (fechaCalculo.isBefore(fechaNacimiento)) return 0;
+    final days = fechaCalculo.difference(fechaNacimiento).inDays;
+    return days / 365.25;
+  }
+
+  /// Valida el requisito legal de mínimo 500 semanas cotizadas (Ley 73).
+  /// Retorna un [ValidationResult.warning] cuando el mínimo no se cumple, para
+  /// permitir la captura del valor real pero alertar sobre la elegibilidad.
+  static ValidationResult validateMinSemanasLey73(int semanas) {
+    if (semanas < PensionConstants.minSemanasLey73) {
+      return ValidationResult.warning(
+        'Faltan ${PensionConstants.minSemanasLey73 - semanas} semanas para el mínimo '
+        'legal de ${PensionConstants.minSemanasLey73} (Ley 73).',
+      );
+    }
+    return ValidationResult.valid();
+  }
+
   /// Formats a number with thousands separators.
   static String formatNumber(double value) {
     return value.toStringAsFixed(2).replaceAllMapped(

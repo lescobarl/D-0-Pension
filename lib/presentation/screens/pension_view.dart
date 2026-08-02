@@ -143,6 +143,30 @@ class _PensionViewState extends State<PensionView> {
           return const Center(child: CircularProgressIndicator());
         }
 
+        // Bloqueo legal (Ley 73): si no se cumplen las 500 semanas mínimas o
+        // la edad de retiro aún no se alcanza, NO se muestran cálculos.
+        if (!provider.esPensionAplicable) {
+          return Scrollbar(
+            controller: _scrollController,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(1),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildElegibilidadBlocker(provider),
+                  const SizedBox(height: 1),
+                  _buildExpandableAgeTable(provider),
+                  const SizedBox(height: 1),
+                  LegalNoteCard(
+                      note: provider.evaluator.metadata.legalNotes.pensionMod40),
+                ],
+              ),
+            ),
+          );
+        }
+
         final pensionActual = provider.evaluator.metadata.financialRules.pensionActual;
         final pensionConMod40 = provider.pensionMod40Calculation;
         final factAsig = provider.factAsigCalculation;
@@ -769,6 +793,129 @@ class _PensionViewState extends State<PensionView> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Tarjeta bloqueadora que muestra por qué la pensión aún no es aplicable
+  /// según la Ley 73 y cuándo el usuario alcanzará la edad de retiro.
+  Widget _buildElegibilidadBlocker(RetroactiveProvider provider) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: AppTheme.errorColor, width: 1.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.gavel, color: AppTheme.errorColor, size: 28),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Pensión NO aplicable todavía',
+                    style: TextStyle(
+                      fontSize: AppTheme.fontSizeCardTitle,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.errorColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'De acuerdo con la Ley del Seguro Social 1973 (Arts. 154 y 162) '
+              'se requieren mínimo 500 semanas cotizadas y haber cumplido la '
+              'edad de retiro. No se muestran cálculos de pensión porque aún '
+              'no aplican legalmente.',
+              style: TextStyle(
+                  fontSize: AppTheme.fontSizeBody,
+                  color: AppTheme.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            ...provider.requisitosPensionFaltantes.map(
+              (r) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.cancel,
+                        color: AppTheme.errorColor, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        r,
+                        style: const TextStyle(
+                            fontSize: AppTheme.fontSizeBodySmall,
+                            color: AppTheme.textPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Divider(height: 20),
+            _buildFechaElegibilidad(provider),
+            const SizedBox(height: 8),
+            const Text(
+              'Cuando cumplas los requisitos, la app calculará la pensión '
+              'automáticamente.',
+              style: TextStyle(
+                  fontSize: AppTheme.fontSizeBodySmall,
+                  color: AppTheme.textSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Fila con la fecha estimada en la que el usuario alcanzará la edad de
+  /// retiro seleccionada, calculada desde la fecha de nacimiento.
+  Widget _buildFechaElegibilidad(RetroactiveProvider provider) {
+    final edadRetiro = provider.edadRetiro;
+    final nacimiento = provider.fechaNacimiento;
+    final enteros = edadRetiro.floor();
+    final fraccion = edadRetiro - enteros;
+    final fechaEstimada = DateTime(
+      nacimiento.year + enteros,
+      nacimiento.month,
+      nacimiento.day,
+    ).add(Duration(days: (fraccion * 365.25).round()));
+    final anosFaltantes = provider.edadRetiro - provider.edadActual;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.event_available,
+            color: AppTheme.primary, size: 18),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Fecha estimada para alcanzar la edad de retiro',
+                  style: TextStyle(
+                      fontSize: AppTheme.fontSizeBodySmall,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary)),
+              const SizedBox(height: 2),
+              Text(
+                '${_formatDate(fechaEstimada)} '
+                '(te faltan ${anosFaltantes.toStringAsFixed(2)} años)',
+                style: const TextStyle(
+                    fontSize: AppTheme.fontSizeBodySmall,
+                    color: AppTheme.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

@@ -4,6 +4,8 @@ import '../core/models/pension_calculation.dart';
 import '../core/models/periodo_salarial.dart';
 import '../core/models/retroactive_calculation.dart';
 import '../core/utils/error_handler.dart';
+import '../core/utils/input_validator.dart';
+import '../core/utils/pension_constants.dart';
 import 'persistence_service.dart';
 import 'retroactive/periodos_engine.dart';
 import 'retroactive/retroactive_calculator.dart';
@@ -46,6 +48,10 @@ class RetroactiveProvider extends ChangeNotifier {
 
   /// Pensión sin M40 (constante de comparación).
   final double _pensionSinMod40 = 0;
+
+  /// Tolerancia numérica para comparar la edad actual contra la edad de retiro
+  /// (equivale a menos de 1 día y evita falsos negativos por punto flotante).
+  static const double _edadRetiroEpsilon = 0.001;
 
   // --- UI state ---
   bool _isLoading = false;
@@ -100,6 +106,48 @@ class RetroactiveProvider extends ChangeNotifier {
   // --- Fechas ---
   DateTime get fechaCalculo => _inputs.fechaCalculo;
   DateTime get fechaNacimiento => _inputs.fechaNacimiento;
+
+  // --- Elegibilidad legal (Ley 73) ---
+
+  /// Edad actual del usuario (años con fracción decimal), calculada entre
+  /// [fechaNacimiento] y [fechaCalculo].
+  double get edadActual =>
+      InputValidator.calcularEdadActual(_inputs.fechaNacimiento, _inputs.fechaCalculo);
+
+  /// Total de semanas cotizadas (antes Mod40 + en Mod40).
+  int get totalSemanasCotizadas => _inputs.semanasCotizadas;
+
+  /// True si se cumple el mínimo legal de 500 semanas (Art. 154/162 LSS 1973).
+  bool get cumpleMinimoSemanas =>
+      totalSemanasCotizadas >= PensionConstants.minSemanasLey73;
+
+  /// True si el usuario ya alcanzó la edad de retiro seleccionada
+  /// (la edad actual ya es >= a la edad de pensión elegida en el dropdown).
+  bool get cumpleEdadRetiro => edadActual >= _inputs.edadRetiro - _edadRetiroEpsilon;
+
+  /// True si la pensión es aplicable según la Ley 73:
+  /// mínimo 500 semanas cotizadas Y edad de retiro alcanzada.
+  bool get esPensionAplicable => cumpleMinimoSemanas && cumpleEdadRetiro;
+
+  /// Requisitos legales no cumplidos, como mensajes listos para mostrar al usuario.
+  List<String> get requisitosPensionFaltantes {
+    final faltantes = <String>[];
+    if (!cumpleMinimoSemanas) {
+      faltantes.add(
+        'Mínimo 500 semanas cotizadas (actual: $totalSemanasCotizadas). '
+        'Te faltan ${PensionConstants.minSemanasLey73 - totalSemanasCotizadas} semanas.',
+      );
+    }
+    if (!cumpleEdadRetiro) {
+      final faltaEdad = _inputs.edadRetiro - edadActual;
+      faltantes.add(
+        'Edad de retiro ${_inputs.edadRetiro.toStringAsFixed(2)} años no alcanzada '
+        '(edad actual: ${edadActual.toStringAsFixed(2)} años). '
+        'Te faltan ${faltaEdad.toStringAsFixed(2)} años.',
+      );
+    }
+    return faltantes;
+  }
 
   // --- Semanas (desglose) ---
   double get semanasAntesMod40 => _inputs.semanasAntesMod40;

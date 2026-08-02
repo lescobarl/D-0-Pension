@@ -240,6 +240,8 @@ class _CapturaViewState extends State<CapturaView> {
             children: [
               _buildHeader(),
               const SizedBox(height: 1),
+              _buildElegibilidadBanner(provider),
+              const SizedBox(height: 1),
               _buildDatosPersonales(provider),
               const SizedBox(height: 1),
               _buildDatosLaborales(provider),
@@ -435,6 +437,72 @@ class _CapturaViewState extends State<CapturaView> {
     );
   }
 
+  /// Banner de elegibilidad legal (Ley 73). Muestra en tiempo real si la
+  /// pensión es aplicable según mínimo de semanas cotizadas y edad de retiro.
+  Widget _buildElegibilidadBanner(RetroactiveProvider provider) {
+    final aplica = provider.esPensionAplicable;
+    final color = aplica ? AppTheme.successColor : AppTheme.warningColor;
+    final icon = aplica ? Icons.verified_user : Icons.gavel;
+    final titulo = aplica
+        ? 'Pensión aplicable (Ley 73)'
+        : 'La pensión aún NO aplica (Ley 73)';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  titulo,
+                  style: TextStyle(
+                    fontSize: AppTheme.fontSizeBody,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (!aplica) ...[
+            const SizedBox(height: 4),
+            ...provider.requisitosPensionFaltantes.map(
+              (r) => Padding(
+                padding: const EdgeInsets.only(left: 22, bottom: 2),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.cancel_outlined,
+                        size: 13, color: AppTheme.errorColor),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        r,
+                        style: const TextStyle(
+                          fontSize: AppTheme.fontSizeBodySmall,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildDatosLaborales(RetroactiveProvider provider) {
     return Card(
       elevation: 0,
@@ -469,6 +537,9 @@ class _CapturaViewState extends State<CapturaView> {
                     }
                     if (parsed > 5000) {
                       return ValidationResult.warning('Valor muy alto de semanas');
+                    }
+                    if (parsed < PensionConstants.minSemanasLey73) {
+                      return InputValidator.validateMinSemanasLey73(parsed.toInt());
                     }
                     return ValidationResult.valid();
                   }),
@@ -1162,6 +1233,10 @@ class _CapturaViewState extends State<CapturaView> {
   }
 
   Future<void> _saveConfiguration(RetroactiveProvider provider) async {
+    if (!provider.esPensionAplicable) {
+      final confirmar = await _showPensionNoAplicableDialog(provider);
+      if (confirmar != true) return;
+    }
     await provider.persistAll();
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -1170,6 +1245,61 @@ class _CapturaViewState extends State<CapturaView> {
         content: Text('Configuración guardada correctamente'),
         duration: Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  /// Muestra un diálogo de advertencia cuando la pensión aún no es aplicable
+  /// según la Ley 73. Retorna `true` si el usuario confirma guardar de todos
+  /// modos (la configuración se conserva, pero sin prometer una pensión).
+  Future<bool?> _showPensionNoAplicableDialog(RetroactiveProvider provider) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('La pensión aún no aplica (Ley 73)'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'De acuerdo a la Ley del Seguro Social 1973 la pensión no es '
+                'aplicable todavía. Se detectaron los siguientes requisitos '
+                'faltantes:',
+                style: TextStyle(fontSize: AppTheme.fontSizeBody),
+              ),
+              const SizedBox(height: 8),
+              ...provider.requisitosPensionFaltantes.map(
+                (r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          color: AppTheme.warningColor, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(r,
+                            style: const TextStyle(
+                                fontSize: AppTheme.fontSizeBodySmall)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Guardar de todos modos'),
+          ),
+        ],
       ),
     );
   }
