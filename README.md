@@ -27,13 +27,35 @@ commiteadas en [`test/goldens/`](test/goldens/):
 
 ### Regenerar las imágenes
 
+Los baselines son **autoritativos para la plataforma de CI** (ubuntu-latest): el
+rasterizado de texto difiere entre SO (FreeType en Linux vs DirectWrite en
+Windows), por lo que las imágenes deben generarse en el mismo entorno que las
+valida. Tras un cambio visual intencional, regenere con el workflow
+`Update Golden Baselines` ([`.github/workflows/golden-update.yml`](.github/workflows/golden-update.yml))
+y descargue los PNG generados en Linux:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/update_goldens_ci.ps1
+```
+
+El script dispara el workflow, espera a que termine, descarga el artefacto
+`goldens` y copia los PNG en [`test/goldens/`](test/goldens/). Luego haga commit
+de los cambios y el job `test` de CI validará los baselines en modo estricto.
+(`-SkipTrigger` re-descarga el artefacto del run más reciente sin disparar uno
+nuevo.)
+
+Localmente también se pueden regenerar en el SO del desarrollador:
+
 ```sh
 flutter test test/theme_golden_test.dart test/pension_card_golden_test.dart test/home_tabs_golden_test.dart --update-goldens
 ```
 
-Regenerar es **obligatorio** tras cualquier cambio visual intencional; correr los
-tests sin `--update-goldens` valida que no haya cambios de píxel respecto a la
-referencia (falla en cuanto un `RenderFlex` se desborda o cambia un color/tamaño).
+> **Nota cross-platform:** en Windows local los tests golden pueden reportar
+> pequeñas diferencias de píxel (≈0.9%–6.7% por antialiasing/hinting de texto)
+> contra los baselines commiteados, porque fueron generados con el rasterizador
+> de Linux. Es el comportamiento esperado y documentado de los golden tests con
+> texto; la autoridad es el runner ubuntu-latest de CI. Para sincronizar, use el
+> workflow anterior.
 
 ### Sin dependencias externas
 
