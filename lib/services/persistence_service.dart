@@ -175,7 +175,10 @@ class PersistenceService {
       if (raw is String) return PiiCipher.decodeDouble(raw); // v13+ obfuscated
       return defaultValue;
     } catch (e) {
-      debugPrint('[PERSIST] Error reading obfuscated double key=$key: $e — using default=$defaultValue');
+      // Corrupt value (e.g. truncated obfuscated string): self-heal by removing
+      // it so the next read cleanly falls back to the default.
+      debugPrint('[PERSIST] Error reading obfuscated double key=$key: $e — self-healing (removing corrupt value)');
+      _prefs.remove(key);
       return defaultValue;
     }
   }
@@ -191,7 +194,9 @@ class PersistenceService {
       if (raw is String) return PiiCipher.decodeInt(raw); // v13+ obfuscated
       return defaultValue;
     } catch (e) {
-      debugPrint('[PERSIST] Error reading obfuscated int key=$key: $e — using default=$defaultValue');
+      // Corrupt value: self-heal by removing it (see _safeGetEncryptedDouble).
+      debugPrint('[PERSIST] Error reading obfuscated int key=$key: $e — self-healing (removing corrupt value)');
+      _prefs.remove(key);
       return defaultValue;
     }
   }
@@ -206,15 +211,25 @@ class PersistenceService {
       if (raw is String) return PiiCipher.decodeBool(raw); // v13+ obfuscated
       return defaultValue;
     } catch (e) {
-      debugPrint('[PERSIST] Error reading obfuscated bool key=$key: $e — using default=$defaultValue');
+      // Corrupt value: self-heal by removing it (see _safeGetEncryptedDouble).
+      debugPrint('[PERSIST] Error reading obfuscated bool key=$key: $e — self-healing (removing corrupt value)');
+      _prefs.remove(key);
       return defaultValue;
     }
   }
 
   /// Returns true if any persisted data exists (i.e. user has saved before).
+  ///
+  /// Checks every PII key (not a single sentinel) so partial data is detected:
+  /// a user who saved only some fields still counts as having data.
   bool hasAnyData() {
-    // The data version key is always set after migration, so check a real field.
-    return _prefs.containsKey(_keySalarioDiarioPromedio);
+    for (final key in _piiNumericKeys) {
+      if (_prefs.containsKey(key)) return true;
+    }
+    for (final key in _piiBoolKeys) {
+      if (_prefs.containsKey(key)) return true;
+    }
+    return _prefs.containsKey(_keyPeriodos);
   }
 
   /// Clears all persisted data and re-applies the data version stamp.

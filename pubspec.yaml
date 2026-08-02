@@ -16,7 +16,6 @@ dependencies:
   in_app_purchase: ^3.1.11
   in_app_purchase_android: ^0.5.0
   video_player: ^2.10.0
-  crypto: ^3.0.6
   package_info_plus: ^10.2.1
 
 dev_dependencies:

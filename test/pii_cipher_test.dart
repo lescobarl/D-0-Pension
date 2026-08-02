@@ -205,6 +205,50 @@ void main() {
       expect(loaded.length, 1);
       expect(loaded[0].salarioDiario, 1800.0);
     });
+
+    test('hasAnyData detects partial data (no single-key sentinel)', () async {
+      // Sin datos persistidos: false.
+      final empty = await newService();
+      expect(empty.hasAnyData(), isFalse);
+
+      // Un solo campo numérico basta para detectar datos parciales.
+      SharedPreferences.setMockInitialValues({
+        'data_version': 13,
+        'numero_hijos': PiiCipher.encodeInt(2),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final partial = PersistenceService(prefs);
+      expect(partial.hasAnyData(), isTrue,
+          reason: 'con datos parciales (solo numero_hijos) debe detectarse');
+
+      // Un solo campo booleano también cuenta.
+      SharedPreferences.setMockInitialValues({
+        'data_version': 13,
+        'tiene_esposa': PiiCipher.encodeBool(true),
+      });
+      final prefs2 = await SharedPreferences.getInstance();
+      final partial2 = PersistenceService(prefs2);
+      expect(partial2.hasAnyData(), isTrue);
+    });
+
+    test('corrupt obfuscated value self-heals: removed and default returned',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        'data_version': 13,
+        'salario_diario': '!!not-a-valid-obfuscated-value!!',
+        'tiene_esposa': '!!!corrupt-bool!!!',
+      });
+      final service = await newService();
+      final prefs = await SharedPreferences.getInstance();
+
+      // La lectura devuelve el default y auto-sanitiza el valor corrupto.
+      expect(service.loadSalarioDiario(defaultValue: 100.0), 100.0);
+      expect(prefs.containsKey('salario_diario'), isFalse,
+          reason: 'el valor corrupto debe eliminarse al auto-sanitizar');
+
+      expect(service.loadTieneEsposa(defaultValue: true), isTrue);
+      expect(prefs.containsKey('tiene_esposa'), isFalse);
+    });
   });
 
   group('LoginProvider (email PII at rest)', () {
