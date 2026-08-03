@@ -143,29 +143,9 @@ class _PensionViewState extends State<PensionView> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        // Bloqueo legal (Ley 73): si no se cumplen las 500 semanas mínimas o
-        // la edad de retiro aún no se alcanza, NO se muestran cálculos.
-        if (!provider.esPensionAplicable) {
-          return Scrollbar(
-            controller: _scrollController,
-            thumbVisibility: true,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(1),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildElegibilidadBlocker(provider),
-                  const SizedBox(height: 1),
-                  _buildExpandableAgeTable(provider),
-                  const SizedBox(height: 1),
-                  LegalNoteCard(
-                      note: provider.evaluator.metadata.legalNotes.pensionMod40),
-                ],
-              ),
-            ),
-          );
-        }
+        // La pensión SIEMPRE se proyecta a la edad de retiro seleccionada:
+        // no existe bloqueo por edad. La única advertencia (informativa) es
+        // la falta de semanas, que se muestra en _buildProyeccionBanner.
 
         final pensionActual = provider.evaluator.metadata.financialRules.pensionActual;
         final pensionConMod40 = provider.pensionMod40Calculation;
@@ -209,6 +189,10 @@ class _PensionViewState extends State<PensionView> {
                     pensionActualMensual, pensionActualAnual,
                     pensionConMod40Mensual, pensionConMod40Anual,
                     incrementoMensual, incrementoPorcentaje),
+                const SizedBox(height: 1),
+
+                // Banner informativo de proyección (edad de retiro)
+                _buildProyeccionBanner(provider),
                 const SizedBox(height: 1),
 
                 // Pensión Actual + Mod40: Cards and details side by side
@@ -796,14 +780,24 @@ class _PensionViewState extends State<PensionView> {
     );
   }
 
-  /// Tarjeta bloqueadora que muestra por qué la pensión aún no es aplicable
-  /// según la Ley 73 y cuándo el usuario alcanzará la edad de retiro.
-  Widget _buildElegibilidadBlocker(RetroactiveProvider provider) {
+  /// Banner informativo de proyección (Ley 73). Como la app proyecta la
+  /// pensión SIEMPRE a la edad de retiro seleccionada, este banner muestra la
+  /// proyección ("Proyección a los {edad} años (faltan X años)"), la fecha
+  /// estimada para alcanzar la edad de retiro y, en su caso, la advertencia
+  /// NO bloqueante si faltan semanas cotizadas (< 500).
+  Widget _buildProyeccionBanner(RetroactiveProvider provider) {
+    final advertencias = provider.requisitosPensionFaltantes;
+    final tieneAdvertencia = advertencias.isNotEmpty;
+    final color =
+        tieneAdvertencia ? AppTheme.warningColor : AppTheme.primary;
+    final icon = tieneAdvertencia
+        ? Icons.warning_amber_rounded
+        : Icons.schedule;
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppTheme.errorColor, width: 1.5),
+        side: BorderSide(color: color.withValues(alpha: 0.6), width: 1),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -814,62 +808,47 @@ class _PensionViewState extends State<PensionView> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.gavel, color: AppTheme.errorColor, size: 28),
+                Icon(icon, color: color, size: 24),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Pensión NO aplicable todavía',
+                    'Proyección a los ${provider.edadRetiro.toStringAsFixed(0)} años '
+                    '(faltan ${provider.anosFaltantesEdadRetiro.toStringAsFixed(2)} años)',
                     style: TextStyle(
                       fontSize: AppTheme.fontSizeCardTitle,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.errorColor,
+                      color: color,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'De acuerdo con la Ley del Seguro Social 1973 (Arts. 154 y 162) '
-              'se requieren mínimo 500 semanas cotizadas y haber cumplido la '
-              'edad de retiro. No se muestran cálculos de pensión porque aún '
-              'no aplican legalmente.',
-              style: TextStyle(
-                  fontSize: AppTheme.fontSizeBody,
-                  color: AppTheme.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            ...provider.requisitosPensionFaltantes.map(
-              (r) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.cancel,
-                        color: AppTheme.errorColor, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        r,
-                        style: const TextStyle(
-                            fontSize: AppTheme.fontSizeBodySmall,
-                            color: AppTheme.textPrimary),
+            if (tieneAdvertencia) ...[
+              const SizedBox(height: 8),
+              ...advertencias.map(
+                (r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          color: AppTheme.warningColor, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          r,
+                          style: const TextStyle(
+                              fontSize: AppTheme.fontSizeBodySmall,
+                              color: AppTheme.textPrimary),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
             const Divider(height: 20),
             _buildFechaElegibilidad(provider),
-            const SizedBox(height: 8),
-            const Text(
-              'Cuando cumplas los requisitos, la app calculará la pensión '
-              'automáticamente.',
-              style: TextStyle(
-                  fontSize: AppTheme.fontSizeBodySmall,
-                  color: AppTheme.textSecondary),
-            ),
           ],
         ),
       ),

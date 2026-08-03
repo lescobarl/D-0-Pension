@@ -9,11 +9,17 @@ import 'package:d_0_pension/services/retroactive_provider.dart';
 /// Pruebas unitarias de elegibilidad legal de pensión (Ley del Seguro Social
 /// 1973):
 /// - Mínimo 500 semanas cotizadas (Art. 154/162 LSS 1973).
-/// - Edad de retiro alcanzada (Cesantía en Edad Avanzada: 60 años Art. 154;
-///   Vejez al 100%: 65 años Art. 162).
+/// - Edad de retiro (Cesantía en Edad Avanzada: 60 años Art. 154; Vejez al
+///   100%: 65 años Art. 162).
 ///
-/// Incluye el caso real del usuario: 59.51 años de edad, que aún NO permite
-/// pensión (debe cumplir 60).
+/// IMPORTANTE: esta app es una herramienta de PROYECCIÓN. La pensión se
+/// proyecta SIEMPRE a la edad de retiro seleccionada, por lo que la edad
+/// actual NUNCA bloquea el cálculo. El único aviso (informativo, no
+/// bloqueante) es cuando no se alcanzan las 500 semanas mínimas, mismas que
+/// pueden cubrirse vía Modalidad 40.
+///
+/// Incluye el caso real del usuario (59.51 años): la proyección permanece
+/// activa y solo se muestra la advertencia por semanas si corresponde.
 ///
 /// Run with: flutter test test/unit/pension_eligibility_test.dart
 void main() {
@@ -103,8 +109,8 @@ void main() {
     /// Mod40) y `_recalculatePromedioFromPeriodos` re-deriva `semanasEnMod40`
     /// desde esos periodos. Se limpia la lista con `setPeriodos([])` para que
     /// el total cotizado sea exactamente `semanasAntesMod40`.
-    test('Caso usuario (59.51 años, edad retiro 60, 400 semanas) NO aplica',
-        () async {
+    test('400 semanas + 59.51 años: la proyección sigue activa (solo advierte '
+        'por semanas)', () async {
       provider.setFechaNacimiento(DateTime(1966, 5, 15));
       provider.setFechaCalculo(DateTime(2025, 11, 18));
       await provider.setEdadRetiro(60);
@@ -115,12 +121,14 @@ void main() {
       expect(provider.totalSemanasCotizadas, 400);
       expect(provider.cumpleMinimoSemanas, false);
       expect(provider.cumpleEdadRetiro, false);
-      expect(provider.esPensionAplicable, false);
-      expect(provider.requisitosPensionFaltantes.length, 2);
+      // La edad NO bloquea: la única advertencia es por semanas < 500.
+      expect(provider.requisitosPensionFaltantes.length, 1);
+      expect(provider.requisitosPensionFaltantes.first, contains('500'));
+      expect(provider.anosFaltantesEdadRetiro, closeTo(0.49, 0.02));
     });
 
-    test('500 semanas pero 59.51 años: aún NO aplica (falta la edad)',
-        () async {
+    test('500 semanas + 59.51 años: la proyección aplica (la edad nunca '
+        'bloquea)', () async {
       provider.setFechaNacimiento(DateTime(1966, 5, 15));
       provider.setFechaCalculo(DateTime(2025, 11, 18));
       await provider.setEdadRetiro(60);
@@ -130,11 +138,13 @@ void main() {
       expect(provider.totalSemanasCotizadas, 500);
       expect(provider.cumpleMinimoSemanas, true);
       expect(provider.cumpleEdadRetiro, false);
-      expect(provider.esPensionAplicable, false);
-      expect(provider.requisitosPensionFaltantes.length, 1);
+      // La edad no es un requisito faltante: la pensión se proyecta a los 60.
+      expect(provider.requisitosPensionFaltantes, isEmpty);
+      expect(provider.anosFaltantesEdadRetiro, closeTo(0.49, 0.02));
     });
 
-    test('60 años cumplidos + 500 semanas: la pensión SÍ aplica', () async {
+    test('60 años cumplidos + 500 semanas: ya alcanzó la edad de retiro',
+        () async {
       provider.setFechaNacimiento(DateTime(1965, 5, 15));
       provider.setFechaCalculo(DateTime(2025, 5, 15));
       await provider.setEdadRetiro(60);
@@ -144,8 +154,8 @@ void main() {
       expect(provider.totalSemanasCotizadas, 500);
       expect(provider.cumpleMinimoSemanas, true);
       expect(provider.cumpleEdadRetiro, true);
-      expect(provider.esPensionAplicable, true);
       expect(provider.requisitosPensionFaltantes, isEmpty);
+      expect(provider.anosFaltantesEdadRetiro, closeTo(0.0, 0.05));
     });
   });
 }

@@ -437,15 +437,20 @@ class _CapturaViewState extends State<CapturaView> {
     );
   }
 
-  /// Banner de elegibilidad legal (Ley 73). Muestra en tiempo real si la
-  /// pensión es aplicable según mínimo de semanas cotizadas y edad de retiro.
+  /// Banner informativo de PROYECCIÓN (Ley 73). La app es una herramienta de
+  /// proyección: la pensión SIEMPRE se proyecta a la edad de retiro
+  /// seleccionada, por lo que la edad actual nunca bloquea el cálculo. El
+  /// banner muestra la proyección ("Proyección a los {edad} años (faltan X
+  /// años)") y, en su caso, la advertencia NO bloqueante por semanas < 500.
   Widget _buildElegibilidadBanner(RetroactiveProvider provider) {
-    final aplica = provider.esPensionAplicable;
-    final color = aplica ? AppTheme.successColor : AppTheme.warningColor;
-    final icon = aplica ? Icons.verified_user : Icons.gavel;
-    final titulo = aplica
-        ? 'Pensión aplicable (Ley 73)'
-        : 'La pensión aún NO aplica (Ley 73)';
+    final advertencias = provider.requisitosPensionFaltantes;
+    final tieneAdvertencia = advertencias.isNotEmpty;
+    final color = tieneAdvertencia ? AppTheme.warningColor : AppTheme.primary;
+    final icon =
+        tieneAdvertencia ? Icons.warning_amber_rounded : Icons.schedule;
+    final titulo =
+        'Proyección a los ${provider.edadRetiro.toStringAsFixed(0)} años '
+        '(faltan ${provider.anosFaltantesEdadRetiro.toStringAsFixed(2)} años)';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -473,9 +478,9 @@ class _CapturaViewState extends State<CapturaView> {
               ),
             ],
           ),
-          if (!aplica) ...[
+          if (tieneAdvertencia) ...[
             const SizedBox(height: 4),
-            ...provider.requisitosPensionFaltantes.map(
+            ...advertencias.map(
               (r) => Padding(
                 padding: const EdgeInsets.only(left: 22, bottom: 2),
                 child: Row(
@@ -1233,10 +1238,8 @@ class _CapturaViewState extends State<CapturaView> {
   }
 
   Future<void> _saveConfiguration(RetroactiveProvider provider) async {
-    if (!provider.esPensionAplicable) {
-      final confirmar = await _showPensionNoAplicableDialog(provider);
-      if (confirmar != true) return;
-    }
+    // La pensión SIEMPRE se proyecta a la edad de retiro: el guardado nunca
+    // se bloquea por edad ni por semanas.
     await provider.persistAll();
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -1245,61 +1248,6 @@ class _CapturaViewState extends State<CapturaView> {
         content: Text('Configuración guardada correctamente'),
         duration: Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  /// Muestra un diálogo de advertencia cuando la pensión aún no es aplicable
-  /// según la Ley 73. Retorna `true` si el usuario confirma guardar de todos
-  /// modos (la configuración se conserva, pero sin prometer una pensión).
-  Future<bool?> _showPensionNoAplicableDialog(RetroactiveProvider provider) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('La pensión aún no aplica (Ley 73)'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'De acuerdo a la Ley del Seguro Social 1973 la pensión no es '
-                'aplicable todavía. Se detectaron los siguientes requisitos '
-                'faltantes:',
-                style: TextStyle(fontSize: AppTheme.fontSizeBody),
-              ),
-              const SizedBox(height: 8),
-              ...provider.requisitosPensionFaltantes.map(
-                (r) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.error_outline,
-                          color: AppTheme.warningColor, size: 16),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(r,
-                            style: const TextStyle(
-                                fontSize: AppTheme.fontSizeBodySmall)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Guardar de todos modos'),
-          ),
-        ],
       ),
     );
   }

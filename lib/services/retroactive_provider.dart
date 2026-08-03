@@ -123,27 +123,30 @@ class RetroactiveProvider extends ChangeNotifier {
 
   /// True si el usuario ya alcanzó la edad de retiro seleccionada
   /// (la edad actual ya es >= a la edad de pensión elegida en el dropdown).
+  ///
+  /// Es únicamente informativo: la app es una herramienta de PROYECCIÓN, la
+  /// pensión SIEMPRE se proyecta a la edad de retiro sin importar la edad
+  /// actual.
   bool get cumpleEdadRetiro => edadActual >= _inputs.edadRetiro - _edadRetiroEpsilon;
 
-  /// True si la pensión es aplicable según la Ley 73:
-  /// mínimo 500 semanas cotizadas Y edad de retiro alcanzada.
-  bool get esPensionAplicable => cumpleMinimoSemanas && cumpleEdadRetiro;
+  /// Años (con fracción decimal) que faltan para alcanzar la edad de retiro
+  /// seleccionada (negativo si ya se superó). Se usa en los mensajes de
+  /// proyección, p. ej. "Proyección a los 63 años (faltan 5.51 años)".
+  double get anosFaltantesEdadRetiro => _inputs.edadRetiro - edadActual;
 
-  /// Requisitos legales no cumplidos, como mensajes listos para mostrar al usuario.
+  /// Advertencias NO bloqueantes para la proyección de la pensión.
+  ///
+  /// Como la pensión se proyecta SIEMPRE a la edad de retiro, la edad actual
+  /// nunca genera un requisito faltante. La única advertencia informativa
+  /// (que NO impide calcular) es cuando no se alcanzan las 500 semanas
+  /// mínimas (Arts. 154/162 LSS 1973), mismas que pueden cubrirse vía
+  /// Modalidad 40.
   List<String> get requisitosPensionFaltantes {
     final faltantes = <String>[];
     if (!cumpleMinimoSemanas) {
       faltantes.add(
         'Mínimo 500 semanas cotizadas (actual: $totalSemanasCotizadas). '
         'Te faltan ${PensionConstants.minSemanasLey73 - totalSemanasCotizadas} semanas.',
-      );
-    }
-    if (!cumpleEdadRetiro) {
-      final faltaEdad = _inputs.edadRetiro - edadActual;
-      faltantes.add(
-        'Edad de retiro ${_inputs.edadRetiro.toStringAsFixed(2)} años no alcanzada '
-        '(edad actual: ${edadActual.toStringAsFixed(2)} años). '
-        'Te faltan ${faltaEdad.toStringAsFixed(2)} años.',
       );
     }
     return faltantes;
