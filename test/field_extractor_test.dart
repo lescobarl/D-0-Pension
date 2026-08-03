@@ -263,4 +263,57 @@ void main() {
     expect(FieldExtractor.valueFor(values, 'umaDiaria'), 999.99);
     expect(FieldExtractor.valueFor(values, 'numeroPadres'), isNull);
   });
+
+  test('extractRequestedRetirementAge detecta la edad explícita pedida', () {
+    // Positivos: órdenes explícitas de cambiar la edad de retiro.
+    expect(
+      FieldExtractor.extractRequestedRetirementAge(
+          'mueve la edad de pensión a 62 años'),
+      62,
+    );
+    expect(
+      FieldExtractor.extractRequestedRetirementAge(
+          'quiero pensionarme a los 62 años'),
+      62,
+    );
+    expect(
+      FieldExtractor.extractRequestedRetirementAge('cambia la edad a 61'),
+      61,
+    );
+
+    // Negativos: no son órdenes de edición de la edad de retiro.
+    expect(
+      FieldExtractor.extractRequestedRetirementAge('tengo 62 años'),
+      isNull,
+    );
+    expect(
+      FieldExtractor.extractRequestedRetirementAge('mi edad de retiro es 65'),
+      isNull,
+    );
+    expect(FieldExtractor.extractRequestedRetirementAge('nací en 1962'), isNull);
+  });
+
+  test('enforceRequestedAge corrige la edad a la que pidió el usuario', () {
+    // La IA devolvió 63 (contaminada por el ejemplo del prompt) pero el usuario
+    // pidió 62 → se fuerza 62 en lugar del número que devolvió la IA.
+    final corrected = FieldExtractor.enforceRequestedAge(
+      {'edadRetiro': 63},
+      'mueve la edad de pensión a 62 años',
+    );
+    expect(corrected['edadRetiro'], 62);
+
+    // Sin petición explícita de edad → los valores se dejan igual.
+    final unchanged = FieldExtractor.enforceRequestedAge(
+      {'edadRetiro': 63},
+      'mi edad de retiro es 65',
+    );
+    expect(unchanged['edadRetiro'], 63);
+
+    // Corrige también bajo el sinónimo "edad" → edadRetiro.
+    final syn = FieldExtractor.enforceRequestedAge(
+      {'edad': 63},
+      'mueve la edad a 62',
+    );
+    expect(syn['edad'], 62);
+  });
 }

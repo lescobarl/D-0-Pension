@@ -206,6 +206,66 @@ class FieldExtractor {
     return setFields;
   }
 
+  /// If the user's message explicitly asks to change the retirement age to a
+  /// specific value (e.g. "mueve la edad de pensión a 62 años", "quiero
+  /// pensionarme a los 62 años", "cambia la edad a 61"), returns that age.
+  /// Returns `null` when the message does not contain an explicit
+  /// retirement-age edit.
+  static double? extractRequestedRetirementAge(String text) {
+    final normalized = _stripAccents(text.toLowerCase());
+    final match = _requestedRetirementAgePattern.firstMatch(normalized);
+    if (match == null) return null;
+    return double.tryParse(match.group(1)!);
+  }
+
+  /// Corrects the retirement-age value(s) in [values] to the exact number the
+  /// user explicitly requested in [userText]. If the user did not explicitly
+  /// request an age, or [values] contains no retirement-age key, returns
+  /// [values] unchanged.
+  ///
+  /// Deterministic safety net against the AI model echoing a number from its
+  /// prompt example instead of the user's own number (e.g. the model returning
+  /// 63 when the user asked for 62).
+  static Map<String, dynamic> enforceRequestedAge(
+    Map<String, dynamic> values,
+    String userText,
+  ) {
+    final requested = extractRequestedRetirementAge(userText);
+    if (requested == null) return values;
+
+    final corrected = Map<String, dynamic>.from(values);
+    corrected.forEach((rawKey, rawValue) {
+      if (rawValue == null) return;
+      if (_resolveKey(rawKey) == 'edadRetiro') {
+        corrected[rawKey] = requested;
+      }
+    });
+    return corrected;
+  }
+
+  /// Matches explicit retirement-age edit commands in Spanish. The regex runs
+  /// on accent-stripped, lowercased text. Triggers: "edad de pensión/retiro/
+  /// jubilación", "edad", "pensionar(me)". Requires a connector (a/en/hasta/
+  /// al) followed by the age the user explicitly requested.
+  static final RegExp _requestedRetirementAgePattern = RegExp(
+    r'(?:edad\s+de\s+(?:pension|retiro|jubilacion)|edad\s+de\s+pensionarse|edad|pensionar(?:me)?)'
+    r'[^\d]{0,25}?'
+    r'(?:a|en|hasta|al)\s+(?:los\s+)?(\d{2}(?:\.\d+)?)'
+    r'\s*(?:a\w+os)?',
+    caseSensitive: false,
+  );
+
+  /// Lowercase-safe accent stripping (mirrors [_normalizeKey] but preserves
+  /// word boundaries for full-sentence matching).
+  static String _stripAccents(String input) {
+    const accents = {
+      'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n',
+    };
+    var s = input;
+    accents.forEach((k, v) => s = s.replaceAll(k, v));
+    return s;
+  }
+
   /// Return the raw AI value for a canonical field, resolving synonyms.
   ///
   /// Used by the UI to display what value was applied (e.g. after an edit

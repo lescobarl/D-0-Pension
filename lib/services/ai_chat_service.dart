@@ -239,7 +239,11 @@ class AiChatService extends ChangeNotifier {
 
   void _startNewSession() {
     _sessionMessageCount = 0;
-    _dailySessionCount++;
+    // NOTA: aquí ya NO se incrementa _dailySessionCount. Una consulta se
+    // cuenta de forma perezosa en sendMessage(), solo cuando el usuario envía
+    // el primer mensaje de una sesión nueva. Antes, cada apertura de la
+    // pestaña AI (initialize) y cada "Limpiar conversación" (startNewSession)
+    // consumía un cupo diario y bloqueaba al usuario tras pocas interacciones.
     notifyListeners();
   }
 
@@ -249,6 +253,12 @@ class AiChatService extends ChangeNotifier {
 
   /// Send a user message to OpenRouter and process the response.
   Future<AiResponseResult?> sendMessage(String text) async {
+    // Count a consultation lazily: only the first message of a fresh session
+    // consumes a daily slot. Page loads and "Limpiar conversación" do not.
+    if (_sessionMessageCount == 0) {
+      _dailySessionCount++;
+    }
+
     // Check fair use limits
     if (!canSendMessage) {
       _lastError = limitReason;
@@ -292,9 +302,14 @@ class AiChatService extends ChangeNotifier {
 
       // Apply values if it's a fill_fields response
       if (result is AiFillFields) {
-        final setFields = FieldExtractor.applyValues(_provider, result.values);
+        // Guardia determinista: si el usuario pidió explícitamente mover la
+        // edad de retiro a un número concreto (p. ej. "mueve la edad de
+        // pensión a 62 años"), se aplica EXACTAMENTE ese número aunque la IA
+        // devuelva otro (por contaminación del número del ejemplo del prompt).
+        final values = FieldExtractor.enforceRequestedAge(result.values, text);
+        final setFields = FieldExtractor.applyValues(_provider, values);
         final updatedResult = AiFillFields(
-          values: result.values,
+          values: values,
           message: result.message,
           missingFields: result.missingFields,
           setFields: setFields,

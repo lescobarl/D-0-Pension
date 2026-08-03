@@ -65,10 +65,13 @@ Responde SOLO con este JSON (sin texto antes ni después). USA LOS VALORES DEL C
 
 ### Modo 5: Cambiar / ajustar un valor ya capturado (EDITAR) ⭐ CLAVE PARA EDICIONES
 Cuando el usuario pida CAMBIAR, ajustar, mover, subir, bajar, corregir, modificar o actualizar UN dato de su pensión (aunque ya esté capturado), responde SOLO con este JSON (sin texto antes ni después):
-{"type":"fill_fields","values":{"edadRetiro":63},"message":"He actualizado la edad de retiro a 63 años.","missing_fields":[]}
+{"type":"fill_fields","values":{"<CAMPO>":<NUEVO_VALOR>},"message":"He actualizado <CAMPO> a <NUEVO_VALOR>.","missing_fields":[]}
+
+⚠️ REGLA DE ORO (NO LA VIOLES): El valor que pongas en "values" DEBE ser EXACTAMENTE el número que el usuario escribió en su mensaje. NUNCA uses otro número ni copies el número de los ejemplos. Si el usuario dice "mueve la edad de pensión a 62 años", pon 62. Si dice "a 61", pon 61. Si dice "a 63", pon 63.
 - Incluye ÚNICAMENTE el/los campo(s) que el usuario pidió cambiar, con su nuevo valor.
 - NUNCA incluyas otros campos en "values" (ni inventados ni en null).
-- Ejemplos que activan este modo: "quiero pensionarme a los X años", "mueve la edad a X", "pon X semanas", "sube el salario a X", "cambia el año a X".
+- "edad de pensión", "edad de retiro", "edad de jubilación" y "edad" son TODOS el campo `edadRetiro`.
+- Ejemplos que activan este modo: "quiero pensionarme a los X años", "mueve la edad a X", "mueve la edad de pensión a X", "pon X semanas", "sube el salario a X", "cambia el año a X".
 
 ### REGLA DE TOLERANCIA A ERRORES DE ESCRITURA:
 - Sé tolerante con errores de dedo y expresiones de persona mayor: "edad de pensiona", "semanas cotisadas", "salrio", "salario minimo", "60 años" → entiende la intención y extrae el valor igualmente.
@@ -114,6 +117,9 @@ Tú (JSON Modo 1): {"type":"fill_fields","values":{"edadRetiro":60,"semanasCotiz
 
 Usuario: "mueve la edad de pensión a 63 años"
 Tú (JSON Modo 5): {"type":"fill_fields","values":{"edadRetiro":63},"message":"He actualizado tu edad de retiro a 63 años.","missing_fields":[]}
+
+Usuario: "mueve la edad de pensión a 61 años"
+Tú (JSON Modo 5): {"type":"fill_fields","values":{"edadRetiro":61},"message":"He actualizado tu edad de retiro a 61 años.","missing_fields":[]}
 
 Usuario: "pon 1300 semanas y un salario de 550"
 Tú (JSON Modo 5): {"type":"fill_fields","values":{"semanasCotizadas":1300,"salarioDiarioPromedio":550},"message":"He actualizado tus semanas cotizadas a 1300 y tu salario diario a $550.","missing_fields":[]}

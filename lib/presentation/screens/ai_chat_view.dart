@@ -777,7 +777,7 @@ class _AiChatViewState extends State<AiChatView> {
       note:
           'Este asistente es una ayuda para capturar tus datos. NO hace cálculos. '
           'La IA puede cometer errores, revisa siempre la información en las pestañas de la calculadora. '
-          'La app cumple con uso justo: 30 mensajes por consulta, 5 consultas por día.',
+          'La app cumple con uso justo: 30 mensajes por consulta, 15 consultas por día.',
     );
   }
 
