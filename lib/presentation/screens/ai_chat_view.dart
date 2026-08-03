@@ -11,7 +11,6 @@ import '../../core/utils/error_handler.dart';
 import '../../services/ai_chat_service.dart';
 import '../../services/retroactive_provider.dart';
 import '../widgets/legal_note_card.dart';
-import '../widgets/result_row.dart';
 
 /// AI Chat view for conversational pension scenario input.
 ///
@@ -36,7 +35,6 @@ class _AiChatViewState extends State<AiChatView> {
   late AiChatService _chatService;
   int _lastMessageCount = 0;
   bool _initialized = false;
-  bool _showUsage = false;
   String? _lastAppliedMessage;
   bool _lastAppliedIsWarning = false;
 
@@ -191,29 +189,23 @@ class _AiChatViewState extends State<AiChatView> {
 
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(),
-          const SizedBox(height: 12),
-          _buildUsageToggle(),
-          if (_showUsage) ...[
-            const SizedBox(height: 8),
-            _buildUsageCard(),
-          ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           if (_lastAppliedMessage != null) ...[
             _buildAppliedNotification(),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
           ],
           if (messages.isEmpty)
             _buildWelcomeCard()
           else
             _buildConversationCard(messages),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildInputCard(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildLegalNoteCard(),
         ],
       ),
@@ -226,7 +218,7 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingLg),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppTheme.primary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -273,108 +265,6 @@ class _AiChatViewState extends State<AiChatView> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────
-  // Usage toggle button (collapsible)
-  // ──────────────────────────────────────────────
-
-  Widget _buildUsageToggle() {
-    return Card(
-      child: InkWell(
-        onTap: () => setState(() => _showUsage = !_showUsage),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.info_outline,
-                size: AppTheme.fontSizeIcon,
-                color: AppTheme.accent,
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Uso del asistente',
-                  style: TextStyle(
-                    fontSize: AppTheme.fontSizeCardTitle,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primary,
-                  ),
-                ),
-              ),
-              Icon(
-                _showUsage ? Icons.expand_less : Icons.expand_more,
-                color: AppTheme.primary,
-                size: 28,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────
-  // Usage / limits card
-  // ──────────────────────────────────────────────
-
-  Widget _buildUsageCard() {
-    final sessionRemaining = _chatService.sessionMessageRemaining;
-    final dailyRemaining = _chatService.dailyMessageRemaining;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.info_outline,
-                  size: AppTheme.fontSizeIcon,
-                  color: AppTheme.accent,
-                ),
-                const SizedBox(width: 6),
-                const Expanded(
-                  child: Text(
-                    'Uso del asistente',
-                    style: TextStyle(
-                      fontSize: AppTheme.fontSizeCardTitle,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: _startNewSession,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Nueva consulta'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            ResultRow(
-              label: 'Mensajes restantes en esta consulta',
-              value: '$sessionRemaining',
-              valueColor: sessionRemaining <= 5
-                  ? AppTheme.errorColor
-                  : AppTheme.primary,
-              isBold: true,
-            ),
-            ResultRow(
-              label: 'Mensajes restantes hoy',
-              value: '$dailyRemaining',
-              valueColor: dailyRemaining <= 20
-                  ? AppTheme.errorColor
-                  : AppTheme.textPrimary,
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -543,7 +433,7 @@ class _AiChatViewState extends State<AiChatView> {
   Widget _buildConversationCard(List<ChatMessage> messages) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -565,14 +455,24 @@ class _AiChatViewState extends State<AiChatView> {
                     ),
                   ),
                 ),
+                TextButton.icon(
+                  onPressed: _startNewSession,
+                  icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+                  label: const Text('Limpiar conversación'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.errorColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: messages.length + (_chatService.isLoading ? 1 : 0),
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 6),
               itemBuilder: (context, index) {
                 if (index == messages.length && _chatService.isLoading) {
                   return _buildTypingIndicator();
@@ -602,7 +502,7 @@ class _AiChatViewState extends State<AiChatView> {
         if (!isUser) const SizedBox(width: 8),
         Flexible(
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.only(
@@ -624,7 +524,7 @@ class _AiChatViewState extends State<AiChatView> {
                 style: TextStyle(
                   fontSize: AppTheme.fontSizeBody,
                   color: textColor,
-                  height: 1.4,
+                  height: 1.2,
                 ),
                 selectionColor: isUser
                     ? Colors.white.withValues(alpha: 0.35)
@@ -641,9 +541,9 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildAvatar(IconData icon, Color color) {
     return CircleAvatar(
-      radius: 18,
+      radius: 14,
       backgroundColor: color,
-      child: Icon(icon, size: 20, color: Colors.white),
+      child: Icon(icon, size: 16, color: Colors.white),
     );
   }
 
@@ -653,7 +553,7 @@ class _AiChatViewState extends State<AiChatView> {
         _buildAvatar(Icons.smart_toy, AppTheme.primary),
         const SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: AppTheme.backgroundLight,
             borderRadius: const BorderRadius.only(
@@ -708,7 +608,7 @@ class _AiChatViewState extends State<AiChatView> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -732,7 +632,7 @@ class _AiChatViewState extends State<AiChatView> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             if (limitReason != null)
               Container(
                 width: double.infinity,
@@ -771,8 +671,8 @@ class _AiChatViewState extends State<AiChatView> {
             TextField(
               controller: _textController,
               enabled: canSend,
-              maxLines: 4,
-              minLines: 2,
+              maxLines: 3,
+              minLines: 1,
               textInputAction: TextInputAction.newline,
               decoration: InputDecoration(
                 hintText: canSend
@@ -799,14 +699,17 @@ class _AiChatViewState extends State<AiChatView> {
                     width: 2,
                   ),
                 ),
-                contentPadding: const EdgeInsets.all(12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
               ),
               style: const TextStyle(
                 fontSize: AppTheme.fontSizeInput,
                 color: AppTheme.textPrimary,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -819,7 +722,7 @@ class _AiChatViewState extends State<AiChatView> {
                       side: BorderSide(
                         color: AppTheme.accent.withValues(alpha: 0.5),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
                   ),
                 ),
@@ -841,7 +744,7 @@ class _AiChatViewState extends State<AiChatView> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       textStyle: const TextStyle(
                         fontSize: AppTheme.fontSizeBody,
                         fontWeight: FontWeight.bold,
