@@ -315,5 +315,13 @@ void main() {
       'mueve la edad a 62',
     );
     expect(syn['edad'], 62);
+
+    // La IA omitió la edad de retiro → se AGREGA la edad pedida.
+    final added = FieldExtractor.enforceRequestedAge(
+      {'semanasCotizadas': 1300},
+      'mueve la edad a 62',
+    );
+    expect(added['edadRetiro'], 62);
+    expect(added['semanasCotizadas'], 1300);
   });
 }

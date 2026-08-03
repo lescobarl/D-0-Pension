@@ -220,12 +220,14 @@ class FieldExtractor {
 
   /// Corrects the retirement-age value(s) in [values] to the exact number the
   /// user explicitly requested in [userText]. If the user did not explicitly
-  /// request an age, or [values] contains no retirement-age key, returns
-  /// [values] unchanged.
+  /// request an age, returns [values] unchanged.
   ///
   /// Deterministic safety net against the AI model echoing a number from its
   /// prompt example instead of the user's own number (e.g. the model returning
-  /// 63 when the user asked for 62).
+  /// 63 when the user asked for 62), AND against the AI omitting the field
+  /// entirely: if [values] has no key that resolves to `edadRetiro`, the
+  /// requested age is ADDED so the field always ends with the exact number the
+  /// user asked for.
   static Map<String, dynamic> enforceRequestedAge(
     Map<String, dynamic> values,
     String userText,
@@ -234,12 +236,18 @@ class FieldExtractor {
     if (requested == null) return values;
 
     final corrected = Map<String, dynamic>.from(values);
+    var resolved = false;
     corrected.forEach((rawKey, rawValue) {
-      if (rawValue == null) return;
       if (_resolveKey(rawKey) == 'edadRetiro') {
         corrected[rawKey] = requested;
+        resolved = true;
       }
     });
+    // La IA omitió (o mandó null) la edad de retiro → se agrega el número
+    // exacto que el usuario pidió.
+    if (!resolved) {
+      corrected['edadRetiro'] = requested;
+    }
     return corrected;
   }
 
