@@ -114,11 +114,17 @@ class _AiChatViewState extends State<AiChatView> {
   }
 
   Future<void> _sendMessage() async {
-    final text = _textController.text.trim();
-    if (text.isEmpty) return;
+    await _sendText(_textController.text.trim());
+  }
+
+  /// Envía un texto concreto (del campo de entrada, de un chip de ejemplo o de
+  /// una sugerencia de respuesta rápida) a [AiChatService.sendMessage].
+  Future<void> _sendText(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
 
     _textController.clear();
-    final result = await _chatService.sendMessage(text);
+    final result = await _chatService.sendMessage(trimmed);
 
     if (result is AiFillFields) {
       if (result.setFields.isNotEmpty) {
@@ -432,9 +438,12 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildExampleChip(String text) {
     return InkWell(
+      // Los chips de ejemplo ENVÍAN directo el texto (antes solo lo dejaban en
+      // el campo de entrada, obligando al usuario a pulsar Enviar). Así la app
+      // guía con un solo toque.
       onTap: () {
-        _textController.text = text;
         HapticFeedback.selectionClick();
+        _sendText(text);
       },
       borderRadius: BorderRadius.circular(8),
       child: Container(
@@ -542,18 +551,57 @@ class _AiChatViewState extends State<AiChatView> {
                       width: 1,
                     ),
             ),
-            child: SelectionArea(
-              child: SelectableText(
-                message.text,
-                style: TextStyle(
-                  fontSize: AppTheme.fontSizeBody,
-                  color: textColor,
-                  height: 1.2,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SelectionArea(
+                  child: SelectableText(
+                    message.text,
+                    style: TextStyle(
+                      fontSize: AppTheme.fontSizeBody,
+                      color: textColor,
+                      height: 1.2,
+                    ),
+                    selectionColor: isUser
+                        ? Colors.white.withValues(alpha: 0.35)
+                        : Colors.blue.withValues(alpha: 0.3),
+                  ),
                 ),
-                selectionColor: isUser
-                    ? Colors.white.withValues(alpha: 0.35)
-                    : Colors.blue.withValues(alpha: 0.3),
-              ),
+                // Chips de respuesta rápida de la pregunta guiada: viajan con
+                // el mensaje del asistente y se envían con un solo toque.
+                if (!isUser && (message.suggestions?.isNotEmpty ?? false))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final suggestion in message.suggestions!)
+                          ActionChip(
+                            label: Text(
+                              suggestion,
+                              style: const TextStyle(
+                                fontSize: AppTheme.fontSizeBodySmall,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                            backgroundColor: Colors.white,
+                            side: BorderSide(
+                              color: AppTheme.primary.withValues(alpha: 0.4),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            onPressed: _chatService.canSendMessage
+                                ? () => _sendText(suggestion)
+                                : null,
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
         ),

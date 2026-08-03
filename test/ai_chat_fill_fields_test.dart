@@ -279,4 +279,103 @@ void main() {
     expect(harness.provider.semanasCotizadas, 1300);
     harness.service.dispose();
   });
+
+  test(
+      'GUIADA: al enviar semanas+salario, la app pregunta el siguiente dato '
+      '(edadRetiro) con chips, en vez del "¿Falta algún dato?" de la IA',
+      () async {
+    // La IA devuelve el escenario completo pero termina con la pregunta vaga.
+    // La app debe reemplazarla por la guía determinista del siguiente dato.
+    final content = jsonEncode({
+      'type': 'fill_fields',
+      'values': {'semanasCotizadas': 1200, 'salarioDiarioPromedio': 500},
+      'message': 'He encontrado estos datos en tu mensaje. '
+          'Los he llenado en la calculadora. ¿Falta algún dato?',
+      'missing_fields': <String>[],
+    });
+    final mock = MockClient((request) async => openAiResponse(content));
+
+    final harness = await buildHarness(mock);
+    await harness.service.sendMessage(
+        'tengo 1200 semanas cotizadas y mi salario diario es 500');
+    await settle();
+
+    final last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    // El mensaje vago "¿Falta algún dato?" se reemplaza por la pregunta
+    // concreta del SIGUIENTE dato faltante (edad de retiro, primer opcional).
+    expect(last.text, contains('edad'));
+    expect(last.text, isNot(contains('Falta')));
+    expect(last.suggestions, ['60', '62', '65']);
+    harness.service.dispose();
+  });
+
+  test(
+      'GUIADA: turno tras turno la app pregunta un dato a la vez y, al final, '
+      'reemplaza el "¿Falta algún dato?" por el mensaje de listo', () async {
+    final mock = MockClient((request) async {
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      final msgs = body['messages'] as List<dynamic>;
+      final lastUser = msgs
+          .lastWhere((m) => m['role'] == 'user')['content']
+          .toString()
+          .toLowerCase();
+      if (lastUser.contains('semanas')) {
+        return openAiResponse(jsonEncode({
+          'type': 'fill_fields',
+          'values': {'semanasCotizadas': 1200, 'salarioDiarioPromedio': 500},
+          'message': 'Datos capturados.',
+          'missing_fields': <String>[],
+        }));
+      }
+      if (lastUser.contains('62')) {
+        return openAiResponse(jsonEncode({
+          'type': 'fill_fields',
+          'values': {'edadRetiro': 62},
+          'message': 'Edad actualizada.',
+          'missing_fields': <String>[],
+        }));
+      }
+      if (lastUser.contains('esposa')) {
+        return openAiResponse(jsonEncode({
+          'type': 'fill_fields',
+          'values': {'tieneEsposa': true},
+          'message': 'Registrado.',
+          'missing_fields': <String>[],
+        }));
+      }
+      if (lastUser.contains('hijos')) {
+        return openAiResponse(jsonEncode({
+          'type': 'fill_fields',
+          'values': {'numeroHijos': 2},
+          'message': 'Registrado.',
+          'missing_fields': <String>[],
+        }));
+      }
+      // Último turno: la IA termina con la pregunta vaga que ya no aplica.
+      return openAiResponse(jsonEncode({
+        'type': 'fill_fields',
+        'values': {'numeroPadres': 0},
+        'message': 'He encontrado estos datos en tu mensaje. '
+            'Los he llenado en la calculadora. ¿Falta algún dato?',
+        'missing_fields': <String>[],
+      }));
+    });
+
+    final harness = await buildHarness(mock);
+    await harness.service.sendMessage(
+        'tengo 1200 semanas cotizadas y mi salario diario es 500');
+    await harness.service.sendMessage('me pensiono a los 62');
+    await harness.service.sendMessage('sí, tengo esposa');
+    await harness.service.sendMessage('tengo 2 hijos');
+    await harness.service.sendMessage('no tengo padres dependientes');
+    await settle();
+
+    final last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    expect(last.text, contains('¡Listo!'));
+    expect(last.text, isNot(contains('Falta')));
+    expect(last.suggestions, isEmpty);
+    harness.service.dispose();
+  });
 }

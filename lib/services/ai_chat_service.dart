@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/ai/chat_prompt.dart';
 import '../core/ai/fair_use_policy.dart';
 import '../core/ai/field_extractor.dart';
+import '../core/ai/guided_input.dart';
 import 'retroactive_provider.dart';
 
 /// OpenRouter base URL for chat completions.
@@ -20,16 +21,23 @@ class ChatMessage {
   final String text;
   final DateTime timestamp;
 
+  /// Chips de respuesta rápida que acompañan al mensaje del asistente cuando
+  /// la app hace una pregunta guiada (ej. "Sí"/"No", "1"/"2"/"3").
+  /// Solo los mensajes del asistente lo traen; `null` = sin chips.
+  final List<String>? suggestions;
+
   ChatMessage({
     required this.role,
     required this.text,
     DateTime? timestamp,
+    this.suggestions,
   }) : timestamp = timestamp ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
         'role': role,
         'text': text,
         'timestamp': timestamp.toIso8601String(),
+        if (suggestions != null) 'suggestions': suggestions,
       };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -37,6 +45,9 @@ class ChatMessage {
         text: json['text'] as String? ?? '',
         timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ??
             DateTime.now(),
+        suggestions: (json['suggestions'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList(),
       );
 }
 
@@ -121,6 +132,11 @@ class AiChatService extends ChangeNotifier {
   List<ChatMessage> _messages = [];
   bool _isLoading = false;
   String? _lastError;
+
+  // Campos opcionales que ya se han preguntado en la guía determinista (para
+  // no repetirlos). Los obligatorios (semanas/salario) se re-preguntan hasta
+  // que se llenen y no se registran aquí.
+  final Set<String> _guidedFields = {};
 
   // Session tracking
   int _sessionMessageCount = 0;
@@ -239,6 +255,7 @@ class AiChatService extends ChangeNotifier {
 
   void _startNewSession() {
     _sessionMessageCount = 0;
+    _guidedFields.clear();
     // NOTA: aquí ya NO se incrementa _dailySessionCount. Una consulta se
     // cuenta de forma perezosa en sendMessage(), solo cuando el usuario envía
     // el primer mensaje de una sesión nueva. Antes, cada apertura de la
@@ -298,13 +315,6 @@ class AiChatService extends ChangeNotifier {
       // Parse the response
       final result = _parseResponse(responseText);
 
-      // Add assistant message
-      final assistantMsg = ChatMessage(
-        role: 'assistant',
-        text: _getDisplayMessage(result),
-      );
-      _messages.add(assistantMsg);
-
       // Aplicación determinista de valores, INDEPENDIENTE del tipo de
       // respuesta de la IA. Causa raíz del bug de la edad: antes, los valores
       // SOLO se aplicaban cuando la IA devolvía exactamente un objeto
@@ -334,15 +344,41 @@ class AiChatService extends ChangeNotifier {
         guarded['edadRetiro'] = _provider.edadRetiro;
       }
 
+      // ── Guía determinista: la APP decide qué dato falta y pregunta UNO a
+      // la vez (en orden fijo), reemplazando la pregunta vaga "¿Falta algún
+      // dato?" de la IA. La IA propone; la app guía. ──
+      String displayMessage = _getDisplayMessage(result);
+      List<String> suggestions = const <String>[];
+      if (result is AiFillFields || setFields.isNotEmpty) {
+        final guide = GuidedInput.nextGuide(_provider, _guidedFields);
+        if (guide != null) {
+          _guidedFields.add(guide.field);
+          displayMessage = guide.question;
+          suggestions = guide.suggestions;
+        } else if (_containsVagueMissingQuestion(displayMessage)) {
+          displayMessage = '¡Listo! Ya tengo los datos necesarios para '
+              'calcular tu pensión. Revisa los resultados en las pestañas de '
+              'la calculadora.';
+        }
+      }
+
+      // Mensaje del asistente con la pregunta guiada y chips de respuesta
+      // rápida (si el dato lo permite).
+      _messages.add(
+        ChatMessage(
+          role: 'assistant',
+          text: displayMessage,
+          suggestions: suggestions,
+        ),
+      );
+
       // Si la IA no devolvió fill_fields pero el usuario pidió un cambio
       // concreto (y de verdad se aplicó), se envuelve el resultado en
       // AiFillFields para que la UI muestre "✅ Datos aplicados".
       if (result is AiFillFields || setFields.isNotEmpty) {
         final updatedResult = AiFillFields(
           values: guarded,
-          message: result is AiFillFields
-              ? result.message
-              : _getDisplayMessage(result),
+          message: displayMessage,
           missingFields: result is AiFillFields
               ? result.missingFields
               : const <String>[],
@@ -622,6 +658,16 @@ class AiChatService extends ChangeNotifier {
       AiChat r => r.message,
       AiError r => r.error,
     };
+  }
+
+  /// True cuando el mensaje de la IA es la pregunta vaga "¿Falta algún dato?",
+  /// que delega en el usuario en lugar de guiarlo. La app la reemplaza por la
+  /// guía determinista.
+  bool _containsVagueMissingQuestion(String message) {
+    final lower = message.toLowerCase();
+    return lower.contains('falta alg') ||
+        lower.contains('falta algun dato') ||
+        lower.contains('te falta');
   }
 
   // ──────────────────────────────────────────────
