@@ -387,4 +387,79 @@ void main() {
     expect(FieldExtractor.detectRequestedEdits('nací en 1962'), isEmpty);
     expect(FieldExtractor.detectRequestedEdits('tengo 62 años'), isEmpty);
   });
+
+  test('detectRequestedEdits extrae 60.5 crudo; el snap ocurre en el provider',
+      () {
+    // El extractor reporta el número exacto que escribió el usuario; el ajuste
+    // a la rejilla legal [60, 60.51, ..., 65] ocurre en setEdadRetiro.
+    expect(
+      FieldExtractor.detectRequestedEdits('mueve la edad a 60.5 años'),
+      {'edadRetiro': 60.5},
+    );
+  });
+
+  test('setEdadRetiro ajusta (snap) valores fuera de la rejilla legal', () async {
+    final provider = await buildProvider();
+    // Inicializa metadata (dropdown) para que el snap use la rejilla legal;
+    // patrón del ai_chat_fill_fields_test.
+    await provider.initialize();
+    // Grid legal: [60, 60.51, 61, 61.51, ..., 65] — no existe 60.5.
+
+    // Punto de partida en rejilla (62) para que el primer snap sea un cambio
+    // real y no coincida con el default (60.51).
+    await provider.setEdadRetiro(62);
+    await settle();
+    expect(provider.edadRetiro, 62);
+
+    // 60.5 no está en la rejilla; el punto válido más cercano es 60.51
+    // (escenario exacto del bug reportado: dropdown en blanco).
+    await provider.setEdadRetiro(60.5);
+    await settle();
+    expect(provider.edadRetiro, 60.51);
+    expect(provider.availableAgesRetiro, contains(provider.edadRetiro));
+
+    // 61.3 → 61.51 (|61.3-61|=0.3 > |61.3-61.51|=0.21).
+    await provider.setEdadRetiro(61.3);
+    await settle();
+    expect(provider.edadRetiro, 61.51);
+
+    // Fuera de rango → clamp al borde.
+    await provider.setEdadRetiro(59.5);
+    await settle();
+    expect(provider.edadRetiro, 60);
+
+    await provider.setEdadRetiro(65.5);
+    await settle();
+    expect(provider.edadRetiro, 65);
+
+    // Enteros y valores ya en la rejilla no cambian.
+    await provider.setEdadRetiro(62);
+    await settle();
+    expect(provider.edadRetiro, 62);
+
+    await provider.setEdadRetiro(60.51);
+    await settle();
+    expect(provider.edadRetiro, 60.51);
+  });
+
+  test('applyValues ajusta la edad pedida con 60.5 a la rejilla legal',
+      () async {
+    final provider = await buildProvider();
+    await provider.initialize();
+    // Parte de 62 (en rejilla) para que el snap de 60.5 sea un cambio real.
+    await provider.setEdadRetiro(62);
+    await settle();
+
+    final setFields = FieldExtractor.applyValues(provider, {
+      'fechaNacimiento': '1960-05-15',
+      'edadRetiro': 60.5,
+    });
+    await settle();
+
+    expect(setFields, contains('edadRetiro'));
+    // El valor aplicado (post-snap) siempre está en la rejilla, así el
+    // dropdown de Captura nunca se renderiza en blanco.
+    expect(provider.edadRetiro, 60.51);
+    expect(provider.availableAgesRetiro, contains(provider.edadRetiro));
+  });
 }

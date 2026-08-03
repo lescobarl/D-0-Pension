@@ -284,6 +284,11 @@ class AiChatService extends ChangeNotifier {
       _sessionMessageCount++;
       _dailyMessageCount++;
 
+      // Notify immediately so the user's message and the typing indicator
+      // render while the OpenRouter call is in flight. Root fix for the chat
+      // not scrolling down / not showing the user's message until the end.
+      notifyListeners();
+
       // Build conversation messages for OpenRouter (OpenAI format)
       final openAiMessages = _buildOpenAiMessages();
 
@@ -321,6 +326,13 @@ class AiChatService extends ChangeNotifier {
       final guarded = FieldExtractor.enforceRequestedAge(values, text);
 
       final setFields = FieldExtractor.applyValues(_provider, guarded);
+
+      // Sync the "Datos aplicados" notification with the real applied value:
+      // setEdadRetiro snaps off-grid ages (e.g. 60.5 → 60.51), so reflect the
+      // snapped value instead of the raw number the AI echoed.
+      if (setFields.contains('edadRetiro')) {
+        guarded['edadRetiro'] = _provider.edadRetiro;
+      }
 
       // Si la IA no devolvió fill_fields pero el usuario pidió un cambio
       // concreto (y de verdad se aplicó), se envuelve el resultado en

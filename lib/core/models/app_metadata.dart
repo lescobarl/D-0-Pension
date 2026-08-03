@@ -522,6 +522,28 @@ class PensionAgeDropdown {
     ages.add(maxAge.toDouble());
     return ages;
   }
+
+  /// Closest valid age in [availableAges] to [age], clamped to
+  /// [minAge]..[maxAge].
+  ///
+  /// Coerces arbitrary AI/user values (e.g. 60.5) onto the legal grid
+  /// [60, 60.51, ..., 65] so the dropdown never holds an off-grid value that
+  /// would render blank (a `DropdownButton` has no matching item for it).
+  double nearestAge(double age) {
+    final list = availableAges;
+    if (age <= list.first) return list.first;
+    if (age >= list.last) return list.last;
+    var best = list.first;
+    var bestDist = (best - age).abs();
+    for (final a in list) {
+      final d = (a - age).abs();
+      if (d < bestDist) {
+        best = a;
+        bestDist = d;
+      }
+    }
+    return best;
+  }
 }
 
 /// Configuration for the age-rounding rule used by `lookupEdadPorcentaje`.

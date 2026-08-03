@@ -1287,7 +1287,15 @@ class _CapturaViewState extends State<CapturaView> {
   ) {
     final List<double> ages = provider.availableAgesRetiro;
     final rules = provider.evaluator.metadata.financialRules;
-    
+
+    // Resguardo defensivo: si el valor actual quedó fuera de la rejilla legal
+    // (p. ej. 60.5 por datos legacy o una IA que devolvió .5), se ajusta al
+    // punto válido más cercano. Un DropdownButton con un `value` que no tiene
+    // su DropdownMenuItem se renderiza en blanco (o lanza en debug).
+    final safeValue = ages.contains(currentValue)
+        ? currentValue
+        : rules.pensionAgeDropdown.nearestAge(currentValue);
+
     // Helper to get percentage for an age
     String getPercentageText(double age) {
       final edadEntera = rules.edadRoundingRule.roundToInteger(age);
@@ -1328,7 +1336,7 @@ class _CapturaViewState extends State<CapturaView> {
           ),
           alignment: Alignment.centerLeft,
           child: DropdownButton<double>(
-            value: currentValue,
+            value: safeValue,
             isExpanded: true,
             isDense: true,
             underline: const SizedBox(),

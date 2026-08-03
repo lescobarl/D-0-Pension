@@ -250,6 +250,14 @@ class RetroactiveProvider extends ChangeNotifier {
       _inputs.edadRetiro = persistence.loadEdadRetiro(
         defaultValue: defaults.edadRetiro,
       );
+      // Normalize any persisted off-grid age (e.g. legacy 60.5) onto the
+      // legal grid [60, 60.51, ..., 65] so the dropdown never renders blank.
+      final snappedAge =
+          rules.pensionAgeDropdown.nearestAge(_inputs.edadRetiro);
+      if (snappedAge != _inputs.edadRetiro) {
+        _inputs.edadRetiro = snappedAge;
+        persistence.saveEdadRetiro(snappedAge);
+      }
       _inputs.umaMultiplier = persistence.loadUmaMultiplier(
         defaultValue: 25.0,
       );
@@ -677,9 +685,20 @@ class RetroactiveProvider extends ChangeNotifier {
   }
 
   Future<void> setEdadRetiro(double v) async {
-    if (v == _inputs.edadRetiro) return;
-    _inputs.edadRetiro = v;
-    persistence.saveEdadRetiro(v);
+    // Coerce any value onto the legal grid [60, 60.51, ..., 65] so the
+    // dropdown never holds an off-grid age (e.g. 60.5) that renders blank.
+    // Root fix for "Mueve la edad a 60.5 años" → blank in Captura.
+    //
+    // En producción el evaluador siempre está inicializado (provider.initialize()
+    // corre antes que cualquier setter). La guarda solo cubre los unit tests
+    // que ejercen setters sobre un provider sin inicializar.
+    final dropdown = evaluator.isInitialized
+        ? evaluator.metadata.financialRules.pensionAgeDropdown
+        : null;
+    final snapped = dropdown?.nearestAge(v) ?? v;
+    if (snapped == _inputs.edadRetiro) return;
+    _inputs.edadRetiro = snapped;
+    persistence.saveEdadRetiro(snapped);
 
     // Recalculate pensionYear from fechaNacimiento + edadRetiro
     _inputs.pensionYear = _inputs.fechaNacimiento.year + _inputs.edadRetiro.floor();

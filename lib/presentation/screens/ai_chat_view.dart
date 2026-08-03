@@ -34,6 +34,7 @@ class _AiChatViewState extends State<AiChatView> {
   final ScrollController _scrollController = ScrollController();
   late AiChatService _chatService;
   int _lastMessageCount = 0;
+  bool _lastLoading = false;
   bool _initialized = false;
   String? _lastAppliedMessage;
   bool _lastAppliedIsWarning = false;
@@ -73,6 +74,8 @@ class _AiChatViewState extends State<AiChatView> {
     _chatService.initialize().then((_) {
       if (mounted) {
         setState(() => _initialized = true);
+        // Show the most recent messages (or the welcome card) on first load.
+        _scrollToBottom();
       }
     }).catchError((Object e) {
       // Ensure the "Iniciando asistente..." screen is never left hanging.
@@ -93,11 +96,19 @@ class _AiChatViewState extends State<AiChatView> {
   void _onServiceChanged() {
     if (mounted) {
       ErrorHandler.logDebug('AiChatView - Rebuild triggered at ${DateTime.now().toIso8601String()}');
-      if (_chatService.messages.length != _lastMessageCount) {
-        _lastMessageCount = _chatService.messages.length;
+      final count = _chatService.messages.length;
+      final loading = _chatService.isLoading;
+      // React to BOTH the message count and the loading state: the loading
+      // flag flips right after the user sends a message (so their message and
+      // the typing indicator appear immediately) and again when the response
+      // arrives. Each change rebuilds and scrolls to the latest message.
+      if (count != _lastMessageCount || loading != _lastLoading) {
+        _lastMessageCount = count;
+        _lastLoading = loading;
         setState(() {});
+        _scrollToBottom();
       } else {
-        ErrorHandler.logDebug('Skipping rebuild - message count unchanged');
+        ErrorHandler.logDebug('Skipping rebuild - message count and loading unchanged');
       }
     }
   }
