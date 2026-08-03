@@ -211,13 +211,16 @@ class _AiChatViewState extends State<AiChatView> {
                 _buildWelcomeCard()
               else
                 _buildConversationCard(messages),
-              const SizedBox(height: 4),
-              _buildLegalNoteCard(),
             ],
           ),
         ),
         // Entrada fija al fondo: el botón "Enviar" nunca desaparece.
         _buildInputCard(),
+        // Aviso legal fijo al fondo de la página, a lo ancho y en una sola línea.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+          child: _buildLegalNoteCard(),
+        ),
       ],
     );
   }
@@ -770,6 +773,7 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildLegalNoteCard() {
     return const LegalNoteCard(
+      singleLine: true,
       note:
           'Este asistente es una ayuda para capturar tus datos. NO hace cálculos. '
           'La IA puede cometer errores, revisa siempre la información en las pestañas de la calculadora. '

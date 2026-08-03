@@ -9,9 +9,14 @@ import '../../core/theme/app_theme.dart';
 class LegalNoteCard extends StatelessWidget {
   final String note;
 
+  /// Cuando es `true`, el texto se muestra en una sola línea y se ajusta
+  /// (escala) a lo ancho disponible. Útil para barras de aviso fijas al pie.
+  final bool singleLine;
+
   const LegalNoteCard({
     super.key,
     required this.note,
+    this.singleLine = false,
   });
 
   @override
@@ -24,21 +29,43 @@ class LegalNoteCard extends StatelessWidget {
         side: BorderSide(color: AppTheme.accent.withValues(alpha: 0.3)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingMd),
+        padding: EdgeInsets.all(
+          singleLine ? AppTheme.spacingSm : AppTheme.spacingMd,
+        ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              singleLine ? CrossAxisAlignment.center : CrossAxisAlignment.start,
           children: [
-            Icon(Icons.info_outline, size: AppTheme.fontSizeIcon, color: AppTheme.accent),
+            Icon(
+              Icons.info_outline,
+              size: singleLine
+                  ? AppTheme.fontSizeBodySmall
+                  : AppTheme.fontSizeIcon,
+              color: AppTheme.accent,
+            ),
             const SizedBox(width: AppTheme.spacingSm),
             Expanded(
-              child: Text(
-                note,
-                style: const TextStyle(
-                  fontSize: AppTheme.fontSizeBodySmall,
-                  color: AppTheme.textSecondary,
-                  height: 1.4,
-                ),
-              ),
+              child: singleLine
+                  ? FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        note,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          fontSize: AppTheme.fontSizeBodySmall,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      note,
+                      style: const TextStyle(
+                        fontSize: AppTheme.fontSizeBodySmall,
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
             ),
           ],
         ),
