@@ -789,13 +789,19 @@ class _CapturaViewState extends State<CapturaView> {
                   : AppTheme.textHint,
             ),
             const SizedBox(width: 4),
-            Text(
-              periodos.isNotEmpty
-                  ? '${periodos.length} periodos — toca para ver detalle'
-                  : 'Sin periodos — toca para agregar',
-              style: TextStyle(
-                fontSize: AppTheme.fontSizeBodySmall - 1,
-                color: AppTheme.textHint,
+            // Flexible + ellipsis: en pantallas angostas el texto largo del
+            // subtitulo del ExpansionTile NO debe desbordar su renglon.
+            Flexible(
+              child: Text(
+                periodos.isNotEmpty
+                    ? '${periodos.length} periodos — toca para ver detalle'
+                    : 'Sin periodos — toca para agregar',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: AppTheme.fontSizeBodySmall - 1,
+                  color: AppTheme.textHint,
+                ),
               ),
             ),
           ],

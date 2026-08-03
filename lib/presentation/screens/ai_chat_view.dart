@@ -278,33 +278,37 @@ class _AiChatViewState extends State<AiChatView> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'Platícame tu situación y yo lleno los datos de la calculadora.',
-                  style: TextStyle(
-                    fontSize: AppTheme.fontSizeBodySmall,
-                    color: Colors.white70,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                // Limpiar conversación: compacto, alineado a la derecha en el
-                // área del subtítulo del encabezado.
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: _startNewSession,
-                    icon: const Icon(Icons.delete_sweep_outlined, size: 15),
-                    label: const Text('Limpiar conversación'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white70,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                      minimumSize: const Size(0, 28),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      textStyle: const TextStyle(
-                        fontSize: AppTheme.fontSizeBodySmall,
+                // El botón comparte el renglón del subtítulo (sin fila extra),
+                // para no engrosar el encabezado.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Platícame tu situación y yo lleno los datos de la calculadora.',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: AppTheme.fontSizeBodySmall,
+                          color: Colors.white70,
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: AppTheme.spacingSm),
+                    TextButton.icon(
+                      onPressed: _startNewSession,
+                      icon: const Icon(Icons.delete_sweep_outlined, size: 14),
+                      label: const Text('Limpiar conversación'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

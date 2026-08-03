@@ -14,6 +14,12 @@ void main() {
   // pumpWidget. Por eso TODAS las verificaciones de widgets se agrupan en
   // UN solo testWidgets (un único flujo completo por proceso).
   testWidgets('HomeTabs: IA Experta como 4ª pestaña (sin back)', (tester) async {
+    // Superficie de ancho de teléfono (390x844 lógicos) para validar que el
+    // header del chat no desborda en pantallas reales.
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final persistenceService = PersistenceService(prefs);
@@ -58,8 +64,35 @@ void main() {
     // El header del asistente debe estar visible
     expect(find.text('ASISTENTE DE PENSIÓN'), findsOneWidget);
 
+    // El subtítulo y "Limpiar conversación" comparten el MISMO renglón (sin
+    // fila extra que engrose el encabezado) y ambos son visibles sin overflow.
+    final subtitleFinder =
+        find.text('Platícame tu situación y yo lleno los datos de la calculadora.');
+    final buttonFinder = find.text('Limpiar conversación');
+    expect(subtitleFinder, findsOneWidget);
+    expect(buttonFinder, findsOneWidget);
+    // El ancestro Row más cercano del subtítulo ES el renglón del subtítulo
+    // (el texto está dentro de un Expanded); el botón debe ser descendiente
+    // de ese mismo renglón para confirmar que comparten línea.
+    final subtitleRow = find
+        .ancestor(of: subtitleFinder, matching: find.byType(Row))
+        .first;
+    expect(
+      find.descendant(of: subtitleRow, matching: buttonFinder),
+      findsOneWidget,
+    );
+
     // ── Volver a Captura es por pestaña (sin botón back) ──
-    await tester.tap(find.text('Captura'));
+    // En ancho de teléfono (390px) el TabBar es desplazable: al estar en la
+    // última pestaña (IA Experta), "Captura" queda fuera de pantalla. Se
+    // asegura la visibilidad del tab antes de tocar, igual que haría el usuario.
+    final capturaTab = find.descendant(
+      of: find.byType(TabBar),
+      matching: find.text('Captura'),
+    );
+    await tester.ensureVisible(capturaTab);
+    await tester.pumpAndSettle();
+    await tester.tap(capturaTab);
     await tester.pumpAndSettle();
 
     // La pantalla de captura vuelve a estar visible
