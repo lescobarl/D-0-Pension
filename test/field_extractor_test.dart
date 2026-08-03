@@ -115,11 +115,16 @@ void main() {
     expect(provider.salarioPromedio250Semanas, 666.66);
     expect(provider.salarioDiarioPromedio, greaterThanOrEqualTo(0));
 
-    // Semanas: semanasEnMod40 también es derivado de los periodos.
-    expect(provider.semanasAntesMod40, 1000);
-    expect(provider.semanasEnMod40, greaterThanOrEqualTo(0));
-    expect(provider.totalSemanasSinMod40, 900);
+    // Semanas: `semanasCotizadas` es el TOTAL explícito y se aplica al final
+    // (gana). `semanasEnMod40` puede derivarse de los periodos, por lo que el
+    // componente "antes Mod40" se deriva como total - en (invariante
+    // total = antes + en) y `totalSemanasSinMod40` se alinea con antes para
+    // que la guardia de migración no revierta el valor solicitado.
     expect(provider.semanasCotizadas, 1200);
+    expect(provider.semanasEnMod40, greaterThanOrEqualTo(0));
+    expect(provider.semanasAntesMod40 + provider.semanasEnMod40,
+        closeTo(provider.semanasCotizadas.toDouble(), 0.001));
+    expect(provider.totalSemanasSinMod40, provider.semanasAntesMod40.toInt());
 
     // Dependientes.
     expect(provider.tieneEsposa, isTrue);
@@ -130,6 +135,33 @@ void main() {
     expect(provider.costoModalidad40, 45000);
     expect(provider.retroactiveYears, 5);
     expect(provider.pensionMensualMejorada, 25000);
+  });
+
+  test('semanasCotizadas es el TOTAL: fija el total, deriva "antes" y alinea '
+      'totalSemanasSinMod40 (bug: AI dice 1961, captura mostraba 1960)', () async {
+    final provider = await buildProvider();
+
+    // Desglose inicial: antes = 1960, en = 1 (total = 1961).
+    FieldExtractor.applyValues(provider, {
+      'semanasAntesMod40': 1960,
+      'semanasEnMod40': 1,
+    });
+    expect(provider.semanasCotizadas, 1961);
+
+    // El total ya es 1961 y permanece consistente (total = antes + en).
+    FieldExtractor.applyValues(provider, {'semanasCotizadas': 1961});
+    expect(provider.semanasCotizadas, 1961);
+    expect(provider.semanasAntesMod40 + provider.semanasEnMod40,
+        closeTo(1961, 0.001));
+    expect(provider.totalSemanasSinMod40, provider.semanasAntesMod40.toInt());
+
+    // Al subir el total a 2100, el componente "antes" se deriva
+    // (antes = 2100 - en) y el desglose queda consistente.
+    FieldExtractor.applyValues(provider, {'semanasCotizadas': 2100});
+    expect(provider.semanasCotizadas, 2100);
+    expect(provider.semanasAntesMod40 + provider.semanasEnMod40,
+        closeTo(2100, 0.001));
+    expect(provider.totalSemanasSinMod40, provider.semanasAntesMod40.toInt());
   });
 
   test('valores explícitos de UMA/SM ganan sobre las proyecciones de edadRetiro',

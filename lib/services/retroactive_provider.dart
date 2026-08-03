@@ -467,9 +467,21 @@ class RetroactiveProvider extends ChangeNotifier {
 
   void setSemanasCotizadas(int v) {
     if (v == _inputs.semanasCotizadas) return;
+    // `semanasCotizadas` es el TOTAL = semanasAntesMod40 + semanasEnMod40.
+    // Al fijar el total se deriva el componente "antes Mod40" (invariante
+    // total = antes + en) y se alinea `totalSemanasSinMod40` para que la
+    // guardia de migración de initialize() y las rutas de recomputación
+    // (setPeriodos, setSemanasEnMod40, etc.) conserven el valor solicitado en
+    // lugar de revertirlo al desglose anterior.
+    final antesDerivado = (v - _inputs.semanasEnMod40).clamp(0.0, v.toDouble());
+    _inputs.semanasAntesMod40 = antesDerivado.toDouble();
+    persistence.saveSemanasAntesMod40(antesDerivado.toDouble());
+    _inputs.totalSemanasSinMod40 = antesDerivado.toInt();
+    persistence.saveTotalSemanasSinMod40(antesDerivado.toInt());
     _inputs.semanasCotizadas = v;
     persistence.saveSemanasCotizadas(v);
     _calculator.recalcularFactAsig();
+    _calculator.recalcularFactAsigSinMod40();
     _calculator.recalcularPensionMod40();
     _calculator.recalcularInversion();
     notifyListeners();

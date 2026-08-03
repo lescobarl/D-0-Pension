@@ -265,11 +265,11 @@ class _AiChatViewState extends State<AiChatView> {
             child: const Icon(Icons.smart_toy, color: AppTheme.accent, size: 24),
           ),
           const SizedBox(width: AppTheme.spacingMd),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'ASISTENTE DE PENSIÓN',
                   style: TextStyle(
                     fontSize: 20,
@@ -277,12 +277,33 @@ class _AiChatViewState extends State<AiChatView> {
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 2),
-                Text(
+                const SizedBox(height: 2),
+                const Text(
                   'Platícame tu situación y yo lleno los datos de la calculadora.',
                   style: TextStyle(
                     fontSize: AppTheme.fontSizeBodySmall,
                     color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                // Limpiar conversación: compacto, alineado a la derecha en el
+                // área del subtítulo del encabezado.
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _startNewSession,
+                    icon: const Icon(Icons.delete_sweep_outlined, size: 15),
+                    label: const Text('Limpiar conversación'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                      minimumSize: const Size(0, 28),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      textStyle: const TextStyle(
+                        fontSize: AppTheme.fontSizeBodySmall,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -463,25 +484,6 @@ class _AiChatViewState extends State<AiChatView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Botón de limpiar conversación (compacto, alineado a la derecha).
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: _startNewSession,
-                icon: const Icon(Icons.delete_sweep_outlined, size: 15),
-                label: const Text('Limpiar conversación'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.errorColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                  minimumSize: const Size(0, 28),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                  textStyle: const TextStyle(
-                    fontSize: AppTheme.fontSizeBodySmall,
-                  ),
-                ),
-              ),
-            ),
             ...List.generate(
               messages.length + (_chatService.isLoading ? 1 : 0),
               (index) {

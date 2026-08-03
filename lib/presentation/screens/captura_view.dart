@@ -30,7 +30,7 @@ class _CapturaViewState extends State<CapturaView> {
   bool _hasShownLoadMessage = false;
   late TextEditingController _fechaNacimientoController;
   late TextEditingController _salarioPromedio250Controller;
-  late TextEditingController _semanasAntesMod40Controller;
+  late TextEditingController _semanasCotizadasController;
   late TextEditingController _semanasEnMod40Controller;
   late TextEditingController _salarioPromedioController;
   late TextEditingController _fechaInicioMod40Controller;
@@ -62,8 +62,8 @@ class _CapturaViewState extends State<CapturaView> {
     _salarioPromedio250Controller = TextEditingController(
       text: p.salarioPromedio250Semanas.toStringAsFixed(4),
     );
-    _semanasAntesMod40Controller = TextEditingController(
-      text: p.semanasAntesMod40.toString(),
+    _semanasCotizadasController = TextEditingController(
+      text: p.semanasCotizadas.toString(),
     );
     _semanasEnMod40Controller = TextEditingController(
       text: p.semanasEnMod40.toStringAsFixed(4),
@@ -95,7 +95,7 @@ class _CapturaViewState extends State<CapturaView> {
     _fechaCalculoController.dispose();
     _fechaNacimientoController.dispose();
     _salarioPromedio250Controller.dispose();
-    _semanasAntesMod40Controller.dispose();
+    _semanasCotizadasController.dispose();
     _semanasEnMod40Controller.dispose();
     _salarioPromedioController.dispose();
     _fechaInicioMod40Controller.dispose();
@@ -205,7 +205,7 @@ class _CapturaViewState extends State<CapturaView> {
     _setControllerText(_salarioPromedio250Controller, provider.salarioPromedio250Semanas.toStringAsFixed(4));
     _setControllerText(_salarioPromedioController, provider.salarioDiarioPromedio.toStringAsFixed(4));
     _setControllerText(_semanasEnMod40Controller, provider.semanasEnMod40.toStringAsFixed(4));
-    _setControllerText(_semanasAntesMod40Controller, provider.semanasAntesMod40.toStringAsFixed(0));
+    _setControllerText(_semanasCotizadasController, provider.semanasCotizadas.toString());
     _syncPeriodoControllers(provider);
   }
 
@@ -528,9 +528,11 @@ class _CapturaViewState extends State<CapturaView> {
             Row(
               children: [
                 Expanded(
-                  child: _buildValidatedNumberField('Semanas Cotizadas (antes Mod40)', _semanasAntesMod40Controller, (v) {
+                  // El total (antes + en Mod40) es el campo canónico que la IA
+                  // actualiza con "semanas cotizadas"; los componentes se derivan.
+                  child: _buildValidatedNumberField('Semanas Cotizadas', _semanasCotizadasController, (v) {
                     final parsed = double.tryParse(v);
-                    if (parsed != null) provider.setSemanasAntesMod40(parsed);
+                    if (parsed != null) provider.setSemanasCotizadas(parsed.round());
                   }, (value) {
                     if (value.isEmpty) return ValidationResult.valid();
                     final parsed = double.tryParse(value);
@@ -539,6 +541,9 @@ class _CapturaViewState extends State<CapturaView> {
                     }
                     if (parsed < 0) {
                       return ValidationResult.error('No puede ser negativo');
+                    }
+                    if (parsed < provider.semanasEnMod40) {
+                      return ValidationResult.error('No puede ser menor que las semanas en Modalidad 40');
                     }
                     if (parsed > 5000) {
                       return ValidationResult.warning('Valor muy alto de semanas');
