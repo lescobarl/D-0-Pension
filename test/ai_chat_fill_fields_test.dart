@@ -201,4 +201,82 @@ void main() {
     expect(harness.provider.edadRetiro, edadRetiroInicial);
     harness.service.dispose();
   });
+
+  test(
+      'CAUSA RAÍZ: respuesta en texto libre (AiChat) + "mueve la edad de '
+      'pensión a 62 años" SÍ aplica 62 (antes la guardia solo corría si la IA '
+      'devolvía fill_fields)', () async {
+    // La IA responde en texto libre, típico cuando hay historial de
+    // conversación. Sin el detector determinista, esto nunca aplicaba el valor.
+    final mock = MockClient(
+      (request) async =>
+          openAiResponse('He actualizado tu edad de retiro a 62 años.'),
+    );
+
+    final harness = await buildHarness(mock);
+    // Simula un valor previo distinto presente en la conversación.
+    await harness.provider.setEdadRetiro(63);
+    await settle();
+
+    final result =
+        await harness.service.sendMessage('mueve la edad de pensión a 62 años');
+    await settle();
+
+    expect(result, isA<AiFillFields>());
+    final fill = result! as AiFillFields;
+    expect(fill.setFields, contains('edadRetiro'));
+    expect(harness.provider.edadRetiro, 62);
+    harness.service.dispose();
+  });
+
+  test(
+      'respuesta AiChat + "pon 1300 semanas" aplica semanasCotizadas '
+      '(independiente del tipo de respuesta)', () async {
+    final mock = MockClient(
+      (request) async => openAiResponse('He registrado tus semanas cotizadas.'),
+    );
+
+    final harness = await buildHarness(mock);
+    final result = await harness.service.sendMessage('pon 1300 semanas');
+
+    expect(result, isA<AiFillFields>());
+    final fill = result! as AiFillFields;
+    expect(fill.setFields, contains('semanasCotizadas'));
+    expect(harness.provider.semanasCotizadas, 1300);
+    harness.service.dispose();
+  });
+
+  test(
+      'respuesta AiChat + "sube el salario a 500" aplica salarioDiarioPromedio '
+      '(campo derivado: se prueba por setFields)', () async {
+    final mock = MockClient(
+      (request) async => openAiResponse('He actualizado tu salario.'),
+    );
+
+    final harness = await buildHarness(mock);
+    final result = await harness.service.sendMessage('sube el salario a 500');
+
+    expect(result, isA<AiFillFields>());
+    final fill = result! as AiFillFields;
+    expect(fill.setFields, contains('salarioDiarioPromedio'));
+    harness.service.dispose();
+  });
+
+  test(
+      'respuesta AiChat + "tengo 1300 semanas cotizadas" aplica '
+      'semanasCotizadas (número antes del campo)', () async {
+    final mock = MockClient(
+      (request) async => openAiResponse('Perfecto, quedan registradas.'),
+    );
+
+    final harness = await buildHarness(mock);
+    final result =
+        await harness.service.sendMessage('tengo 1300 semanas cotizadas');
+
+    expect(result, isA<AiFillFields>());
+    final fill = result! as AiFillFields;
+    expect(fill.setFields, contains('semanasCotizadas'));
+    expect(harness.provider.semanasCotizadas, 1300);
+    harness.service.dispose();
+  });
 }

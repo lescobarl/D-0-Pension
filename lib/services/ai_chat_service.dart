@@ -300,18 +300,40 @@ class AiChatService extends ChangeNotifier {
       );
       _messages.add(assistantMsg);
 
-      // Apply values if it's a fill_fields response
+      // Aplicación determinista de valores, INDEPENDIENTE del tipo de
+      // respuesta de la IA. Causa raíz del bug de la edad: antes, los valores
+      // SOLO se aplicaban cuando la IA devolvía exactamente un objeto
+      // `fill_fields`; con historial de conversación la IA suele responder en
+      // texto libre (`AiChat`) y la guardia nunca se ejecutaba.
+      //
+      // Regla de oro: el número que el usuario escribió SIEMPRE gana.
+      final requestedEdits = FieldExtractor.detectRequestedEdits(text);
+
+      final values = <String, dynamic>{};
       if (result is AiFillFields) {
-        // Guardia determinista: si el usuario pidió explícitamente mover la
-        // edad de retiro a un número concreto (p. ej. "mueve la edad de
-        // pensión a 62 años"), se aplica EXACTAMENTE ese número aunque la IA
-        // devuelva otro (por contaminación del número del ejemplo del prompt).
-        final values = FieldExtractor.enforceRequestedAge(result.values, text);
-        final setFields = FieldExtractor.applyValues(_provider, values);
+        values.addAll(result.values);
+      }
+      // Las ediciones explícitas del usuario sobreescriben lo que devuelva
+      // la IA (el usuario manda, la IA propone).
+      requestedEdits.forEach((k, v) => values[k] = v);
+      // Guardia específica de edad: cubre frases como "pensionarme a los 62"
+      // (sin la palabra "edad") y agrega la edad si la IA la omite.
+      final guarded = FieldExtractor.enforceRequestedAge(values, text);
+
+      final setFields = FieldExtractor.applyValues(_provider, guarded);
+
+      // Si la IA no devolvió fill_fields pero el usuario pidió un cambio
+      // concreto (y de verdad se aplicó), se envuelve el resultado en
+      // AiFillFields para que la UI muestre "✅ Datos aplicados".
+      if (result is AiFillFields || setFields.isNotEmpty) {
         final updatedResult = AiFillFields(
-          values: values,
-          message: result.message,
-          missingFields: result.missingFields,
+          values: guarded,
+          message: result is AiFillFields
+              ? result.message
+              : _getDisplayMessage(result),
+          missingFields: result is AiFillFields
+              ? result.missingFields
+              : const <String>[],
           setFields: setFields,
         );
         await _saveState();
@@ -368,6 +390,10 @@ class AiChatService extends ChangeNotifier {
       'temperature': 0.2,
       'max_tokens': 1024,
       'top_p': 0.8,
+      // Fuerza JSON estructurado (validado contra OpenRouter/gemini-2.5-flash
+      // -lite en el E2E real): reduce que la IA responda en texto libre
+      // (`AiChat`) en vez del objeto `fill_fields` esperado por el flujo.
+      'response_format': {'type': 'json_object'},
     });
 
     // package:http resolves to BrowserClient (fetch/XHR) on web and
@@ -645,8 +671,6 @@ class AiChatService extends ChangeNotifier {
         'Salario registrado: ${_provider.salarioRegistrado}');
     buf.writeln(
         'Años retroactivos: ${_provider.retroactiveYears}');
-    buf.writeln(
-        'Edad retiro: ${_provider.edadRetiro}');
 
     final fact = _provider.factAsigCalculation;
     final pension = _provider.pensionMod40Calculation;

@@ -251,6 +251,85 @@ class FieldExtractor {
     return corrected;
   }
 
+  /// Detect explicit value edits for ANY canonical field, derived entirely
+  /// from the [_canonicalAliases] synonym table (no per-field hardcoding).
+  ///
+  /// Matches both phrasing directions on accent-stripped lowercase text:
+  /// - `<campo> ... <conector> <número>` ("mueve la edad de pensión a 62",
+  ///   "pon el salario en 500", "cambia las semanas a 1300")
+  /// - `<número> <campo>` ("tengo 1300 semanas cotizadas", "pon 1300 semanas")
+  ///
+  /// Returns `{canonicalField: value}` with `value` as a plain `double`;
+  /// [applyValues] performs the per-field type conversion, keeping this
+  /// detector fully generic. Boolean (`tieneEsposa`) and date fields have no
+  /// numeric target, so they are not detected here (they stay AI-handled).
+  static Map<String, dynamic> detectRequestedEdits(String text) {
+    final normalized = _stripAccents(text.toLowerCase());
+
+    // Recopila (campo canónico, sinónimo, rango) de TODOS los sinónimos que
+    // aparecen en el texto, ordenados del sinónimo más largo al más corto.
+    // Así el más específico ("salario diario promedio") gana sobre el genérico
+    // ("salario") cuando ambos coinciden, y "semanas en mod 40" gana sobre
+    // "semanas".
+    final found = <({String canonical, String synonym, int start, int end})>[];
+    _canonicalAliases.forEach((synonym, canonical) {
+      // Permite espacios entre letras manteniendo límites de palabra
+      // (evita que 'uma' case dentro de 'consuma' o 'fin' dentro de 'definir').
+      final phrase = synonym.split('').join(r'\s*');
+      for (final m
+          in RegExp(r'\b(?:' + phrase + r')\b').allMatches(normalized)) {
+        found.add((
+          canonical: canonical,
+          synonym: synonym,
+          start: m.start,
+          end: m.end,
+        ));
+      }
+    });
+    found.sort((a, b) => b.synonym.length.compareTo(a.synonym.length));
+
+    // Conectores que anuncian el valor objetivo.
+    const connectors = r'(?:a\s+los|a|en|hasta|al)';
+
+    // Un solo valor por campo, del sinónimo más específico que no solape a
+    // otro ya aceptado.
+    final valueFor = <String, dynamic>{};
+    final usedRanges = <({int start, int end})>[];
+    for (final m in found) {
+      final overlaps =
+          usedRanges.any((r) => m.start < r.end && m.end > r.start);
+      if (overlaps) continue;
+      usedRanges.add((start: m.start, end: m.end));
+
+      // Dirección 1: campo → conector → número. Se toma el ÚLTIMO par
+      // "conector + número" tras el campo: "semanas en mod 40 a 1300"
+      // → "a 1300" (no "en 40").
+      final after = normalized.substring(m.end);
+      final valueMatches = RegExp(connectors + r'\s*(\d+(?:\.\d+)?)')
+          .allMatches(after)
+          .toList();
+      if (valueMatches.isNotEmpty) {
+        final value = _tryDouble(valueMatches.last.group(1)!);
+        if (value != null && value > 0) {
+          valueFor[m.canonical] = value;
+          continue;
+        }
+      }
+
+      // Dirección 2: número → campo ("tengo 1300 semanas cotizadas").
+      final before = normalized.substring(0, m.start);
+      final beforeMatch = RegExp(r'(\d+(?:\.\d+)?)\s*$').firstMatch(before);
+      if (beforeMatch != null) {
+        final value = _tryDouble(beforeMatch.group(1)!);
+        if (value != null && value > 0) {
+          valueFor[m.canonical] = value;
+        }
+      }
+    }
+
+    return valueFor;
+  }
+
   /// Matches explicit retirement-age edit commands in Spanish. The regex runs
   /// on accent-stripped, lowercased text. Triggers: "edad de pensión/retiro/
   /// jubilación", "edad", "pensionar(me)". Requires a connector (a/en/hasta/

@@ -324,4 +324,67 @@ void main() {
     expect(added['edadRetiro'], 62);
     expect(added['semanasCotizadas'], 1300);
   });
+
+  test('detectRequestedEdits: campo → conector → número (todas las familias)',
+      () {
+    expect(
+      FieldExtractor.detectRequestedEdits('mueve la edad de pensión a 62 años'),
+      {'edadRetiro': 62},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('cambia las semanas cotizadas a 1300'),
+      {'semanasCotizadas': 1300},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('pon el salario en 500'),
+      {'salarioDiarioPromedio': 500},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('sube los hijos a 2'),
+      {'numeroHijos': 2},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('baja la UMA hasta 108.57'),
+      {'umaDiaria': 108.57},
+    );
+  });
+
+  test('detectRequestedEdits: número → campo ("tengo 1300 semanas cotizadas")',
+      () {
+    expect(
+      FieldExtractor.detectRequestedEdits('tengo 1300 semanas cotizadas'),
+      {'semanasCotizadas': 1300},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('pon 1500 semanas'),
+      {'semanasCotizadas': 1500},
+    );
+  });
+
+  test('detectRequestedEdits: el sinónimo más específico gana', () {
+    expect(
+      FieldExtractor.detectRequestedEdits('semanas en mod 40 a 200'),
+      {'semanasEnMod40': 200},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('salario promedio 250 semanas a 5000'),
+      {'salarioPromedio250Semanas': 5000},
+    );
+    // Regla del último conector: "semanas en mod 40 a 1300" → 1300 (no "en 40").
+    expect(
+      FieldExtractor.detectRequestedEdits('semanas en mod 40 a 1300'),
+      {'semanasEnMod40': 1300},
+    );
+  });
+
+  test('detectRequestedEdits: sin edición explícita → vacío', () {
+    expect(FieldExtractor.detectRequestedEdits('hola'), isEmpty);
+    expect(FieldExtractor.detectRequestedEdits('gracias'), isEmpty);
+    expect(
+      FieldExtractor.detectRequestedEdits('mi edad de retiro es 65'),
+      isEmpty,
+    );
+    expect(FieldExtractor.detectRequestedEdits('nací en 1962'), isEmpty);
+    expect(FieldExtractor.detectRequestedEdits('tengo 62 años'), isEmpty);
+  });
 }
