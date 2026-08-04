@@ -222,7 +222,7 @@ class _AiChatViewState extends State<AiChatView> {
         Expanded(
           child: ListView(
             controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
             children: [
               if (messages.isEmpty)
                 _buildWelcomeCard()
@@ -497,7 +497,7 @@ class _AiChatViewState extends State<AiChatView> {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -505,16 +505,12 @@ class _AiChatViewState extends State<AiChatView> {
               messages.length + (_chatService.isLoading ? 1 : 0),
               (index) {
                 if (index == messages.length && _chatService.isLoading) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 1),
-                    child: _buildTypingIndicator(),
-                  );
+                  return _buildTypingIndicator();
                 }
                 final message = messages[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 1),
-                  child: _buildMessageBubble(message),
-                );
+                // Sin separación vertical entre mensajes: los frames quedan
+                // pegados (solo el relleno interno de 1px de cada burbuja).
+                return _buildMessageBubble(message);
               },
             ),
           ],
@@ -539,7 +535,7 @@ class _AiChatViewState extends State<AiChatView> {
         if (!isUser) const SizedBox(width: 8),
         Flexible(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.only(
@@ -576,7 +572,7 @@ class _AiChatViewState extends State<AiChatView> {
                 // el mensaje del asistente y se envían con un solo toque.
                 if (!isUser && (message.suggestions?.isNotEmpty ?? false))
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: 2),
                     child: Wrap(
                       spacing: 6,
                       runSpacing: 6,
@@ -629,7 +625,7 @@ class _AiChatViewState extends State<AiChatView> {
         _buildAvatar(Icons.smart_toy, AppTheme.primary),
         const SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
           decoration: BoxDecoration(
             color: AppTheme.backgroundLight,
             borderRadius: const BorderRadius.only(
