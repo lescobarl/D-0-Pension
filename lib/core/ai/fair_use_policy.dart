@@ -32,15 +32,16 @@ class FairUsePolicy {
   // ──────────────────────────────────────────────
 
   /// Maximum AI chat sessions per day.
-  /// 15 sessions/day while in testing ("dejado abierto"). Each session counts
-  /// ONLY when the user actually sends its first message — NOT on page load or
-  /// "Limpiar conversación" (those used to consume a daily slot and blocked
-  /// the user after a few page loads).
-  static const int maxSessionsPerDay = 15;
+  /// 999 sessions/day while in testing ("dejado abierto") para que nunca
+  /// bloquee durante las pruebas. Each session counts ONLY when the user
+  /// actually sends its first message — NOT on page load or "Limpiar
+  /// conversación" (those used to consume a daily slot and blocked the user
+  /// after a few page loads).
+  static const int maxSessionsPerDay = 999;
 
   /// Maximum total AI messages per day across all sessions.
-  /// 450 msgs/day = 15 sessions × 30 msgs each.
-  static const int maxMessagesPerDay = 450;
+  /// 9999 msgs/day = 999 sessions × 30 msgs each (nunca bloquea en pruebas).
+  static const int maxMessagesPerDay = 9999;
 
   // ──────────────────────────────────────────────
   // Storage limits

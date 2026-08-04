@@ -662,7 +662,6 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildInputCard() {
     final canSend = _chatService.canSendMessage;
-    final limitReason = _chatService.limitReason;
 
     return Card(
       child: Padding(
@@ -691,41 +690,6 @@ class _AiChatViewState extends State<AiChatView> {
               ],
             ),
             const SizedBox(height: 8),
-            if (limitReason != null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.errorColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppTheme.errorColor.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.warning_amber_rounded,
-                      color: AppTheme.errorColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        limitReason,
-                        style: const TextStyle(
-                          fontSize: AppTheme.fontSizeBodySmall,
-                          color: AppTheme.errorColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             TextField(
               controller: _textController,
               enabled: canSend,
