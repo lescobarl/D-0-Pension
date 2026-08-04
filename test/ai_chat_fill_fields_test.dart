@@ -310,11 +310,11 @@ void main() {
     final last = harness.service.messages.last;
     expect(last.role, 'assistant');
     // El mensaje vago "¿Falta algún dato?" se reemplaza por la pregunta
-    // concreta del SIGUIENTE dato faltante (edad de retiro, primer opcional).
-    expect(last.text, contains('edad'));
+    // concreta del SIGUIENTE dato faltante (fecha de nacimiento, primer
+    // opcional; la fecha no ofrece chips).
+    expect(last.text, contains('fecha'));
     expect(last.text, isNot(contains('Falta')));
-    // Todos los rangos de edad del dropdown como chips.
-    expect(last.suggestions, fullEdadRetiroSuggestions);
+    expect(last.suggestions, isEmpty);
     harness.service.dispose();
   });
 
@@ -360,6 +360,14 @@ void main() {
           'missing_fields': <String>[],
         }));
       }
+      if (lastUser.contains('uma')) {
+        return openAiResponse(jsonEncode({
+          'type': 'fill_fields',
+          'values': {'umaMultiplier': 20},
+          'message': 'Multiplicador actualizado.',
+          'missing_fields': <String>[],
+        }));
+      }
       // Último turno: la IA termina con la pregunta vaga que ya no aplica.
       return openAiResponse(jsonEncode({
         'type': 'fill_fields',
@@ -377,6 +385,10 @@ void main() {
     await harness.service.sendMessage('sí, tengo esposa');
     await harness.service.sendMessage('tengo 2 hijos');
     await harness.service.sendMessage('no tengo padres dependientes');
+    await harness.service.sendMessage('usa un multiplicador de uma de 20');
+    // Con los 6 opcionales ya marcados, el siguiente turno que toca la IA con
+    // la pregunta vaga hace que nextGuide devuelva null → mensaje de ¡Listo!.
+    await harness.service.sendMessage('listo, eso es todo');
     await settle();
 
     final last = harness.service.messages.last;
@@ -412,10 +424,10 @@ void main() {
     final last = harness.service.messages.last;
     expect(last.role, 'assistant');
     // Con los defaults sembrados (semanas/salario > 0) el primer dato
-    // pendiente es la edad de retiro (primer opcional aún no preguntado).
-    expect(last.text, contains('edad'));
-    // Todos los rangos de edad del dropdown como chips.
-    expect(last.suggestions, fullEdadRetiroSuggestions);
+    // pendiente es la fecha de nacimiento (primer opcional aún no preguntado;
+    // la fecha no ofrece chips).
+    expect(last.text, contains('fecha'));
+    expect(last.suggestions, isEmpty);
     harness.service.dispose();
   });
 
@@ -463,10 +475,14 @@ void main() {
     final harness = await buildHarness(mock);
     await harness.service
         .sendMessage('Ayúdame a llenar mi cálculo de pensión, cuentas conmigo');
+    // Orden de los opcionales: fechaNacimiento → edadRetiro → esposa → hijos →
+    // padres → umaMultiplier.
+    await harness.service.sendMessage('05/03/1975');
     await harness.service.sendMessage('62');
     await harness.service.sendMessage('sí');
     await harness.service.sendMessage('2');
     await harness.service.sendMessage('ninguno');
+    await harness.service.sendMessage('20');
     await settle();
 
     // El flujo termina con el mensaje de listo sin pasar por la IA.
@@ -477,10 +493,14 @@ void main() {
     // No consumió cupo de sesión diaria (todo local).
     expect(harness.service.dailySessionCount, 0);
     // Los valores quedaron aplicados en el proveedor.
+    expect(harness.provider.fechaNacimiento.year, 1975);
+    expect(harness.provider.fechaNacimiento.month, 3);
+    expect(harness.provider.fechaNacimiento.day, 5);
     expect(harness.provider.edadRetiro, 62);
     expect(harness.provider.tieneEsposa, isTrue);
     expect(harness.provider.numeroHijos, 2);
     expect(harness.provider.numeroPadres, 0);
+    expect(harness.provider.umaMultiplier, 20);
     harness.service.dispose();
   });
 
@@ -494,14 +514,27 @@ void main() {
     final harness = await buildHarness(mock);
     await harness.service
         .sendMessage('Ayúdame a llenar mi cálculo de pensión, cuentas conmigo');
+    // Primera pregunta guiada = fechaNacimiento: una respuesta no interpretable
+    // vuelve a preguntar la fecha (sin chips).
     await harness.service.sendMessage('quizás más adelante');
     await settle();
 
-    final last = harness.service.messages.last;
+    var last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    expect(last.text, contains('No entendí tu respuesta'));
+    expect(last.text, contains('fecha'));
+    expect(last.suggestions, isEmpty);
+
+    // Tras dar la fecha, toca edadRetiro: una edad no interpretable se vuelve
+    // a preguntar con TODAS las edades del dropdown como chips.
+    await harness.service.sendMessage('05/03/1975');
+    await harness.service.sendMessage('quizás más adelante');
+    await settle();
+
+    last = harness.service.messages.last;
     expect(last.role, 'assistant');
     expect(last.text, contains('No entendí tu respuesta'));
     expect(last.text, contains('edad'));
-    // La pregunta se repite con las mismas opciones completas del dropdown.
     expect(last.suggestions, fullEdadRetiroSuggestions);
     harness.service.dispose();
   });

@@ -9,12 +9,14 @@ import '../../services/retroactive_provider.dart';
 /// respuestas cortas, ofrece chips de respuesta rápida.
 ///
 /// ## Orden de prioridad
-/// 1. `semanasCotizadas`  → obligatorio (sentinel 0 = falta)
+/// 1. `semanasCotizadas`    → obligatorio (sentinel 0 = falta)
 /// 2. `salarioDiarioPromedio` → obligatorio (sentinel 0 = falta)
-/// 3. `edadRetiro`        → se pregunta una sola vez
-/// 4. `tieneEsposa`       → se pregunta una sola vez
-/// 5. `numeroHijos`       → se pregunta una sola vez
-/// 6. `numeroPadres`      → se pregunta una sola vez
+/// 3. `fechaNacimiento`     → se pregunta una sola vez (clave para edad/pensión)
+/// 4. `edadRetiro`          → se pregunta una sola vez
+/// 5. `tieneEsposa`         → se pregunta una sola vez
+/// 6. `numeroHijos`         → se pregunta una sola vez
+/// 7. `numeroPadres`        → se pregunta una sola vez
+/// 8. `umaMultiplier`       → se pregunta una sola vez (salario en Modalidad 40)
 ///
 /// Los campos obligatorios se vuelven a preguntar mientras sigan en 0; los
 /// opcionales solo una vez (marcados en [requested] por el servicio).
@@ -41,7 +43,14 @@ class GuidedInput {
 
     // ── Opcionales (se preguntan una sola vez) ──
     for (final field
-        in const ['edadRetiro', 'tieneEsposa', 'numeroHijos', 'numeroPadres']) {
+        in const [
+      'fechaNacimiento',
+      'edadRetiro',
+      'tieneEsposa',
+      'numeroHijos',
+      'numeroPadres',
+      'umaMultiplier',
+    ]) {
       if (!requested.contains(field)) {
         return _guideFor(field, provider);
       }
@@ -69,6 +78,13 @@ class GuidedInput {
               '(por ejemplo, \$500)',
           suggestions: const <String>[],
         );
+      case 'fechaNacimiento':
+        return (
+          field: field,
+          question: 'Para calcular tu edad y elegibilidad necesito tu fecha '
+              'de nacimiento. ¿En qué fecha naciste? (por ejemplo, 05/03/1975)',
+          suggestions: const <String>[],
+        );
       case 'edadRetiro':
         return (
           field: field,
@@ -94,6 +110,13 @@ class GuidedInput {
           field: field,
           question: '¿Cuántos padres dependen de ti?',
           suggestions: const <String>['0', '1', '2'],
+        );
+      case 'umaMultiplier':
+        return (
+          field: field,
+          question: '¿Qué multiplicador de UMA quieres usar para tu salario '
+              'en Modalidad 40? (de 1 a 25, por ejemplo 25)',
+          suggestions: const <String>['25', '20', '15'],
         );
       default:
         return (
@@ -136,6 +159,12 @@ class GuidedInput {
         provider.setSalarioDiarioPromedio(v);
         return (ok: true, setFields: ['salarioDiarioPromedio']);
 
+      case 'fechaNacimiento':
+        final date = _extractDate(text);
+        if (date == null) return null;
+        provider.setFechaNacimiento(date);
+        return (ok: true, setFields: ['fechaNacimiento']);
+
       case 'edadRetiro':
         final v = _extractNum(text);
         if (v == null || v < 60 || v > 65) return null;
@@ -165,6 +194,12 @@ class GuidedInput {
         if (v == null || v < 0 || v > 10) return null;
         provider.setNumeroPadres(v);
         return (ok: true, setFields: ['numeroPadres']);
+
+      case 'umaMultiplier':
+        final v = _extractNum(text);
+        if (v == null || v < 1 || v > 25) return null;
+        provider.setUmaMultiplier(v);
+        return (ok: true, setFields: ['umaMultiplier']);
 
       default:
         return null;
@@ -196,6 +231,94 @@ class GuidedInput {
   static int? _extractInt(String text) {
     final m = RegExp(r'-?\d+').firstMatch(text);
     return m == null ? null : int.tryParse(m.group(0)!);
+  }
+
+  /// Fecha en [text] admitiendo dd/mm/aaaa, dd-mm-aaaa, dd.mm.aaaa, aaaa-mm-dd
+  /// y nombres de mes en español ("5 de marzo de 1975"). Devuelve `null` si no
+  /// se reconoce una fecha válida, en el pasado y con edad plausible (18-100).
+  static DateTime? _extractDate(String text) {
+    final trimmed = text.trim();
+
+    // aaaa-mm-dd (ISO) PRIMERO: evita que "1975-03-05" se malinterprete como
+    // dd/mm/aaaa (el patrón dd/mm leería día 19, mes 75 y rechazaría la fecha).
+    final iso = RegExp(r'^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$')
+        .firstMatch(trimmed);
+    if (iso != null) {
+      return _validDate(
+        int.tryParse(iso.group(1)!),
+        int.tryParse(iso.group(2)!),
+        int.tryParse(iso.group(3)!),
+      );
+    }
+
+    // dd/mm/aaaa, dd-mm-aaaa, dd.mm.aaaa
+    // Los grupos del patrón son (día, mes, año); _validDate espera
+    // (año, mes, día), por lo que se reordenan.
+    final dmy =
+        RegExp(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$').firstMatch(trimmed);
+    if (dmy != null) {
+      return _validDate(
+        int.tryParse(dmy.group(3)!),
+        int.tryParse(dmy.group(2)!),
+        int.tryParse(dmy.group(1)!),
+      );
+    }
+
+    // "5 de marzo de 1975", "5 de Marzo del 1975"
+    const months = <String, int>{
+      'enero': 1,
+      'febrero': 2,
+      'marzo': 3,
+      'abril': 4,
+      'mayo': 5,
+      'junio': 6,
+      'julio': 7,
+      'agosto': 8,
+      'septiembre': 9,
+      'setiembre': 9,
+      'octubre': 10,
+      'noviembre': 11,
+      'diciembre': 12,
+    };
+    final named = RegExp(
+      r'(\d{1,2})\s+(?:de\s+)?([a-záéíóúñ]+)(?:\s+de\s+|\s+del\s+)?(\d{4})',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (named != null) {
+      final month = months[named.group(2)!.toLowerCase()];
+      if (month != null) {
+        // Los grupos del patrón son (día, mes, año); _validDate espera
+        // (año, mes, día), por lo que se reordenan.
+        return _validDate(
+          int.tryParse(named.group(3)!),
+          month,
+          int.tryParse(named.group(1)!),
+        );
+      }
+    }
+
+    return null;
+  }
+
+  /// Fecha válida, en el pasado y con edad plausible (18-100), o `null`.
+  static DateTime? _validDate(int? year, int? month, int? day) {
+    if (year == null || month == null || day == null) return null;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    final date = DateTime(year, month, day);
+    // DateTime normaliza fechas inválidas (p. ej. 31/02 → 03/03); se verifica
+    // que el día y mes coincidan con lo ingresado.
+    if (date.year != year || date.month != month || date.day != day) {
+      return null;
+    }
+    final now = DateTime.now();
+    if (date.isAfter(now)) return null;
+    var age = now.year - date.year;
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
+      age--;
+    }
+    if (age < 18 || age > 100) return null;
+    return date;
   }
 
   /// Conteo en [text] admitiendo dígitos y palabras en español: primero dígito,
