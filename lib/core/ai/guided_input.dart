@@ -9,17 +9,22 @@ import '../../services/retroactive_provider.dart';
 /// respuestas cortas, ofrece chips de respuesta rápida.
 ///
 /// ## Orden de prioridad
-/// 1. `semanasCotizadas`    → obligatorio (sentinel 0 = falta)
-/// 2. `salarioDiarioPromedio` → obligatorio (sentinel 0 = falta)
-/// 3. `fechaNacimiento`     → se pregunta una sola vez (clave para edad/pensión)
-/// 4. `edadRetiro`          → se pregunta una sola vez
-/// 5. `tieneEsposa`         → se pregunta una sola vez
-/// 6. `numeroHijos`         → se pregunta una sola vez
-/// 7. `numeroPadres`        → se pregunta una sola vez
-/// 8. `umaMultiplier`       → se pregunta una sola vez (salario en Modalidad 40)
+/// 1. `semanasCotizadas`          → vital: se pregunta SIEMPRE una vez por sesión
+/// 2. `salarioPromedio250Semanas` → vital: se pregunta SIEMPRE una vez por sesión
+/// 3. `semanasEnMod40`            → vital: se pregunta SIEMPRE una vez por sesión
+///                                  (número o "por fechas": inicio/fin)
+/// 4. `salarioDiarioPromedio`     → respaldo (solo si sigue en 0)
+/// 5. `fechaNacimiento`           → se pregunta una sola vez (clave edad/pensión)
+/// 6. `edadRetiro`                → se pregunta una sola vez
+/// 7. `tieneEsposa`               → se pregunta una sola vez
+/// 8. `numeroHijos`               → se pregunta una sola vez
+/// 9. `numeroPadres`              → se pregunta una sola vez
+/// 10. `umaMultiplier`            → se pregunta una sola vez (salario Mod40)
 ///
-/// Los campos obligatorios se vuelven a preguntar mientras sigan en 0; los
-/// opcionales solo una vez (marcados en [requested] por el servicio).
+/// Todos los campos se preguntan una sola vez por sesión (marcados en
+/// [requested] por el servicio). Los datos vitales se preguntan SIEMPRE aunque
+/// el proveedor ya tenga un valor precargado por defecto (se ignoran los
+/// defaults sembrados).
 class GuidedInput {
   GuidedInput._();
 
@@ -33,11 +38,24 @@ class GuidedInput {
     RetroactiveProvider provider,
     Set<String> requested,
   ) {
-    // ── Obligatorios (sentinel > 0) ──
-    if (provider.semanasCotizadas <= 0) {
-      return _guideFor('semanasCotizadas', provider);
+    // ── Datos vitales: se preguntan SIEMPRE una vez por sesión, aunque el
+    // proveedor ya tenga un valor precargado por defecto (se ignoran los
+    // defaults) ──
+    for (final field
+        in const [
+      'semanasCotizadas',
+      'salarioPromedio250Semanas',
+      'semanasEnMod40',
+    ]) {
+      if (!requested.contains(field)) {
+        return _guideFor(field, provider);
+      }
     }
-    if (provider.salarioDiarioPromedio <= 0) {
+
+    // ── Respaldo: salario diario promedio (solo si sigue en 0 y aún no se ha
+    // preguntado) ──
+    if (provider.salarioDiarioPromedio <= 0 &&
+        !requested.contains('salarioDiarioPromedio')) {
       return _guideFor('salarioDiarioPromedio', provider);
     }
 
@@ -76,6 +94,35 @@ class GuidedInput {
           field: field,
           question: '¿Cuál es tu salario diario aproximado? '
               '(por ejemplo, \$500)',
+          suggestions: const <String>[],
+        );
+      case 'salarioPromedio250Semanas':
+        return (
+          field: field,
+          question: 'Para el cálculo necesito tu salario promedio de las '
+              'últimas 250 semanas. ¿Cuál es? (por ejemplo, 1300)',
+          suggestions: const <String>[],
+        );
+      case 'semanasEnMod40':
+        return (
+          field: field,
+          question: '¿Cuántas semanas estás cotizando en Modalidad 40? '
+              'Responde con un número (por ejemplo, 130) o escribe '
+              '"por fechas" para capturarlas con fecha de inicio y fin.',
+          suggestions: const <String>['Por fechas'],
+        );
+      case 'm40StartDate':
+        return (
+          field: field,
+          question: '¿Desde qué fecha estás en Modalidad 40? '
+              '(por ejemplo, 01/01/2010)',
+          suggestions: const <String>[],
+        );
+      case 'm40EndDate':
+        return (
+          field: field,
+          question: '¿Hasta qué fecha estás en Modalidad 40? '
+              '(por ejemplo, 31/12/2020)',
           suggestions: const <String>[],
         );
       case 'fechaNacimiento':
@@ -141,7 +188,8 @@ class GuidedInput {
   /// Devuelve `null` cuando la respuesta no se pudo interpretar (el llamador
   /// debe volver a preguntar el mismo dato). Devuelve el record con `ok=true`
   /// y la lista de campos aplicados cuando sí se pudo aplicar.
-  static Future<({bool ok, List<String> setFields})?> applyAnswer(
+  static Future<({bool ok, List<String> setFields, String? nextField})?>
+      applyAnswer(
     RetroactiveProvider provider,
     String field,
     String text,
@@ -151,35 +199,39 @@ class GuidedInput {
         final v = _extractInt(text);
         if (v == null || v <= 0) return null;
         provider.setSemanasCotizadas(v);
-        return (ok: true, setFields: ['semanasCotizadas']);
+        return (ok: true, setFields: ['semanasCotizadas'], nextField: null);
 
       case 'salarioDiarioPromedio':
         final v = _extractNum(text);
         if (v == null || v <= 0) return null;
         provider.setSalarioDiarioPromedio(v);
-        return (ok: true, setFields: ['salarioDiarioPromedio']);
+        return (
+          ok: true,
+          setFields: ['salarioDiarioPromedio'],
+          nextField: null,
+        );
 
       case 'fechaNacimiento':
         final date = _extractDate(text);
         if (date == null) return null;
         provider.setFechaNacimiento(date);
-        return (ok: true, setFields: ['fechaNacimiento']);
+        return (ok: true, setFields: ['fechaNacimiento'], nextField: null);
 
       case 'edadRetiro':
         final v = _extractNum(text);
         if (v == null || v < 60 || v > 65) return null;
         await provider.setEdadRetiro(v);
-        return (ok: true, setFields: ['edadRetiro']);
+        return (ok: true, setFields: ['edadRetiro'], nextField: null);
 
       case 'tieneEsposa':
         final lower = text.toLowerCase();
         if (RegExp(r'\bno\b|false|solter|divorci').hasMatch(lower)) {
           provider.setTieneEsposa(false);
-          return (ok: true, setFields: ['tieneEsposa']);
+          return (ok: true, setFields: ['tieneEsposa'], nextField: null);
         }
         if (RegExp(r's[ií]|true|casad|esposa|c[oó]nyuge').hasMatch(lower)) {
           provider.setTieneEsposa(true);
-          return (ok: true, setFields: ['tieneEsposa']);
+          return (ok: true, setFields: ['tieneEsposa'], nextField: null);
         }
         return null;
 
@@ -187,19 +239,63 @@ class GuidedInput {
         final v = _extractCount(text);
         if (v == null || v < 0 || v > 20) return null;
         provider.setNumeroHijos(v);
-        return (ok: true, setFields: ['numeroHijos']);
+        return (ok: true, setFields: ['numeroHijos'], nextField: null);
 
       case 'numeroPadres':
         final v = _extractCount(text);
         if (v == null || v < 0 || v > 10) return null;
         provider.setNumeroPadres(v);
-        return (ok: true, setFields: ['numeroPadres']);
+        return (ok: true, setFields: ['numeroPadres'], nextField: null);
 
       case 'umaMultiplier':
         final v = _extractNum(text);
         if (v == null || v < 1 || v > 25) return null;
         provider.setUmaMultiplier(v);
-        return (ok: true, setFields: ['umaMultiplier']);
+        return (ok: true, setFields: ['umaMultiplier'], nextField: null);
+
+      case 'salarioPromedio250Semanas':
+        final v = _extractNum(text);
+        if (v == null || v <= 0) return null;
+        provider.setSalarioPromedio250Semanas(v);
+        return (
+          ok: true,
+          setFields: ['salarioPromedio250Semanas'],
+          nextField: null,
+        );
+
+      case 'semanasEnMod40':
+        final lower = text.toLowerCase();
+        if (RegExp(r'por\s+fechas?|fechas').hasMatch(lower)) {
+          // El usuario prefiere capturar las semanas con fecha inicio/fin.
+          return (
+            ok: true,
+            setFields: const <String>[],
+            nextField: 'm40StartDate',
+          );
+        }
+        final n = _extractNum(text);
+        if (n == null || n < 0) return null;
+        provider.setSemanasEnMod40(n);
+        return (ok: true, setFields: ['semanasEnMod40'], nextField: null);
+
+      case 'm40StartDate':
+        final start = _extractMod40Date(text);
+        if (start == null) return null;
+        provider.setStartDate(start);
+        return (ok: true, setFields: ['startDate'], nextField: 'm40EndDate');
+
+      case 'm40EndDate':
+        final end = _extractMod40Date(text);
+        if (end == null) return null;
+        final dias = end.difference(provider.startDate).inDays;
+        if (dias <= 0) return null;
+        provider.setEndDate(end);
+        provider.setSemanasEnMod40(dias / 7.0);
+        return (
+          ok: true,
+          setFields: ['endDate', 'semanasEnMod40'],
+          nextField: null,
+        );
 
       default:
         return null;
@@ -318,6 +414,87 @@ class GuidedInput {
       age--;
     }
     if (age < 18 || age > 100) return null;
+    return date;
+  }
+
+  /// Fecha en [text] para Modalidad 40 (inicio/fin) admitiendo dd/mm/aaaa,
+  /// dd-mm-aaaa, dd.mm.aaaa, aaaa-mm-dd y nombres de mes en español
+  /// ("5 de marzo de 2010"). A diferencia de [_extractDate] NO impone "en el
+  /// pasado" ni "edad 18-100", porque las fechas de M40 pueden ser recientes
+  /// (p. ej. 01/01/2020) o apenas anteriores al año en curso.
+  static DateTime? _extractMod40Date(String text) {
+    final trimmed = text.trim();
+
+    // aaaa-mm-dd (ISO) primero.
+    final iso = RegExp(r'^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$')
+        .firstMatch(trimmed);
+    if (iso != null) {
+      return _mod40Date(
+        int.tryParse(iso.group(1)!),
+        int.tryParse(iso.group(2)!),
+        int.tryParse(iso.group(3)!),
+      );
+    }
+
+    // dd/mm/aaaa, dd-mm-aaaa, dd.mm.aaaa → (año, mes, día).
+    final dmy =
+        RegExp(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$').firstMatch(trimmed);
+    if (dmy != null) {
+      return _mod40Date(
+        int.tryParse(dmy.group(3)!),
+        int.tryParse(dmy.group(2)!),
+        int.tryParse(dmy.group(1)!),
+      );
+    }
+
+    // "5 de marzo de 2010".
+    const months = <String, int>{
+      'enero': 1,
+      'febrero': 2,
+      'marzo': 3,
+      'abril': 4,
+      'mayo': 5,
+      'junio': 6,
+      'julio': 7,
+      'agosto': 8,
+      'septiembre': 9,
+      'setiembre': 9,
+      'octubre': 10,
+      'noviembre': 11,
+      'diciembre': 12,
+    };
+    final named = RegExp(
+      r'(\d{1,2})\s+(?:de\s+)?([a-záéíóúñ]+)(?:\s+de\s+|\s+del\s+)?(\d{4})',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (named != null) {
+      final month = months[named.group(2)!.toLowerCase()];
+      if (month != null) {
+        return _mod40Date(
+          int.tryParse(named.group(3)!),
+          month,
+          int.tryParse(named.group(1)!),
+        );
+      }
+    }
+
+    return null;
+  }
+
+  /// Fecha real (no normalizada) para Modalidad 40: entre 1900 y el año
+  /// siguiente al actual, o `null` si es imposible o fuera de rango.
+  static DateTime? _mod40Date(int? year, int? month, int? day) {
+    if (year == null || month == null || day == null) return null;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    final date = DateTime(year, month, day);
+    // DateTime normaliza fechas inválidas (p. ej. 31/02 → 03/03).
+    if (date.year != year || date.month != month || date.day != day) {
+      return null;
+    }
+    final now = DateTime.now();
+    if (year < 1900 || date.isAfter(now.add(const Duration(days: 366)))) {
+      return null;
+    }
     return date;
   }
 

@@ -61,6 +61,20 @@ class RetroactiveProvider extends ChangeNotifier {
   /// Lo usa CapturaView para mostrar un SnackBar "Configuración recuperada".
   bool _loadedFromPersistence = false;
 
+  /// True cuando el desglose "antes Mod40" se fijó explícitamente (vía
+  /// [setSemanasAntesMod40] / [setTotalSemanasSinMod40]); false cuando el
+  /// TOTAL (semanasCotizadas) es la fuente primaria (vía [setSemanasCotizadas]).
+  ///
+  /// Reconciliar total vs. desglose (invariante total = antes + en):
+  /// [setSemanasCotizadas] trata el total como primario (antes = total - en),
+  /// mientras que [setSemanasEnMod40] trata "antes" como primario. El flag
+  /// decide cuál gana dentro de [setSemanasEnMod40]:
+  ///   - false (total primario): se PRESERVA el total tecleado y se re-deriva
+  ///     antes (= total - v), de modo que el usuario vea el total exacto que
+  ///     escribió (p. ej. 1300, no 1295 ni 1430).
+  ///   - true (antes explícito): se conserva antes y total = antes + v.
+  bool _semanasAntesMod40Explicit = false;
+
   RetroactiveProvider({
     required this.evaluator,
     required this.persistence,
@@ -467,6 +481,10 @@ class RetroactiveProvider extends ChangeNotifier {
 
   void setSemanasCotizadas(int v) {
     if (v == _inputs.semanasCotizadas) return;
+    // El total es la fuente primaria: al fijarlo se deriva antes. Desactiva el
+    // modo "antes explícito" para que un setSemanasEnMod40 posterior PRESERVE
+    // este total (antes = total - en) en lugar de sumar sobre antes.
+    _semanasAntesMod40Explicit = false;
     // `semanasCotizadas` es el TOTAL = semanasAntesMod40 + semanasEnMod40.
     // Al fijar el total se deriva el componente "antes Mod40" (invariante
     // total = antes + en) y se alinea `totalSemanasSinMod40` para que la
@@ -689,6 +707,8 @@ class RetroactiveProvider extends ChangeNotifier {
 
   void setTotalSemanasSinMod40(int v) {
     if (v == _inputs.totalSemanasSinMod40) return;
+    // Desglose explícito → "antes" es la fuente primaria (total = antes + en).
+    _semanasAntesMod40Explicit = true;
     _inputs.totalSemanasSinMod40 = v;
     persistence.saveTotalSemanasSinMod40(v);
     _calculator.recalcularFactAsigSinMod40();
@@ -872,6 +892,8 @@ class RetroactiveProvider extends ChangeNotifier {
   // --- Semanas (desglose) setters ---
   void setSemanasAntesMod40(double v) {
     if (v == _inputs.semanasAntesMod40) return;
+    // Desglose explícito → "antes" es la fuente primaria (total = antes + en).
+    _semanasAntesMod40Explicit = true;
     _inputs.semanasAntesMod40 = v;
     persistence.saveSemanasAntesMod40(v);
     // Recalculate total semanas sin Mod40
@@ -894,9 +916,51 @@ class RetroactiveProvider extends ChangeNotifier {
     if (v == _inputs.semanasEnMod40) return;
     _inputs.semanasEnMod40 = v;
     persistence.saveSemanasEnMod40(v);
-    // Recalculate total semanas con Mod40
-    _inputs.semanasCotizadas = (_inputs.semanasAntesMod40 + v).toInt();
-    persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+    // Escalar las semanas de los periodos Mod40 para que sumen v. Esto hace que
+    // el valor capturado persista: _recalculatePromedioFromPeriodos() re-deriva
+    // semanasEnMod40 desde los periodos, así que mantener periodos y escalar en
+    // sincronía evita que el valor se revierta silenciosamente (p. ej. los
+    // periodos baseline traen 134.714 semanas Mod40 en vez del default 130).
+    if (_inputs.periodos.isNotEmpty) {
+      final totalActual = _inputs.periodos.fold<double>(
+          0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
+      if (totalActual > 0 && (totalActual - v).abs() > 0.0001) {
+        final factor = v / totalActual;
+        _inputs.periodos = [
+          for (final p in _inputs.periodos)
+            if (p.esMod40)
+              PeriodoSalarial(
+                fechaInicio: p.fechaInicio,
+                fechaTermino: p.fechaTermino,
+                salarioDiario: p.salarioDiario,
+                semanas: p.semanas * factor,
+                esMod40: true,
+              )
+            else
+              p,
+        ];
+        persistence.savePeriodos(_inputs.periodos);
+      }
+    }
+    // Reconciliar total vs. desglose (invariante total = antes + en).
+    if (_semanasAntesMod40Explicit) {
+      // "antes" es primario (desglose explícito): conservar antes y derivar el
+      // total = antes + en.
+      _inputs.semanasCotizadas = (_inputs.semanasAntesMod40 + v).toInt();
+      persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+    } else {
+      // El total es primario (p. ej. flujo guiado: el usuario tecleó primero el
+      // total y después las semanas Mod40): PRESERVAR el total y re-derivar
+      // antes = total - v, para que el valor que escribió el usuario (1300) no
+      // se pierda en 1295 o se infle a 1430.
+      final total = _inputs.semanasCotizadas.toDouble();
+      final antes = (total - v).clamp(0.0, total);
+      _inputs.semanasAntesMod40 = antes;
+      persistence.saveSemanasAntesMod40(antes);
+      _inputs.totalSemanasSinMod40 = antes.toInt();
+      persistence.saveTotalSemanasSinMod40(antes.toInt());
+      // semanasCotizadas (el total) NO se modifica: queda en el valor tecleado.
+    }
     // Auto-calculate endDate from startDate + semanasEnMod40
     if (v > 0) {
       _inputs.endDate = _inputs.startDate.add(Duration(days: (v * 7).round()));

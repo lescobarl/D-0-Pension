@@ -90,7 +90,8 @@ void main() {
       expect(result, closeTo(expected, 0.01));
     });
 
-    test('recalculates when semanas en Mod40 changes (with existing periods)', () {
+    test('recalculates salarioDiarioPromedio when semanas en Mod40 changes '
+        '(las semanas Mod40 SÍ pesan en el promedio ponderado)', () {
       provider.setSalarioRegistrado(1500.0);
       provider.setSalarioPromedio250Semanas(2281.53);
       provider.setSemanasAntesMod40(200);
@@ -110,16 +111,18 @@ void main() {
       provider.setSalarioDiarioPromedio(currentValue);
 
       final result1 = provider.salarioDiarioPromedio;
+      // result1 = (1500*50 + 2281.53*200) / 250 = 2125.224
+      expect(result1, closeTo(2125.224, 0.01));
 
-      // Change semanas en Mod40 — this triggers _recalculatePromedioFromPeriodos()
-      // which recalculates from EXISTING periods (not auto-projecting)
+      // Cambiar las semanas en Mod40: setSemanasEnMod40(100) escala el periodo
+      // Mod40 de 50 → 100 semanas, así el promedio ponderado SÍ cambia (la
+      // corrección de raíz: las semanas Mod40 deben afectar el cálculo).
       provider.setSemanasEnMod40(100);
 
       final result2 = provider.salarioDiarioPromedio;
-
-      // Since _salarioPromAutoCalculado is false (manual edit), the periods
-      // are preserved as-is and the weighted average stays the same
-      expect(result2, closeTo(result1, 0.001));
+      // El periodo Mod40 quedó en 100 semanas y el tope de 250 semanas consume
+      // Mod40 100 + no-Mod40 150 → (1500*100 + 2281.53*150) / 250 = 1968.918.
+      expect(result2, closeTo(1968.918, 0.01));
     });
 
     test('recalculates when salario promedio 250 semanas changes (with existing periods)', () {

@@ -10,6 +10,14 @@ import 'package:d_0_pension/services/retroactive_provider.dart';
 ///
 /// Es LA APP (no la IA) quien decide qué dato falta y pregunta UN dato a la
 /// vez en un orden fijo, reemplazando la pregunta vaga "¿Falta algún dato?".
+///
+/// ## Orden de prioridad
+/// 1. `semanasCotizadas`          → vital, SIEMPRE una vez por sesión
+/// 2. `salarioPromedio250Semanas` → vital, SIEMPRE una vez por sesión
+/// 3. `semanasEnMod40`            → vital, SIEMPRE una vez por sesión
+///                                  (número o "por fechas": inicio/fin)
+/// 4. `salarioDiarioPromedio`     → respaldo (solo si sigue en 0)
+/// 5. Opcionales: fechaNacimiento → edadRetiro → esposa → hijos → padres → uma
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -25,7 +33,14 @@ void main() {
     );
   }
 
-  test('proveedor vacío: pide primero semanasCotizadas (obligatorio)', () async {
+  // Los tres datos vitales, en el orden exacto en que la guía los pide.
+  const vitales = [
+    'semanasCotizadas',
+    'salarioPromedio250Semanas',
+    'semanasEnMod40',
+  ];
+
+  test('proveedor vacío: pide primero semanasCotizadas (vital)', () async {
     final provider = await buildProvider();
     final guide = GuidedInput.nextGuide(provider, <String>{});
     expect(guide, isNotNull);
@@ -33,33 +48,61 @@ void main() {
     expect(guide.question, contains('semanas'));
   });
 
-  test('semanasCotizadas se vuelve a preguntar si sigue en 0 aunque ya se '
-      'registró en requested (campo obligatorio)', () async {
+  test('los vitales se preguntan SIEMPRE una vez por sesión, en orden fijo',
+      () async {
     final provider = await buildProvider();
-    // Se pidió antes (requested lo contiene), pero el proveedor sigue en 0 →
-    // el campo obligatorio se vuelve a preguntar hasta llenarse.
-    final guide = GuidedInput.nextGuide(provider, {'semanasCotizadas'});
+    final requested = <String>{};
+    final fields = <String>[];
+    for (var i = 0; i < 3; i++) {
+      final guide = GuidedInput.nextGuide(provider, requested);
+      expect(guide, isNotNull, reason: 'iteración $i');
+      requested.add(guide!.field);
+      fields.add(guide.field);
+    }
+    expect(fields, vitales);
+  });
+
+  test('IGNORA DEFAULTS: aunque el proveedor tenga valores precargados, la '
+      'guía SIEMPRE vuelve a preguntar los vitales', () async {
+    final provider = await buildProvider();
+    // Valores sembrados por default (como app_metadata.json).
+    provider.setSemanasCotizadas(2090);
+    provider.setSalarioPromedio250Semanas(2897.19);
+    provider.setSemanasEnMod40(130);
+    // Aun con todo lleno, sin marcarlos como "ya preguntados", se repreguntan.
+    final guide = GuidedInput.nextGuide(provider, <String>{});
     expect(guide!.field, 'semanasCotizadas');
   });
 
-  test('con semanas, pide salarioDiarioPromedio (segundo obligatorio)',
-      () async {
+  test('con vitales ya preguntados y salarioDiarioPromedio en 0, pide el '
+      'respaldo salarioDiarioPromedio', () async {
     final provider = await buildProvider();
-    provider.setSemanasCotizadas(1200);
-    final guide = GuidedInput.nextGuide(provider, <String>{});
+    // provider sin initialize() → salarioDiarioPromedio queda en 0.
+    final guide = GuidedInput.nextGuide(provider, vitales.toSet());
     expect(guide!.field, 'salarioDiarioPromedio');
     expect(guide.suggestions, isEmpty);
   });
 
-  test('obligatorios llenos: pide fechaNacimiento (primer opcional)', () async {
+  test('vitales + respaldo listos: pide fechaNacimiento (primer opcional)',
+      () async {
     final provider = await buildProvider();
     provider.setSemanasCotizadas(1200);
     provider.setSalarioDiarioPromedio(500);
-    final guide = GuidedInput.nextGuide(provider, <String>{});
+    final guide = GuidedInput.nextGuide(
+        provider, vitales.toSet()..add('salarioDiarioPromedio'));
     expect(guide!.field, 'fechaNacimiento');
     expect(guide.question, contains('fecha de nacimiento'));
     // La fecha se captura como texto libre (sin chips).
     expect(guide.suggestions, isEmpty);
+  });
+
+  test('semanasEnMod40 ofrece el chip "Por fechas" (número o inicio/fin)',
+      () async {
+    final provider = await buildProvider();
+    final guide = GuidedInput.nextGuide(
+        provider, {'semanasCotizadas', 'salarioPromedio250Semanas'});
+    expect(guide!.field, 'semanasEnMod40');
+    expect(guide.suggestions, ['Por fechas']);
   });
 
   test('edadRetiro con metadata: sugiere TODAS las edades del dropdown '
@@ -71,9 +114,10 @@ void main() {
       persistence: PersistenceService(prefs),
     );
     await provider.initialize();
-    // initialize() siembra semanas/salario > 0 → primer opcional es
-    // fechaNacimiento; al marcarlo como solicitado toca edadRetiro.
-    final guide = GuidedInput.nextGuide(provider, {'fechaNacimiento'});
+    // initialize() siembra salarioDiarioPromedio > 0 → respaldo omitido.
+    // Con los vitales + fechaNacimiento ya preguntados, toca edadRetiro.
+    final guide =
+        GuidedInput.nextGuide(provider, vitales.toSet()..add('fechaNacimiento'));
     expect(guide!.field, 'edadRetiro');
     expect(guide.suggestions, [
       '60', '60.51', '61', '61.51', '62', '62.51',
@@ -88,18 +132,35 @@ void main() {
         await GuidedInput.applyAnswer(provider, 'semanasCotizadas', '1200');
     expect(semanas!.ok, isTrue);
     expect(semanas.setFields, ['semanasCotizadas']);
+    expect(semanas.nextField, isNull);
     expect(provider.semanasCotizadas, 1200);
 
     final salario =
         await GuidedInput.applyAnswer(provider, 'salarioDiarioPromedio', '500.50');
     expect(salario!.ok, isTrue);
     expect(salario.setFields, ['salarioDiarioPromedio']);
+    expect(salario.nextField, isNull);
     expect(provider.salarioDiarioPromedio, 500.5);
+
+    final salario250 = await GuidedInput.applyAnswer(
+        provider, 'salarioPromedio250Semanas', '1300');
+    expect(salario250!.ok, isTrue);
+    expect(salario250.setFields, ['salarioPromedio250Semanas']);
+    expect(salario250.nextField, isNull);
+    expect(provider.salarioPromedio250Semanas, 1300);
+
+    final mod40 =
+        await GuidedInput.applyAnswer(provider, 'semanasEnMod40', '130');
+    expect(mod40!.ok, isTrue);
+    expect(mod40.setFields, ['semanasEnMod40']);
+    expect(mod40.nextField, isNull);
+    expect(provider.semanasEnMod40, 130);
 
     final nacimiento = await GuidedInput.applyAnswer(
         provider, 'fechaNacimiento', '05/03/1975');
     expect(nacimiento!.ok, isTrue);
     expect(nacimiento.setFields, ['fechaNacimiento']);
+    expect(nacimiento.nextField, isNull);
     expect(provider.fechaNacimiento.year, 1975);
     expect(provider.fechaNacimiento.month, 3);
     expect(provider.fechaNacimiento.day, 5);
@@ -107,23 +168,66 @@ void main() {
     final esposa =
         await GuidedInput.applyAnswer(provider, 'tieneEsposa', 'sí, tengo esposa');
     expect(esposa!.ok, isTrue);
+    expect(esposa.nextField, isNull);
     expect(provider.tieneEsposa, isTrue);
 
     final hijos = await GuidedInput.applyAnswer(provider, 'numeroHijos', 'dos');
     expect(hijos!.ok, isTrue);
     expect(hijos.setFields, ['numeroHijos']);
+    expect(hijos.nextField, isNull);
     expect(provider.numeroHijos, 2);
 
     final padres =
         await GuidedInput.applyAnswer(provider, 'numeroPadres', 'no tengo');
     expect(padres!.ok, isTrue);
     expect(padres.setFields, ['numeroPadres']);
+    expect(padres.nextField, isNull);
     expect(provider.numeroPadres, 0);
 
     final uma = await GuidedInput.applyAnswer(provider, 'umaMultiplier', '20');
     expect(uma!.ok, isTrue);
     expect(uma.setFields, ['umaMultiplier']);
+    expect(uma.nextField, isNull);
     expect(provider.umaMultiplier, 20);
+  });
+
+  test('applyAnswer semanasEnMod40 "por fechas": sub-flujo inicio/fin calcula '
+      'las semanas', () async {
+    final provider = await buildProvider();
+
+    // "por fechas" enruta al sub-flujo interno (fecha inicio).
+    final porFechas =
+        await GuidedInput.applyAnswer(provider, 'semanasEnMod40', 'por fechas');
+    expect(porFechas!.ok, isTrue);
+    expect(porFechas.setFields, isEmpty);
+    expect(porFechas.nextField, 'm40StartDate');
+
+    final inicio =
+        await GuidedInput.applyAnswer(provider, 'm40StartDate', '01/01/2010');
+    expect(inicio!.ok, isTrue);
+    expect(inicio.setFields, ['startDate']);
+    expect(inicio.nextField, 'm40EndDate');
+    expect(provider.startDate, DateTime(2010, 1, 1));
+
+    final fin =
+        await GuidedInput.applyAnswer(provider, 'm40EndDate', '31/12/2010');
+    expect(fin!.ok, isTrue);
+    expect(fin.setFields, containsAll(['endDate', 'semanasEnMod40']));
+    expect(fin.nextField, isNull);
+    expect(provider.endDate, DateTime(2010, 12, 31));
+    // 364 días → 52 semanas exactas (round-trip limpio: dias/7 * 7 = dias).
+    expect(provider.semanasEnMod40, closeTo(52.0, 0.001));
+  });
+
+  test('fechas de M40 aceptan fechas recientes (sin la restricción de edad '
+      '18+ de la fecha de nacimiento)', () async {
+    final provider = await buildProvider();
+    // 01/01/2020: la fecha de nacimiento la rechazaría (edad ~6), pero para
+    // M40 es una fecha de inicio perfectamente válida.
+    final inicio =
+        await GuidedInput.applyAnswer(provider, 'm40StartDate', '01/01/2020');
+    expect(inicio!.ok, isTrue);
+    expect(provider.startDate, DateTime(2020, 1, 1));
   });
 
   test('applyAnswer: devuelve null cuando la respuesta no se puede interpretar',
@@ -138,6 +242,14 @@ void main() {
     );
     expect(
       await GuidedInput.applyAnswer(provider, 'semanasCotizadas', 'hola'),
+      isNull,
+    );
+    expect(
+      await GuidedInput.applyAnswer(provider, 'salarioPromedio250Semanas', 'abc'),
+      isNull,
+    );
+    expect(
+      await GuidedInput.applyAnswer(provider, 'semanasEnMod40', 'muchas'),
       isNull,
     );
     expect(
@@ -163,13 +275,23 @@ void main() {
       await GuidedInput.applyAnswer(provider, 'umaMultiplier', '30'),
       isNull,
     );
+    // Fechas de M40: inicio no es fecha y fin <= inicio (sin mutar).
+    expect(
+      await GuidedInput.applyAnswer(provider, 'm40StartDate', 'abc'),
+      isNull,
+    );
+    provider.setStartDate(DateTime(2010, 1, 1));
+    expect(
+      await GuidedInput.applyAnswer(provider, 'm40EndDate', '01/01/2009'),
+      isNull,
+    );
   });
 
-  test('opcionales se piden una sola vez y en orden fijo: nacimiento → edad → '
-      'esposa → hijos → padres → uma', () async {
+  test('todos los datos (vitales + respaldo + opcionales) se piden en orden '
+      'fijo y una sola vez', () async {
     final provider = await buildProvider();
-    provider.setSemanasCotizadas(1200);
-    provider.setSalarioDiarioPromedio(500);
+    // Sin initialize() → salarioDiarioPromedio = 0 → también se pide el
+    // respaldo salarioDiarioPromedio antes de los opcionales.
 
     final requested = <String>{};
     final fields = <String>[];
@@ -180,6 +302,10 @@ void main() {
       fields.add(guide.field);
     }
     expect(fields, [
+      'semanasCotizadas',
+      'salarioPromedio250Semanas',
+      'semanasEnMod40',
+      'salarioDiarioPromedio',
       'fechaNacimiento',
       'edadRetiro',
       'tieneEsposa',
@@ -193,8 +319,13 @@ void main() {
     final provider = await buildProvider();
     provider.setSemanasCotizadas(1200);
     provider.setSalarioDiarioPromedio(500);
-    final guide = GuidedInput.nextGuide(
-        provider, {'fechaNacimiento', 'edadRetiro'});
+    final guide = GuidedInput.nextGuide(provider, {
+      'semanasCotizadas',
+      'salarioPromedio250Semanas',
+      'semanasEnMod40',
+      'fechaNacimiento',
+      'edadRetiro',
+    });
     expect(guide!.field, 'tieneEsposa');
     expect(guide.suggestions, ['Sí', 'No']);
   });
@@ -204,15 +335,46 @@ void main() {
     provider.setSemanasCotizadas(1200);
     provider.setSalarioDiarioPromedio(500);
 
-    final hijos = GuidedInput.nextGuide(
-        provider, {'fechaNacimiento', 'edadRetiro', 'tieneEsposa'});
+    final hijos = GuidedInput.nextGuide(provider, {
+      'semanasCotizadas',
+      'salarioPromedio250Semanas',
+      'semanasEnMod40',
+      'fechaNacimiento',
+      'edadRetiro',
+      'tieneEsposa',
+    });
     expect(hijos!.field, 'numeroHijos');
     expect(hijos.suggestions, ['1', '2', '3', '4']);
 
-    final padres = GuidedInput.nextGuide(
-        provider, {'fechaNacimiento', 'edadRetiro', 'tieneEsposa', 'numeroHijos'});
+    final padres = GuidedInput.nextGuide(provider, {
+      'semanasCotizadas',
+      'salarioPromedio250Semanas',
+      'semanasEnMod40',
+      'fechaNacimiento',
+      'edadRetiro',
+      'tieneEsposa',
+      'numeroHijos',
+    });
     expect(padres!.field, 'numeroPadres');
     expect(padres.suggestions, ['0', '1', '2']);
+  });
+
+  test('umaMultiplier ofrece chips 25/20/15', () async {
+    final provider = await buildProvider();
+    provider.setSemanasCotizadas(1200);
+    provider.setSalarioDiarioPromedio(500);
+    final guide = GuidedInput.nextGuide(provider, {
+      'semanasCotizadas',
+      'salarioPromedio250Semanas',
+      'semanasEnMod40',
+      'fechaNacimiento',
+      'edadRetiro',
+      'tieneEsposa',
+      'numeroHijos',
+      'numeroPadres',
+    });
+    expect(guide!.field, 'umaMultiplier');
+    expect(guide.suggestions, ['25', '20', '15']);
   });
 
   test('todos los campos completos: nextGuide devuelve null (guía termina)',
@@ -223,6 +385,9 @@ void main() {
     final guide = GuidedInput.nextGuide(
       provider,
       {
+        'semanasCotizadas',
+        'salarioPromedio250Semanas',
+        'semanasEnMod40',
         'fechaNacimiento',
         'edadRetiro',
         'tieneEsposa',
@@ -232,24 +397,6 @@ void main() {
       },
     );
     expect(guide, isNull);
-  });
-
-  test('umaMultiplier ofrece chips 25/20/15', () async {
-    final provider = await buildProvider();
-    provider.setSemanasCotizadas(1200);
-    provider.setSalarioDiarioPromedio(500);
-    final guide = GuidedInput.nextGuide(
-      provider,
-      {
-        'fechaNacimiento',
-        'edadRetiro',
-        'tieneEsposa',
-        'numeroHijos',
-        'numeroPadres',
-      },
-    );
-    expect(guide!.field, 'umaMultiplier');
-    expect(guide.suggestions, ['25', '20', '15']);
   });
 
   test('applyAnswer fechaNacimiento: acepta varios formatos de fecha y rechaza '

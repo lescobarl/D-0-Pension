@@ -289,7 +289,8 @@ void main() {
 
   test(
       'GUIADA: al enviar semanas+salario, la app pregunta el siguiente dato '
-      '(edadRetiro) con chips, en vez del "¿Falta algún dato?" de la IA',
+      '(salario promedio de las 250 semanas), en vez del "¿Falta algún dato?" '
+      'de la IA',
       () async {
     // La IA devuelve el escenario completo pero termina con la pregunta vaga.
     // La app debe reemplazarla por la guía determinista del siguiente dato.
@@ -309,10 +310,10 @@ void main() {
 
     final last = harness.service.messages.last;
     expect(last.role, 'assistant');
-    // El mensaje vago "¿Falta algún dato?" se reemplaza por la pregunta
-    // concreta del SIGUIENTE dato faltante (fecha de nacimiento, primer
-    // opcional; la fecha no ofrece chips).
-    expect(last.text, contains('fecha'));
+    // Tras llenar semanas + salario diario, la guía pide el SIGUIENTE dato
+    // vital: el salario promedio de las 250 semanas (no ofrece chips).
+    expect(last.text, contains('250'));
+    expect(last.text, contains('salario promedio'));
     expect(last.text, isNot(contains('Falta')));
     expect(last.suggestions, isEmpty);
     harness.service.dispose();
@@ -328,19 +329,39 @@ void main() {
           .lastWhere((m) => m['role'] == 'user')['content']
           .toString()
           .toLowerCase();
-      if (lastUser.contains('semanas')) {
+      // 1er turno: semanas cotizadas (vital #1).
+      if (lastUser.contains('semanas cotizadas')) {
         return openAiResponse(jsonEncode({
           'type': 'fill_fields',
-          'values': {'semanasCotizadas': 1200, 'salarioDiarioPromedio': 500},
+          'values': {'semanasCotizadas': 1200},
           'message': 'Datos capturados.',
           'missing_fields': <String>[],
         }));
       }
-      if (lastUser.contains('62')) {
+      // 2º turno: salario promedio de las 250 semanas (vital #2).
+      if (lastUser.contains('250')) {
         return openAiResponse(jsonEncode({
           'type': 'fill_fields',
-          'values': {'edadRetiro': 62},
-          'message': 'Edad actualizada.',
+          'values': {'salarioPromedio250Semanas': 1500},
+          'message': 'Salario actualizado.',
+          'missing_fields': <String>[],
+        }));
+      }
+      // 3er turno: semanas en Modalidad 40 (vital #3).
+      if (lastUser.contains('modalidad')) {
+        return openAiResponse(jsonEncode({
+          'type': 'fill_fields',
+          'values': {'semanasEnMod40': 130},
+          'message': 'Semanas de M40 registradas.',
+          'missing_fields': <String>[],
+        }));
+      }
+      // 4º turno: fecha de nacimiento (primer opcional).
+      if (lastUser.contains('nac')) {
+        return openAiResponse(jsonEncode({
+          'type': 'fill_fields',
+          'values': {'fechaNacimiento': '1975-03-05'},
+          'message': 'Fecha registrada.',
           'missing_fields': <String>[],
         }));
       }
@@ -360,6 +381,14 @@ void main() {
           'missing_fields': <String>[],
         }));
       }
+      if (lastUser.contains('padres')) {
+        return openAiResponse(jsonEncode({
+          'type': 'fill_fields',
+          'values': {'numeroPadres': 0},
+          'message': 'Registrado.',
+          'missing_fields': <String>[],
+        }));
+      }
       if (lastUser.contains('uma')) {
         return openAiResponse(jsonEncode({
           'type': 'fill_fields',
@@ -368,10 +397,18 @@ void main() {
           'missing_fields': <String>[],
         }));
       }
+      if (lastUser.contains('62')) {
+        return openAiResponse(jsonEncode({
+          'type': 'fill_fields',
+          'values': {'edadRetiro': 62},
+          'message': 'Edad actualizada.',
+          'missing_fields': <String>[],
+        }));
+      }
       // Último turno: la IA termina con la pregunta vaga que ya no aplica.
       return openAiResponse(jsonEncode({
         'type': 'fill_fields',
-        'values': {'numeroPadres': 0},
+        'values': <String, dynamic>{},
         'message': 'He encontrado estos datos en tu mensaje. '
             'Los he llenado en la calculadora. ¿Falta algún dato?',
         'missing_fields': <String>[],
@@ -379,14 +416,20 @@ void main() {
     });
 
     final harness = await buildHarness(mock);
+    // Vitales: semanas cotizadas → salario 250 → semanas M40.
+    await harness.service.sendMessage('tengo 1200 semanas cotizadas');
     await harness.service.sendMessage(
-        'tengo 1200 semanas cotizadas y mi salario diario es 500');
+        'mi salario promedio de las 250 semanas es 1500');
+    await harness.service.sendMessage(
+        'estoy cotizando 130 semanas en modalidad 40');
+    // Opcionales: fechaNacimiento → edadRetiro → esposa → hijos → padres → uma.
+    await harness.service.sendMessage('nací el 5 de marzo de 1975');
     await harness.service.sendMessage('me pensiono a los 62');
     await harness.service.sendMessage('sí, tengo esposa');
     await harness.service.sendMessage('tengo 2 hijos');
     await harness.service.sendMessage('no tengo padres dependientes');
     await harness.service.sendMessage('usa un multiplicador de uma de 20');
-    // Con los 6 opcionales ya marcados, el siguiente turno que toca la IA con
+    // Con todos los campos ya marcados, el siguiente turno que toca la IA con
     // la pregunta vaga hace que nextGuide devuelva null → mensaje de ¡Listo!.
     await harness.service.sendMessage('listo, eso es todo');
     await settle();
@@ -423,10 +466,9 @@ void main() {
     expect(harness.service.messages.first.role, 'user');
     final last = harness.service.messages.last;
     expect(last.role, 'assistant');
-    // Con los defaults sembrados (semanas/salario > 0) el primer dato
-    // pendiente es la fecha de nacimiento (primer opcional aún no preguntado;
-    // la fecha no ofrece chips).
-    expect(last.text, contains('fecha'));
+    // Aunque los defaults sembrados (semanas/salario > 0) ya están llenos, la
+    // guía SIEMPRE pregunta primero las semanas cotizadas (vital; sin chips).
+    expect(last.text, contains('semanas'));
     expect(last.suggestions, isEmpty);
     harness.service.dispose();
   });
@@ -475,8 +517,11 @@ void main() {
     final harness = await buildHarness(mock);
     await harness.service
         .sendMessage('Ayúdame a llenar mi cálculo de pensión, cuentas conmigo');
-    // Orden de los opcionales: fechaNacimiento → edadRetiro → esposa → hijos →
-    // padres → umaMultiplier.
+    // Vitales: semanasCotizadas → salarioPromedio250Semanas → semanasEnMod40.
+    await harness.service.sendMessage('1300');
+    await harness.service.sendMessage('1500');
+    await harness.service.sendMessage('130');
+    // Opcionales: fechaNacimiento → edadRetiro → esposa → hijos → padres → uma.
     await harness.service.sendMessage('05/03/1975');
     await harness.service.sendMessage('62');
     await harness.service.sendMessage('sí');
@@ -492,7 +537,15 @@ void main() {
     expect(last.suggestions, isEmpty);
     // No consumió cupo de sesión diaria (todo local).
     expect(harness.service.dailySessionCount, 0);
-    // Los valores quedaron aplicados en el proveedor.
+    // Los valores quedaron aplicados en el proveedor (los vitales SIEMPRE se
+    // preguntan aunque hubiera defaults sembrados).
+    // total=1300, en=130, antes=1170: el flujo guiado fija primero el total con
+    // setSemanasCotizadas(1300) (total primario → antes=1165.2857); luego
+    // setSemanasEnMod40(130) PRESERVA el total tecleado y re-deriva antes
+    // (=1300-130=1170), escalando los periodos Mod40 a 130 semanas.
+    expect(harness.provider.semanasCotizadas, 1300);
+    expect(harness.provider.salarioPromedio250Semanas, 1500);
+    expect(harness.provider.semanasEnMod40, 130);
     expect(harness.provider.fechaNacimiento.year, 1975);
     expect(harness.provider.fechaNacimiento.month, 3);
     expect(harness.provider.fechaNacimiento.day, 5);
@@ -514,19 +567,52 @@ void main() {
     final harness = await buildHarness(mock);
     await harness.service
         .sendMessage('Ayúdame a llenar mi cálculo de pensión, cuentas conmigo');
-    // Primera pregunta guiada = fechaNacimiento: una respuesta no interpretable
-    // vuelve a preguntar la fecha (sin chips).
+    // Primera pregunta guiada = semanasCotizadas: una respuesta no
+    // interpretable vuelve a preguntar las semanas (sin chips).
     await harness.service.sendMessage('quizás más adelante');
     await settle();
 
     var last = harness.service.messages.last;
     expect(last.role, 'assistant');
     expect(last.text, contains('No entendí tu respuesta'));
+    expect(last.text, contains('semanas'));
+    expect(last.suggestions, isEmpty);
+
+    // Tras dar las semanas, toca salarioPromedio250Semanas: re-ask sin chips.
+    await harness.service.sendMessage('1300');
+    await harness.service.sendMessage('quizás más adelante');
+    await settle();
+
+    last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    expect(last.text, contains('No entendí tu respuesta'));
+    expect(last.text, contains('250'));
+    expect(last.suggestions, isEmpty);
+
+    // Tras el salario 250, toca semanasEnMod40: re-ask con chip "Por fechas".
+    await harness.service.sendMessage('1500');
+    await harness.service.sendMessage('quizás más adelante');
+    await settle();
+
+    last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    expect(last.text, contains('No entendí tu respuesta'));
+    expect(last.text, contains('Modalidad 40'));
+    expect(last.suggestions, ['Por fechas']);
+
+    // Tras las semanas de M40, toca fechaNacimiento: re-ask de la fecha.
+    await harness.service.sendMessage('130');
+    await harness.service.sendMessage('quizás más adelante');
+    await settle();
+
+    last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    expect(last.text, contains('No entendí tu respuesta'));
     expect(last.text, contains('fecha'));
     expect(last.suggestions, isEmpty);
 
-    // Tras dar la fecha, toca edadRetiro: una edad no interpretable se vuelve
-    // a preguntar con TODAS las edades del dropdown como chips.
+    // Tras la fecha, toca edadRetiro: una edad no interpretable se vuelve a
+    // preguntar con TODAS las edades del dropdown como chips.
     await harness.service.sendMessage('05/03/1975');
     await harness.service.sendMessage('quizás más adelante');
     await settle();

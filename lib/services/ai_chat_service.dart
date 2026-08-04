@@ -334,18 +334,29 @@ class AiChatService extends ChangeNotifier {
         notifyListeners();
         return AiChat(reply);
       }
-      final next = GuidedInput.nextGuide(_provider, _guidedFields);
-      if (next != null) {
-        _guidedFields.add(next.field);
-        _currentGuideField = next.field;
-        reply = next.question;
-        suggestions = next.suggestions;
+      if (answer.nextField != null) {
+        // Sub-flujo interno (p. ej. semanas de Modalidad 40 "por fechas"):
+        // la respuesta interpretada enruta a la siguiente pregunta del
+        // sub-flujo (fecha inicio → fecha fin) sin pasar por nextGuide.
+        final guide = GuidedInput.questionFor(_provider, answer.nextField!);
+        _guidedFields.add(answer.nextField!);
+        _currentGuideField = answer.nextField!;
+        reply = guide.question;
+        suggestions = guide.suggestions;
       } else {
-        _currentGuideField = null;
-        reply = '¡Listo! Ya tengo los datos necesarios para calcular tu '
-            'pensión. Revisa los resultados en las pestañas de la '
-            'calculadora.';
-        suggestions = const <String>[];
+        final next = GuidedInput.nextGuide(_provider, _guidedFields);
+        if (next != null) {
+          _guidedFields.add(next.field);
+          _currentGuideField = next.field;
+          reply = next.question;
+          suggestions = next.suggestions;
+        } else {
+          _currentGuideField = null;
+          reply = '¡Listo! Ya tengo los datos necesarios para calcular tu '
+              'pensión. Revisa los resultados en las pestañas de la '
+              'calculadora.';
+          suggestions = const <String>[];
+        }
       }
       _messages.add(
         ChatMessage(role: 'assistant', text: reply, suggestions: suggestions),
@@ -435,6 +446,11 @@ class AiChatService extends ChangeNotifier {
       String displayMessage = _sanitizeMessage(_getDisplayMessage(result));
       List<String> suggestions = const <String>[];
       if (result is AiFillFields || setFields.isNotEmpty) {
+        // Marca como "ya preguntados" los campos que la IA acaba de aplicar,
+        // para que la guía pida el SIGUIENTE dato faltante y no repita el que
+        // el usuario ya proporcionó (p. ej. no volver a pedir semanas después
+        // de que el usuario dijo "tengo 1200 semanas cotizadas").
+        _guidedFields.addAll(setFields);
         final guide = GuidedInput.nextGuide(_provider, _guidedFields);
         if (guide != null) {
           _guidedFields.add(guide.field);
