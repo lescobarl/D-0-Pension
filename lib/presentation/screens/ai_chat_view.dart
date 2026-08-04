@@ -180,6 +180,22 @@ class _AiChatViewState extends State<AiChatView> {
     });
   }
 
+  /// Desplaza la conversación una cantidad fija de píxeles (usado por las
+  /// flechas del cursor). No hace nada si el scroll aún no tiene clientes.
+  void _scrollBy(double delta) {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final target = (position.pixels + delta).clamp(
+      0.0,
+      position.maxScrollExtent,
+    );
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+    );
+  }
+
   // ──────────────────────────────────────────────
   // Build
   // ──────────────────────────────────────────────
@@ -220,15 +236,33 @@ class _AiChatViewState extends State<AiChatView> {
         // Conversación con scroll propio: aprovecha todo el espacio y el área
         // de entrada (botón Enviar) permanece siempre visible abajo.
         Expanded(
-          child: ListView(
-            controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
-            children: [
-              if (messages.isEmpty)
-                _buildWelcomeCard()
-              else
-                _buildConversationCard(messages),
-            ],
+          // Focus + onKeyEvent: permite desplazar la conversación con las
+          // flechas del cursor (arriba/abajo) además del scroll táctil.
+          child: Focus(
+            autofocus: true,
+            onKeyEvent: (node, event) {
+              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              final key = event.logicalKey;
+              if (key == LogicalKeyboardKey.arrowDown) {
+                _scrollBy(120);
+                return KeyEventResult.handled;
+              }
+              if (key == LogicalKeyboardKey.arrowUp) {
+                _scrollBy(-120);
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: ListView(
+              controller: _scrollController,
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+              children: [
+                if (messages.isEmpty)
+                  _buildWelcomeCard()
+                else
+                  _buildConversationCard(messages),
+              ],
+            ),
           ),
         ),
         // Entrada fija al fondo: el botón "Enviar" nunca desaparece.
@@ -248,29 +282,23 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      // Compacto, unificado con el resto de subtítulos de las pestañas.
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: AppTheme.primary,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withValues(alpha: 0.2),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              borderRadius: BorderRadius.circular(6),
             ),
-            child: const Icon(Icons.smart_toy, color: AppTheme.accent, size: 24),
+            child: const Icon(Icons.smart_toy, color: AppTheme.accent, size: 14),
           ),
-          const SizedBox(width: AppTheme.spacingMd),
+          const SizedBox(width: 6),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,12 +306,12 @@ class _AiChatViewState extends State<AiChatView> {
                 const Text(
                   'ASISTENTE DE PENSIÓN',
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontSize: AppTheme.fontSizeCardTitle,
+                    fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 // El botón comparte el renglón del subtítulo (sin fila extra),
                 // para no engrosar el encabezado.
                 Row(
@@ -794,6 +822,8 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildLegalNoteCard() {
     return const LegalNoteCard(
+      // Una sola línea compacta: mantiene el frame delgado, sin ocupar
+      // demasiado alto en la parte inferior de la pantalla.
       singleLine: true,
       note:
           'Este asistente es una ayuda para capturar tus datos. NO hace cálculos. '
