@@ -192,10 +192,6 @@ class _PensionViewState extends State<PensionView> {
                     incrementoMensual, incrementoPorcentaje),
                 const SizedBox(height: 1),
 
-                // Banner informativo de proyección (edad de retiro)
-                _buildProyeccionBanner(provider),
-                const SizedBox(height: 1),
-
                 // Pensión Actual + Mod40: Cards and details side by side
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -778,124 +774,6 @@ class _PensionViewState extends State<PensionView> {
           ),
         ],
       ),
-    );
-  }
-
-  /// Banner informativo de proyección (Ley 73). Como la app proyecta la
-  /// pensión SIEMPRE a la edad de retiro seleccionada, este banner muestra la
-  /// proyección ("Proyección a los {edad} años (faltan X años)"), la fecha
-  /// estimada para alcanzar la edad de retiro y, en su caso, la advertencia
-  /// NO bloqueante si faltan semanas cotizadas (< 500).
-  Widget _buildProyeccionBanner(RetroactiveProvider provider) {
-    final advertencias = provider.requisitosPensionFaltantes;
-    final tieneAdvertencia = advertencias.isNotEmpty;
-    final color =
-        tieneAdvertencia ? AppTheme.warningColor : AppTheme.primary;
-    final icon = tieneAdvertencia
-        ? Icons.warning_amber_rounded
-        : Icons.schedule;
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: color.withValues(alpha: 0.6), width: 1),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Proyección a los ${provider.edadRetiro.toStringAsFixed(0)} años '
-                    '(faltan ${provider.anosFaltantesEdadRetiro.toStringAsFixed(2)} años)',
-                    style: TextStyle(
-                      fontSize: AppTheme.fontSizeCardTitle,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (tieneAdvertencia) ...[
-              const SizedBox(height: 8),
-              ...advertencias.map(
-                (r) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.error_outline,
-                          color: AppTheme.warningColor, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          r,
-                          style: const TextStyle(
-                              fontSize: AppTheme.fontSizeBodySmall,
-                              color: AppTheme.textPrimary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            const Divider(height: 20),
-            _buildFechaElegibilidad(provider),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Fila con la fecha estimada en la que el usuario alcanzará la edad de
-  /// retiro seleccionada, calculada desde la fecha de nacimiento.
-  Widget _buildFechaElegibilidad(RetroactiveProvider provider) {
-    final edadRetiro = provider.edadRetiro;
-    final nacimiento = provider.fechaNacimiento;
-    final enteros = edadRetiro.floor();
-    final fraccion = edadRetiro - enteros;
-    final fechaEstimada = DateTime(
-      nacimiento.year + enteros,
-      nacimiento.month,
-      nacimiento.day,
-    ).add(Duration(days: (fraccion * 365.25).round()));
-    final anosFaltantes = provider.edadRetiro - provider.edadActual;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.event_available,
-            color: AppTheme.primary, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Fecha estimada para alcanzar la edad de retiro',
-                  style: TextStyle(
-                      fontSize: AppTheme.fontSizeBodySmall,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary)),
-              const SizedBox(height: 2),
-              Text(
-                '${_formatDate(fechaEstimada)} '
-                '(te faltan ${anosFaltantes.toStringAsFixed(2)} años)',
-                style: const TextStyle(
-                    fontSize: AppTheme.fontSizeBodySmall,
-                    color: AppTheme.textSecondary),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
