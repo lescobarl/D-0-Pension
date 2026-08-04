@@ -163,8 +163,9 @@ class GuidedInput {
         return (
           field: field,
           question: '¿Qué multiplicador de UMA quieres usar para tu salario '
-              'en Modalidad 40? (de 1 a 25, por ejemplo 25)',
-          suggestions: const <String>['25', '20', '15', '10', '5', '1'],
+              'en Modalidad 40? (de 0 a 25, por ejemplo 25)',
+          // Incluye "0": el usuario puede elegir 0 semanas en Modalidad 40.
+          suggestions: const <String>['25', '20', '15', '10', '5', '1', '0'],
         );
       default:
         return (

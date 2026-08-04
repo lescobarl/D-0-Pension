@@ -358,7 +358,7 @@ void main() {
     expect(padres.suggestions, ['0', '1', '2']);
   });
 
-  test('umaMultiplier ofrece chips 25/20/15/10/5/1', () async {
+  test('umaMultiplier ofrece chips 25/20/15/10/5/1/0 (incluye "0")', () async {
     final provider = await buildProvider();
     provider.setSemanasCotizadas(1200);
     provider.setSalarioDiarioPromedio(500);
@@ -373,7 +373,8 @@ void main() {
       'numeroPadres',
     });
     expect(guide!.field, 'umaMultiplier');
-    expect(guide.suggestions, ['25', '20', '15', '10', '5', '1']);
+    // Incluye "0": el usuario puede elegir 0 semanas en Modalidad 40.
+    expect(guide.suggestions, ['25', '20', '15', '10', '5', '1', '0']);
   });
 
   test('todos los campos completos: nextGuide devuelve null (guía termina)',
