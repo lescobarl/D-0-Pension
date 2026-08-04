@@ -247,8 +247,6 @@ class _CapturaViewState extends State<CapturaView> {
             children: [
               _buildHeader(),
               const SizedBox(height: 1),
-              _buildElegibilidadBanner(provider),
-              const SizedBox(height: 1),
               _buildDatosPersonales(provider),
               const SizedBox(height: 1),
               _buildDatosLaborales(provider),
@@ -440,77 +438,6 @@ class _CapturaViewState extends State<CapturaView> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Banner informativo de PROYECCIÓN (Ley 73). La app es una herramienta de
-  /// proyección: la pensión SIEMPRE se proyecta a la edad de retiro
-  /// seleccionada, por lo que la edad actual nunca bloquea el cálculo. El
-  /// banner muestra la proyección ("Proyección a los {edad} años (faltan X
-  /// años)") y, en su caso, la advertencia NO bloqueante por semanas < 500.
-  Widget _buildElegibilidadBanner(RetroactiveProvider provider) {
-    final advertencias = provider.requisitosPensionFaltantes;
-    final tieneAdvertencia = advertencias.isNotEmpty;
-    final color = tieneAdvertencia ? AppTheme.warningColor : AppTheme.primary;
-    final icon =
-        tieneAdvertencia ? Icons.warning_amber_rounded : Icons.schedule;
-    final titulo =
-        'Proyección a los ${provider.edadRetiro.toStringAsFixed(0)} años '
-        '(faltan ${provider.anosFaltantesEdadRetiro.toStringAsFixed(2)} años)';
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  titulo,
-                  style: TextStyle(
-                    fontSize: AppTheme.fontSizeBody,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (tieneAdvertencia) ...[
-            const SizedBox(height: 4),
-            ...advertencias.map(
-              (r) => Padding(
-                padding: const EdgeInsets.only(left: 22, bottom: 2),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.cancel_outlined,
-                        size: 13, color: AppTheme.errorColor),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        r,
-                        style: const TextStyle(
-                          fontSize: AppTheme.fontSizeBodySmall,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }
