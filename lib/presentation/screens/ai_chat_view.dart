@@ -29,7 +29,12 @@ class AiChatView extends StatefulWidget {
   State<AiChatView> createState() => _AiChatViewState();
 }
 
-class _AiChatViewState extends State<AiChatView> {
+class _AiChatViewState extends State<AiChatView>
+    with AutomaticKeepAliveClientMixin {
+  // Mantiene viva la conversación al cambiar de pestaña (TabBarView descarta
+  // los hijos fuera de pantalla por defecto; con esto el chat no se pierde).
+  @override
+  bool get wantKeepAlive => true;
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late AiChatService _chatService;
@@ -202,6 +207,7 @@ class _AiChatViewState extends State<AiChatView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Requerido por AutomaticKeepAliveClientMixin.
     if (!_initialized) {
       return const Center(
         child: Column(
@@ -222,9 +228,10 @@ class _AiChatViewState extends State<AiChatView> {
 
     return Column(
       children: [
-        // Encabezado fijo y compacto.
+        // Encabezado fijo y compacto, pegado arriba (unificado con las demás
+        // pestañas que usan padding superior de 2).
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+          padding: const EdgeInsets.fromLTRB(8, 2, 8, 4),
           child: _buildHeader(),
         ),
         // Aviso de campos aplicados (compacto, justo sobre la conversación).

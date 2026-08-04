@@ -393,6 +393,28 @@ void main() {
     );
   });
 
+  test('detectRequestedEdits: "X Umas" → umaMultiplier (NO salario)', () {
+    // Regresión: "15 Umas" se mapeaba a salarioDiarioPromedio. Ahora el plural
+    // "Umas" debe ir a umaMultiplier, nunca a salario.
+    expect(
+      FieldExtractor.detectRequestedEdits('mi salario era de 15 Umas'),
+      {'umaMultiplier': 15},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('ganaba 15 Umas'),
+      {'umaMultiplier': 15},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('pon 15 umas'),
+      {'umaMultiplier': 15},
+    );
+    // El singular "UMA" con valor en pesos sigue siendo umaDiaria.
+    expect(
+      FieldExtractor.detectRequestedEdits('baja la UMA hasta 108.57'),
+      {'umaDiaria': 108.57},
+    );
+  });
+
   test('detectRequestedEdits: el sinónimo más específico gana', () {
     expect(
       FieldExtractor.detectRequestedEdits('semanas en mod 40 a 200'),

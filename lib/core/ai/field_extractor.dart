@@ -479,6 +479,9 @@ class FieldExtractor {
     'multiplicadordeuma': 'umaMultiplier',
     'vecesuma': 'umaMultiplier',
     'multiplicador': 'umaMultiplier',
+    // "X Umas" (plural) = X veces la UMA → multiplicador. El singular "UMA"
+    // (arriba) sigue siendo el valor diario en pesos (umaDiaria).
+    'umas': 'umaMultiplier',
     // Salarios
     'salariodiopromedio': 'salarioDiarioPromedio',
     'salariodiariopromedio': 'salarioDiarioPromedio',
