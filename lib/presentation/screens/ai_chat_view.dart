@@ -399,12 +399,13 @@ class _AiChatViewState extends State<AiChatView> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            // Primera opción destacada: inicia el llenado guiado paso a paso.
-            _buildGuidedStartChip(),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
+            // Primera opción: inicia el llenado guiado paso a paso (mismo
+            // estilo que el resto de las opciones).
+            _buildExampleChip('Ayúdame a llenar mi cálculo de pensión'),
+            const SizedBox(height: 6),
             const SelectableText(
-              'También puedes contarme tu caso en tus palabras. Por ejemplo:',
+              'Cuéntame en tus palabras tu caso. Por ejemplo:',
               style: TextStyle(
                 fontSize: AppTheme.fontSizeBody,
                 color: AppTheme.textSecondary,
@@ -433,81 +434,6 @@ class _AiChatViewState extends State<AiChatView> {
                 height: 1.4,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Botón destacado (primera opción de la tarjeta de bienvenida) que inicia
-  /// el llenado guiado: al pulsarlo, la app pregunta UNO a la vez todos los
-  /// datos que necesita para el cálculo de pensión.
-  Widget _buildGuidedStartChip() {
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        _sendText('Ayúdame a llenar mi cálculo de pensión');
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppTheme.primary, AppTheme.primaryDark],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primary.withValues(alpha: 0.35),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.auto_awesome,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ayúdame a llenar mi cálculo de pensión',
-                    style: TextStyle(
-                      fontSize: AppTheme.fontSizeBody,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Cuentas conmigo: te preguntaré los datos que necesito, '
-                    'uno a la vez.',
-                    style: TextStyle(
-                      fontSize: AppTheme.fontSizeBodySmall,
-                      color: Colors.white70,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
           ],
         ),
       ),
