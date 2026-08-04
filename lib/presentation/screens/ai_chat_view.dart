@@ -561,7 +561,7 @@ class _AiChatViewState extends State<AiChatView> {
                     style: TextStyle(
                       fontSize: AppTheme.fontSizeBody,
                       color: textColor,
-                      height: 1.2,
+                      height: 1.0,
                     ),
                     selectionColor: isUser
                         ? Colors.white.withValues(alpha: 0.35)
@@ -592,7 +592,14 @@ class _AiChatViewState extends State<AiChatView> {
                               color: AppTheme.primary.withValues(alpha: 0.4),
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
                             ),
                             onPressed: _chatService.canSendMessage
                                 ? () => _sendText(suggestion)
@@ -758,7 +765,7 @@ class _AiChatViewState extends State<AiChatView> {
                       )
                     : null,
                 filled: true,
-                fillColor: AppTheme.backgroundLight,
+                fillColor: AppTheme.primary.withValues(alpha: 0.12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
