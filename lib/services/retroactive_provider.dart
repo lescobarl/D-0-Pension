@@ -420,8 +420,13 @@ class RetroactiveProvider extends ChangeNotifier {
   void setSalarioDiarioPromedio(double v) {
     if (v == _inputs.salarioDiarioPromedio) return;
     _inputs.salarioDiarioPromedio = v;
-    // User manually edited → disable auto-projection
-    _inputs.salarioPromAutoCalculado = false;
+    // Detect whether the user's value matches what the current periodos would
+    // derive. If it matches (round-trip back to the derived value), keep
+    // auto-calculation active. If it diverges (a real manual override), disable
+    // auto-projection so _recalculatePromedioFromPeriodos preserves the value.
+    final periodDerived = _calculateSalarioPromedioFromPeriodos();
+    final diverges = (v - periodDerived).abs() > 0.001;
+    _inputs.salarioPromAutoCalculado = !diverges;
     persistence.saveSalarioDiarioPromedio(v);
     _calculator.recalcularFactAsig();
     _calculator.recalcularPensionMod40();
@@ -602,7 +607,7 @@ class RetroactiveProvider extends ChangeNotifier {
     // Recalculate Salario Promedio 250 Semanas from NON-Mod40 periods only
     final totalSemanasSinMod40 = _inputs.periodos.fold<double>(0, (sum, p) => sum + (!p.esMod40 ? p.semanas : 0));
     final totalResultadosSinMod40 = _inputs.periodos.fold<double>(0, (sum, p) => sum + (!p.esMod40 ? p.resultado : 0));
-    _inputs.salarioPromedio250Semanas = totalSemanasSinMod40 > 0 ? totalResultadosSinMod40 / totalSemanasSinMod40 : 0;
+    _inputs.salarioPromedio250Semanas = totalSemanasSinMod40 > 0 ? totalResultadosSinMod40 / totalSemanasSinMod40 : _inputs.salarioPromedio250Semanas;
     persistence.saveSalarioPromedio250Semanas(_inputs.salarioPromedio250Semanas);
 
     _calculator.recalcularFactAsig();
@@ -891,9 +896,11 @@ class RetroactiveProvider extends ChangeNotifier {
 
   // --- Semanas (desglose) setters ---
   void setSemanasAntesMod40(double v) {
-    if (v == _inputs.semanasAntesMod40) return;
     // Desglose explícito → "antes" es la fuente primaria (total = antes + en).
+    // Se marca ANTES del guard para que llamadas con el valor semilla (p. ej.
+    // 1960) también activen el modo desglose explícito.
     _semanasAntesMod40Explicit = true;
+    if (v == _inputs.semanasAntesMod40) return;
     _inputs.semanasAntesMod40 = v;
     persistence.saveSemanasAntesMod40(v);
     // Recalculate total semanas sin Mod40
@@ -1047,6 +1054,14 @@ class RetroactiveProvider extends ChangeNotifier {
   /// ignored for the pension base. Si no hay periodos, retorna
   /// [salarioPromedio250Semanas].
   double _calculateSalarioPromedioFromPeriodos() {
+    // If the evaluator hasn't been initialized yet (e.g. unit tests that build
+    // the provider without initialize()), totalSemanasPromedio is unknown.
+    // Periodos are also empty in that state, so fall back to the base 250-week
+    // average — the same semantics as the empty-periodos branch of
+    // _recalculatePromedioFromPeriodos().
+    if (!evaluator.isInitialized) {
+      return _inputs.salarioPromedio250Semanas;
+    }
     final totalSemanasPromedio =
         evaluator.metadata.financialRules.totalSemanasPromedio.toDouble();
     return _periodosEngine.promedioDesdePeriodos(
@@ -1065,50 +1080,50 @@ class RetroactiveProvider extends ChangeNotifier {
   /// captured desglose de periodos is NEVER destroyed by an input change.
   ///
   /// If _periodos is empty (no periods defined yet), falls back to
-  /// _salarioPromedio250Semanas as the promedio.
+  /// _salarioPromedio250Semanas as the promedio. This fallback is
+  /// UNCONDITIONAL (even in manual mode) so that clearing the desglose always
+  /// falls back to the base 250-week average.
   ///
-  /// If the user has manually edited _salarioDiarioPromedio
-  /// (_salarioPromAutoCalculado == false), the manual value is preserved
-  /// and this method does nothing.
+  /// Auto mode (_salarioPromAutoCalculado == true, periods non-empty): updates
+  /// the salarioDiario of each existing period to reflect the current
+  /// _salarioRegistrado (for Mod40 periods) and _salarioPromedio250Semanas
+  /// (for non-Mod40 periods), then recomputes the weighted average and
+  /// re-derives semanasEnMod40. This ensures that when inputs like UMA change,
+  /// the desglose periodos update accordingly. The period structure (dates,
+  /// semanas, esMod40) is PRESERVED — only salarioDiario values are updated.
   ///
-  /// When _salarioPromAutoCalculado is true (auto-calculated mode), this
-  /// method also UPDATES the salarioDiario of each existing period to reflect
-  /// the current _salarioRegistrado (for Mod40 periods) and
-  /// _salarioPromedio250Semanas (for non-Mod40 periods). This ensures that
-  /// when inputs like UMA change, the desglose periodos update accordingly.
-  ///
-  /// The period structure (dates, semanas, esMod40) is PRESERVED — only the
-  /// salarioDiario values are updated. Once the user manually edits any period
-  /// (via setPeriodos/updatePeriodo/removePeriodo), _salarioPromAutoCalculado
-  /// becomes false and this auto-update stops.
-  ///
-  /// Even when _salarioPromAutoCalculado is false, Mod40 periods are always updated
-  /// to reflect the current _salarioRegistrado, since these are automatically
-  /// calculated from UMA and should not be manually edited by the user.
+  /// Manual mode (_salarioPromAutoCalculado == false, periods non-empty): the
+  /// user's manually-edited _salarioDiarioPromedio and periodos are preserved
+  /// exactly as-is — this method does nothing, so a later UMA/salario/semana
+  /// change never overwrites a user's captured values.
   void _recalculatePromedioFromPeriodos() {
     if (_inputs.periodos.isNotEmpty) {
-      // Update salarios usando estas reglas:
-      // - Mod40 periods always follow _salarioRegistrado (derived from UMA).
-      // - non-Mod40 periods are NEVER updated by this method when called from
-      //   age changes. They are only updated when the user explicitly changes
-      //   _salarioPromedio250Semanas.
-      final result = _periodosEngine.actualizarSalariosDePeriodos(
-        _inputs.periodos,
-        salarioRegistrado: _inputs.salarioRegistrado,
-        actualizarNoMod40: false,
-      );
-      if (result.anyChanged) {
-        _inputs.periodos = result.periodos;
-        persistence.savePeriodos(_inputs.periodos);
+      if (_inputs.salarioPromAutoCalculado) {
+        // Auto mode: update salarios usando estas reglas:
+        // - Mod40 periods always follow _salarioRegistrado (derived from UMA).
+        // - non-Mod40 periods are NEVER updated by this method when called from
+        //   age changes. They are only updated when the user explicitly changes
+        //   _salarioPromedio250Semanas.
+        final result = _periodosEngine.actualizarSalariosDePeriodos(
+          _inputs.periodos,
+          salarioRegistrado: _inputs.salarioRegistrado,
+          actualizarNoMod40: false,
+        );
+        if (result.anyChanged) {
+          _inputs.periodos = result.periodos;
+          persistence.savePeriodos(_inputs.periodos);
+        }
+
+        // Recalculate weighted average from periods using Excel E19.
+        _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
+        persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
+
+        // Recalculate Semanas en Mod40 (always)
+        _inputs.semanasEnMod40 = _periodosEngine.semanasEnMod40(_inputs.periodos);
+        persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
       }
-
-      // Recalculate weighted average from periods using Excel E19.
-      _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
-      persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
-
-      // Recalculate Semanas en Mod40 (always)
-      _inputs.semanasEnMod40 = _periodosEngine.semanasEnMod40(_inputs.periodos);
-      persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
+      // Manual mode (periods exist but the user set the promedio manually):
+      // preserve both the user's promedio and the periods as-is.
     } else {
       // No periods defined — use the base 250-week average
       _inputs.salarioDiarioPromedio = _inputs.salarioPromedio250Semanas;

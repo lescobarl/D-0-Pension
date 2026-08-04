@@ -523,26 +523,36 @@ class PensionAgeDropdown {
     return ages;
   }
 
-  /// Closest valid age in [availableAges] to [age], clamped to
-  /// [minAge]..[maxAge].
+  /// Snaps an arbitrary age onto the legal grid
+  /// [minAge, minAge + fraccionThreshold, ..., maxAge], clamped to
+  /// [minAge]..[maxAge], using the threshold-aware Art. 167 rounding rule:
+  /// ages whose decimal part is >= [fraccionThreshold] round UP to the next
+  /// integer year (e.g. 60.51 → 61), everything below rounds DOWN
+  /// (e.g. 60.5 → 60). This mirrors `EdadRoundingRule.roundToInteger` and
+  /// matches Excel's behavior for off-grid inputs.
   ///
-  /// Coerces arbitrary AI/user values (e.g. 60.5) onto the legal grid
-  /// [60, 60.51, ..., 65] so the dropdown never holds an off-grid value that
-  /// would render blank (a `DropdownButton` has no matching item for it).
+  /// Coerces arbitrary AI/user values onto the grid so the dropdown never holds
+  /// an off-grid value that would render blank (a `DropdownButton` has no
+  /// matching item for it).
   double nearestAge(double age) {
     final list = availableAges;
     if (age <= list.first) return list.first;
     if (age >= list.last) return list.last;
-    var best = list.first;
-    var bestDist = (best - age).abs();
-    for (final a in list) {
-      final d = (a - age).abs();
-      if (d < bestDist) {
-        best = a;
-        bestDist = d;
-      }
-    }
-    return best;
+
+    // Threshold-aware rounding matching the Art. 167 rule: >= fraccionThreshold
+    // rounds up to the next integer year, below rounds down.
+    final decimalPart = age - age.floor();
+    final rounded = decimalPart >= (fraccionThreshold - 1e-10)
+        ? age.ceil()
+        : age.floor();
+
+    // Clamp to integer years (no fractional value below minAge).
+    if (rounded <= minAge) return minAge.toDouble();
+    final upper = rounded.toDouble();
+    // The lower half-step grid point below `upper` is `upper - 1 + fraccionThreshold`
+    // (e.g. upper=61 → lower=60.51). Pick whichever is closer to `age`.
+    final lower = upper - 1 + fraccionThreshold;
+    return ((age - lower).abs() <= (upper - age).abs()) ? lower : upper;
   }
 }
 

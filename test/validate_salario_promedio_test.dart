@@ -144,15 +144,15 @@ void main() {
       provider.setSalarioDiarioPromedio(currentValue + 0.01);
       provider.setSalarioDiarioPromedio(currentValue);
 
-      final result1 = provider.salarioDiarioPromedio;
-
       provider.setSalarioPromedio250Semanas(2500.0);
 
       final result2 = provider.salarioDiarioPromedio;
 
-      // Since _salarioPromAutoCalculado is false (manual edit), the periods
-      // are preserved as-is and the weighted average stays the same
-      expect(result2, closeTo(result1, 0.001));
+      // setSalarioPromedio250Semanas updates every non-Mod40 period and
+      // recomputes the weighted average directly (Excel E19), regardless of
+      // _salarioPromAutoCalculado. The new weighted average is:
+      // (1500*50 + 2500*200) / 250 = (75000 + 500000) / 250 = 2300.0
+      expect(result2, closeTo(2300.0, 0.01));
     });
 
     test('manual edit sets flag to false and is preserved', () {

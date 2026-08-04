@@ -434,7 +434,7 @@ class AiChatService extends ChangeNotifier {
       final setFields = FieldExtractor.applyValues(_provider, guarded);
 
       // Sync the "Datos aplicados" notification with the real applied value:
-      // setEdadRetiro snaps off-grid ages (e.g. 60.5 → 60.51), so reflect the
+      // setEdadRetiro snaps off-grid ages (e.g. 60.5 → 60), so reflect the
       // snapped value instead of the raw number the AI echoed.
       if (setFields.contains('edadRetiro')) {
         guarded['edadRetiro'] = _provider.edadRetiro;

@@ -443,17 +443,18 @@ void main() {
     await settle();
     expect(provider.edadRetiro, 62);
 
-    // 60.5 no está en la rejilla; el punto válido más cercano es 60.51
-    // (escenario exacto del bug reportado: dropdown en blanco).
+    // 60.5 no está en la rejilla y su decimal (0.5) es menor al umbral 0.51,
+    // así que redondea hacia abajo al entero 60 (regla Art. 167, igual que
+    // Excel: 60.5 → 60 → 75%). Antes el snap daba 60.51 (80%), incorrecto.
     await provider.setEdadRetiro(60.5);
     await settle();
-    expect(provider.edadRetiro, 60.51);
+    expect(provider.edadRetiro, 60.0);
     expect(provider.availableAgesRetiro, contains(provider.edadRetiro));
 
-    // 61.3 → 61.51 (|61.3-61|=0.3 > |61.3-61.51|=0.21).
+    // 61.3: decimal 0.3 < 0.51 → redondea hacia abajo a 61 (no a 61.51).
     await provider.setEdadRetiro(61.3);
     await settle();
-    expect(provider.edadRetiro, 61.51);
+    expect(provider.edadRetiro, 61.0);
 
     // Fuera de rango → clamp al borde.
     await provider.setEdadRetiro(59.5);
@@ -491,7 +492,7 @@ void main() {
     expect(setFields, contains('edadRetiro'));
     // El valor aplicado (post-snap) siempre está en la rejilla, así el
     // dropdown de Captura nunca se renderiza en blanco.
-    expect(provider.edadRetiro, 60.51);
+    expect(provider.edadRetiro, 60.0);
     expect(provider.availableAgesRetiro, contains(provider.edadRetiro));
   });
 }
