@@ -294,9 +294,8 @@ class AiChatService extends ChangeNotifier {
         suggestions = guide.suggestions;
       } else {
         _currentGuideField = null;
-        reply = '¡Listo! Ya tengo los datos necesarios para calcular tu '
-            'pensión. Revisa los resultados en las pestañas de la '
-            'calculadora.';
+        reply = '¡Listo! He guardado tu información. Puedes validarla en la '
+            'pestaña Captura o revisar tus resultados en la pestaña Pensión.';
         suggestions = const <String>[];
       }
       _messages.add(ChatMessage(
@@ -361,12 +360,12 @@ class AiChatService extends ChangeNotifier {
         } else {
           _currentGuideField = null;
           reply = confirmacion.isEmpty
-              ? '¡Listo! Ya tengo los datos necesarios para calcular tu '
-                  'pensión. Revisa los resultados en las pestañas de la '
-                  'calculadora.'
-              : '$confirmacion\n\n¡Listo! Ya tengo los datos necesarios para '
-                  'calcular tu pensión. Revisa los resultados en las pestañas '
-                  'de la calculadora.';
+              ? '¡Listo! He guardado tu información. Puedes validarla en la '
+                  'pestaña Captura o revisar tus resultados en la pestaña '
+                  'Pensión.'
+              : '$confirmacion\n\n¡Listo! He guardado tu información. Puedes '
+                  'validarla en la pestaña Captura o revisar tus resultados en '
+                  'la pestaña Pensión.';
           suggestions = const <String>[];
         }
       }
@@ -469,9 +468,9 @@ class AiChatService extends ChangeNotifier {
           displayMessage = guide.question;
           suggestions = guide.suggestions;
         } else if (_containsVagueMissingQuestion(displayMessage)) {
-          displayMessage = '¡Listo! Ya tengo los datos necesarios para '
-              'calcular tu pensión. Revisa los resultados en las pestañas de '
-              'la calculadora.';
+          displayMessage = '¡Listo! He guardado tu información. Puedes '
+              'validarla en la pestaña Captura o revisar tus resultados en la '
+              'pestaña Pensión.';
         }
       }
 
