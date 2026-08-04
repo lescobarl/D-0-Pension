@@ -379,27 +379,6 @@ class _AiChatViewState extends State<AiChatView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.smart_toy,
-                  size: AppTheme.fontSizeIcon,
-                  color: AppTheme.primary,
-                ),
-                const SizedBox(width: 6),
-                const Expanded(
-                  child: SelectableText(
-                    '¿Cómo te puedo ayudar?',
-                    style: TextStyle(
-                      fontSize: AppTheme.fontSizeCardTitle,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
             // Primera opción: inicia el llenado guiado paso a paso (mismo
             // estilo que el resto de las opciones).
             _buildExampleChip('Ayúdame a llenar mi cálculo de pensión'),
