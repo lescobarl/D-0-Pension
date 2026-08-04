@@ -107,7 +107,7 @@ class GuidedInput {
       case 'semanasEnMod40':
         return (
           field: field,
-          question: '¿Cuántas semanas estás cotizando en Modalidad 40? '
+          question: '¿Cuántas semanas planeas cotizar en Modalidad 40? '
               'Responde con un número (por ejemplo, 130).',
           suggestions: const <String>[],
         );
