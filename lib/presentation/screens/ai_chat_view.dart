@@ -623,7 +623,15 @@ class _AiChatViewState extends State<AiChatView>
                             onPressed: _chatService.canSendMessage
                                 ? () => _sendText(
                                       suggestion,
-                                      guideField: message.suggestionField,
+                                      // El chip viaja con el campo al que
+                                      // pertenece. Respaldo: si la sesión es
+                                      // antigua (sin suggestionField) pero la
+                                      // guía sigue activa, se aplica al campo
+                                      // guiado actual en lugar de caer en la IA
+                                      // y mostrar "No pude aplicar ningún
+                                      // campo".
+                                      guideField: message.suggestionField ??
+                                          _chatService.currentGuideField,
                                     )
                                 : null,
                           ),

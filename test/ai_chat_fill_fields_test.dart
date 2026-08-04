@@ -674,18 +674,33 @@ void main() {
     // AutomaticKeepAliveClientMixin). El clic viaja con suggestionField
     // 'numeroHijos' y debe actualizar hijos, NO padres (que es el campo al
     // que la guía ya había avanzado).
-    await harness.service.sendMessage('1', guideField: 'numeroHijos');
+    final reClickHijos =
+        await harness.service.sendMessage('1', guideField: 'numeroHijos');
     await settle();
 
     // El campo correcto se actualizó y el otro quedó intacto.
     expect(harness.provider.numeroHijos, 1);
     expect(harness.provider.numeroPadres, 0);
 
+    // El re-clic devuelve AiFillFields (no AiChat) para que la UI muestre
+    // "✅ Datos aplicados" con el valor capturado (bug "No pude aplicar
+    // ningún campo" en un clic de chip).
+    expect(reClickHijos, isA<AiFillFields>());
+    final reClickFill = reClickHijos as AiFillFields;
+    expect(reClickFill.setFields, contains('numeroHijos'));
+    expect(reClickFill.values['numeroHijos'], 1);
+    expect(reClickFill.setFields, isNot(contains('numeroPadres')));
+
     // Re-clic en el chip de padres también debe ir a su propio campo.
-    await harness.service.sendMessage('2', guideField: 'numeroPadres');
+    final reClickPadres =
+        await harness.service.sendMessage('2', guideField: 'numeroPadres');
     await settle();
     expect(harness.provider.numeroPadres, 2);
     expect(harness.provider.numeroHijos, 1);
+    expect(reClickPadres, isA<AiFillFields>());
+    final reClickPadresFill = reClickPadres as AiFillFields;
+    expect(reClickPadresFill.setFields, contains('numeroPadres'));
+    expect(reClickPadresFill.values['numeroPadres'], 2);
 
     // El resto de campos permanece correcto (validación de todos los campos).
     expect(harness.provider.semanasCotizadas, 380);

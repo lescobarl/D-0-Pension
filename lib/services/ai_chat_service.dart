@@ -183,6 +183,13 @@ class AiChatService extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get lastError => _lastError;
 
+  /// Campo de la pregunta guiada activa (null si la guía no está en curso).
+  /// Lo usa la vista como respaldo para un clic en un chip de una sesión
+  /// antigua (sin `suggestionField`): si la guía sigue activa, el clic se
+  /// aplica al campo guiado actual en lugar de caer en la IA y mostrar el
+  /// confuso "No pude aplicar ningún campo".
+  String? get currentGuideField => _currentGuideField;
+
   int get sessionMessageCount => _sessionMessageCount;
   int get dailySessionCount => _dailySessionCount;
   int get dailyMessageCount => _dailyMessageCount;
@@ -567,7 +574,64 @@ class AiChatService extends ChangeNotifier {
     );
     await _saveState();
     notifyListeners();
-    return AiChat(reply);
+    // Devuelve AiFillFields (en lugar de AiChat) para que la UI muestre la
+    // confirmación "✅ Datos aplicados" con el valor capturado. Esto es clave
+    // para un re-clic en un chip de una pregunta ya respondida: el usuario ve
+    // de inmediato que su clic SÍ se aplicó (p. ej. "2 hijos" → numeroHijos=2).
+    return AiFillFields(
+      values: _buildValuesFromSetFields(answer.setFields),
+      message: reply,
+      missingFields: const <String>[],
+      setFields: answer.setFields,
+    );
+  }
+
+  /// Construye un mapa `field → valor actual` a partir de los [setFields]
+  /// aplicados por [GuidedInput.applyAnswer], para que la UI pueda mostrar el
+  /// valor capturado en la confirmación "✅ Datos aplicados".
+  Map<String, dynamic> _buildValuesFromSetFields(List<String> setFields) {
+    final values = <String, dynamic>{};
+    for (final field in setFields) {
+      switch (field) {
+        case 'semanasCotizadas':
+          values[field] = _provider.semanasCotizadas;
+          break;
+        case 'salarioDiarioPromedio':
+          values[field] = _provider.salarioDiarioPromedio;
+          break;
+        case 'fechaNacimiento':
+          values[field] = _provider.fechaNacimiento;
+          break;
+        case 'edadRetiro':
+          values[field] = _provider.edadRetiro;
+          break;
+        case 'tieneEsposa':
+          values[field] = _provider.tieneEsposa;
+          break;
+        case 'numeroHijos':
+          values[field] = _provider.numeroHijos;
+          break;
+        case 'numeroPadres':
+          values[field] = _provider.numeroPadres;
+          break;
+        case 'umaMultiplier':
+          values[field] = _provider.umaMultiplier;
+          break;
+        case 'salarioPromedio250Semanas':
+          values[field] = _provider.salarioPromedio250Semanas;
+          break;
+        case 'semanasEnMod40':
+          values[field] = _provider.semanasEnMod40;
+          break;
+        case 'startDate':
+          values[field] = _provider.startDate;
+          break;
+        case 'endDate':
+          values[field] = _provider.endDate;
+          break;
+      }
+    }
+    return values;
   }
 
   // ──────────────────────────────────────────────
