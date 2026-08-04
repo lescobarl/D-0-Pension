@@ -344,17 +344,29 @@ class AiChatService extends ChangeNotifier {
         reply = guide.question;
         suggestions = guide.suggestions;
       } else {
+        // Confirmación formateada del dato capturado (p. ej. la fecha de
+        // nacimiento se muestra como DD/MM/AAAA para que se vea correcta).
+        final String confirmacion = _confirmacionCampo(
+          _currentGuideField!,
+          answer.setFields,
+        );
         final next = GuidedInput.nextGuide(_provider, _guidedFields);
         if (next != null) {
           _guidedFields.add(next.field);
           _currentGuideField = next.field;
-          reply = next.question;
+          reply = confirmacion.isEmpty
+              ? next.question
+              : '$confirmacion\n\n${next.question}';
           suggestions = next.suggestions;
         } else {
           _currentGuideField = null;
-          reply = '¡Listo! Ya tengo los datos necesarios para calcular tu '
-              'pensión. Revisa los resultados en las pestañas de la '
-              'calculadora.';
+          reply = confirmacion.isEmpty
+              ? '¡Listo! Ya tengo los datos necesarios para calcular tu '
+                  'pensión. Revisa los resultados en las pestañas de la '
+                  'calculadora.'
+              : '$confirmacion\n\n¡Listo! Ya tengo los datos necesarios para '
+                  'calcular tu pensión. Revisa los resultados en las pestañas '
+                  'de la calculadora.';
           suggestions = const <String>[];
         }
       }
@@ -806,6 +818,21 @@ class AiChatService extends ChangeNotifier {
         lower.contains('cuentas conmigo') ||
         lower.contains('soy tu ia') ||
         lower.contains('empieza a preguntarme');
+  }
+
+  /// Devuelve una confirmación formateada del dato capturado en el flujo
+  /// guiado, o una cadena vacía si no aplica. En particular, la fecha de
+  /// nacimiento se muestra como DD/MM/AAAA para que se vea correctamente
+  /// (el usuario la escribe en formato compacto, p. ej. 30011969).
+  String _confirmacionCampo(String field, List<String> setFields) {
+    if (field == 'fechaNacimiento' && setFields.contains('fechaNacimiento')) {
+      final d = _provider.fechaNacimiento;
+      final dd = d.day.toString().padLeft(2, '0');
+      final mm = d.month.toString().padLeft(2, '0');
+      final aaaa = d.year.toString().padLeft(4, '0');
+      return 'Perfecto, tu fecha de nacimiento es $dd/$mm/$aaaa.';
+    }
+    return '';
   }
 
   // ──────────────────────────────────────────────

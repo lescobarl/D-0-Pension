@@ -356,7 +356,7 @@ void main() {
     expect(padres.suggestions, ['0', '1', '2']);
   });
 
-  test('umaMultiplier ofrece chips 25/20/15', () async {
+  test('umaMultiplier ofrece chips 25/20/15/10/5/1', () async {
     final provider = await buildProvider();
     provider.setSemanasCotizadas(1200);
     provider.setSalarioDiarioPromedio(500);
@@ -371,7 +371,7 @@ void main() {
       'numeroPadres',
     });
     expect(guide!.field, 'umaMultiplier');
-    expect(guide.suggestions, ['25', '20', '15']);
+    expect(guide.suggestions, ['25', '20', '15', '10', '5', '1']);
   });
 
   test('todos los campos completos: nextGuide devuelve null (guía termina)',
