@@ -26,11 +26,21 @@ class ChatMessage {
   /// Solo los mensajes del asistente lo traen; `null` = sin chips.
   final List<String>? suggestions;
 
+  /// Campo guiado al que pertenecen los [suggestions] de este mensaje.
+  ///
+  /// Permite que un clic en un chip se aplique SIEMPRE al campo que el chip
+  /// representa visualmente, aunque la guía ya haya avanzado a otra pregunta.
+  /// Sin esto, un clic en un chip de una pregunta ya respondida (p. ej. "1"
+  /// sobre el chip viejo de "hijos") se interpretaba contra el campo guiado
+  /// ACTIVO (p. ej. "padres") y actualizaba el campo equivocado.
+  final String? suggestionField;
+
   ChatMessage({
     required this.role,
     required this.text,
     DateTime? timestamp,
     this.suggestions,
+    this.suggestionField,
   }) : timestamp = timestamp ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
@@ -38,6 +48,7 @@ class ChatMessage {
         'text': text,
         'timestamp': timestamp.toIso8601String(),
         if (suggestions != null) 'suggestions': suggestions,
+        if (suggestionField != null) 'suggestionField': suggestionField,
       };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -48,6 +59,7 @@ class ChatMessage {
         suggestions: (json['suggestions'] as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList(),
+        suggestionField: json['suggestionField'] as String?,
       );
 }
 
@@ -276,7 +288,24 @@ class AiChatService extends ChangeNotifier {
   // ──────────────────────────────────────────────
 
   /// Send a user message to OpenRouter and process the response.
-  Future<AiResponseResult?> sendMessage(String text) async {
+  ///
+  /// [guideField] lo usa un clic en un chip de respuesta rápida: indica el
+  /// campo guiado al que pertenece el chip. Así el clic se aplica SIEMPRE a ese
+  /// campo (aunque la guía ya haya avanzado a otra pregunta), en lugar de
+  /// interpretarse contra el campo guiado activo. `null` = mensaje normal.
+  Future<AiResponseResult?> sendMessage(
+    String text, {
+    String? guideField,
+  }) async {
+    // ── Clic en un chip de respuesta rápida de una pregunta guiada ──
+    // El chip viaja con el campo al que pertenece (suggestionField). Aunque la
+    // guía ya haya avanzado a otra pregunta, el clic debe actualizar el campo
+    // que el chip representa visualmente (causa raíz del bug "2 hijos → 1 hijo
+    // no se actualiza": el "1" se interpretaba contra "padres" en vez de
+    // "hijos"). Se aplica localmente, sin llamar a la IA ni consumir cupo.
+    if (guideField != null) {
+      return _handleGuidedAnswer(guideField, text);
+    }
     // ── Inicio del llenado guiado (chip "Ayúdame a llenar mi cálculo") ──
     // Respuesta 100% determinista y local: la app decide qué dato falta y
     // pregunta UNO a la vez (en orden fijo), sin llamar a la IA ni consumir
@@ -302,6 +331,7 @@ class AiChatService extends ChangeNotifier {
         role: 'assistant',
         text: reply,
         suggestions: suggestions,
+        suggestionField: guide?.field,
       ));
       notifyListeners();
       return AiChat(reply);
@@ -314,67 +344,7 @@ class AiChatService extends ChangeNotifier {
     // antes, estas respuestas se enviaban a la IA, que devolvía JSON truncado
     // que se filtraba a la UI como texto visible.
     if (_currentGuideField != null) {
-      _messages.add(ChatMessage(role: 'user', text: text));
-      final answer = await GuidedInput.applyAnswer(
-        _provider,
-        _currentGuideField!,
-        text,
-      );
-      final String reply;
-      final List<String> suggestions;
-      if (answer == null) {
-        // No se pudo interpretar → se vuelve a preguntar el mismo dato.
-        final guide = GuidedInput.questionFor(_provider, _currentGuideField!);
-        reply = 'No entendí tu respuesta. ${guide.question}';
-        suggestions = guide.suggestions;
-        _messages.add(
-          ChatMessage(role: 'assistant', text: reply, suggestions: suggestions),
-        );
-        notifyListeners();
-        return AiChat(reply);
-      }
-      if (answer.nextField != null) {
-        // Sub-flujo interno (p. ej. semanas de Modalidad 40 "por fechas"):
-        // la respuesta interpretada enruta a la siguiente pregunta del
-        // sub-flujo (fecha inicio → fecha fin) sin pasar por nextGuide.
-        final guide = GuidedInput.questionFor(_provider, answer.nextField!);
-        _guidedFields.add(answer.nextField!);
-        _currentGuideField = answer.nextField!;
-        reply = guide.question;
-        suggestions = guide.suggestions;
-      } else {
-        // Confirmación formateada del dato capturado (p. ej. la fecha de
-        // nacimiento se muestra como DD/MM/AAAA para que se vea correcta).
-        final String confirmacion = _confirmacionCampo(
-          _currentGuideField!,
-          answer.setFields,
-        );
-        final next = GuidedInput.nextGuide(_provider, _guidedFields);
-        if (next != null) {
-          _guidedFields.add(next.field);
-          _currentGuideField = next.field;
-          reply = confirmacion.isEmpty
-              ? next.question
-              : '$confirmacion\n\n${next.question}';
-          suggestions = next.suggestions;
-        } else {
-          _currentGuideField = null;
-          reply = confirmacion.isEmpty
-              ? '¡Listo! He guardado tu información. Puedes validarla en la '
-                  'pestaña Captura o revisar tus resultados en la pestaña '
-                  'Pensión.'
-              : '$confirmacion\n\n¡Listo! He guardado tu información. Puedes '
-                  'validarla en la pestaña Captura o revisar tus resultados en '
-                  'la pestaña Pensión.';
-          suggestions = const <String>[];
-        }
-      }
-      _messages.add(
-        ChatMessage(role: 'assistant', text: reply, suggestions: suggestions),
-      );
-      await _saveState();
-      notifyListeners();
-      return AiChat(reply);
+      return _handleGuidedAnswer(_currentGuideField!, text);
     }
 
     // Count a consultation lazily: only the first message of a fresh session
@@ -456,6 +426,7 @@ class AiChatService extends ChangeNotifier {
       // dato?" de la IA. La IA propone; la app guía. ──
       String displayMessage = _sanitizeMessage(_getDisplayMessage(result));
       List<String> suggestions = const <String>[];
+      String? suggestionField;
       if (result is AiFillFields || setFields.isNotEmpty) {
         // Marca como "ya preguntados" los campos que la IA acaba de aplicar,
         // para que la guía pida el SIGUIENTE dato faltante y no repita el que
@@ -467,6 +438,7 @@ class AiChatService extends ChangeNotifier {
           _guidedFields.add(guide.field);
           displayMessage = guide.question;
           suggestions = guide.suggestions;
+          suggestionField = guide.field;
         } else if (_containsVagueMissingQuestion(displayMessage)) {
           displayMessage = '¡Listo! He guardado tu información. Puedes '
               'validarla en la pestaña Captura o revisar tus resultados en la '
@@ -481,6 +453,7 @@ class AiChatService extends ChangeNotifier {
           role: 'assistant',
           text: displayMessage,
           suggestions: suggestions,
+          suggestionField: suggestionField,
         ),
       );
 
@@ -512,6 +485,89 @@ class AiChatService extends ChangeNotifier {
       notifyListeners();
       return AiError(_lastError!);
     }
+  }
+
+  /// Interpreta y aplica LOCALMENTE la [text] como respuesta a la pregunta
+  /// guiada de [field] (flujo 100% determinista, sin llamar a la IA ni
+  /// consumir cupo de sesión/día).
+  ///
+  /// Se usa tanto para la pregunta guiada activa ([_currentGuideField]) como
+  /// para un clic en un chip de respuesta rápida que pertenece a un campo
+  /// concreto ([guideField] en [sendMessage]). Al aplicarlo al campo del chip
+  /// (no al campo activo), un re-clic en un chip de una pregunta ya respondida
+  /// actualiza el campo correcto.
+  Future<AiResponseResult> _handleGuidedAnswer(
+    String field,
+    String text,
+  ) async {
+    _messages.add(ChatMessage(role: 'user', text: text));
+    final answer = await GuidedInput.applyAnswer(_provider, field, text);
+    final String reply;
+    final List<String> suggestions;
+    String? suggestionField;
+    if (answer == null) {
+      // No se pudo interpretar → se vuelve a preguntar el mismo dato.
+      final guide = GuidedInput.questionFor(_provider, field);
+      reply = 'No entendí tu respuesta. ${guide.question}';
+      suggestions = guide.suggestions;
+      suggestionField = field;
+      _messages.add(
+        ChatMessage(
+          role: 'assistant',
+          text: reply,
+          suggestions: suggestions,
+          suggestionField: suggestionField,
+        ),
+      );
+      notifyListeners();
+      return AiChat(reply);
+    }
+    if (answer.nextField != null) {
+      // Sub-flujo interno (p. ej. semanas de Modalidad 40 "por fechas"):
+      // la respuesta interpretada enruta a la siguiente pregunta del
+      // sub-flujo (fecha inicio → fecha fin) sin pasar por nextGuide.
+      final guide = GuidedInput.questionFor(_provider, answer.nextField!);
+      _guidedFields.add(answer.nextField!);
+      _currentGuideField = answer.nextField!;
+      reply = guide.question;
+      suggestions = guide.suggestions;
+      suggestionField = answer.nextField;
+    } else {
+      // Confirmación formateada del dato capturado (p. ej. la fecha de
+      // nacimiento se muestra como DD/MM/AAAA para que se vea correcta).
+      final String confirmacion = _confirmacionCampo(field, answer.setFields);
+      final next = GuidedInput.nextGuide(_provider, _guidedFields);
+      if (next != null) {
+        _guidedFields.add(next.field);
+        _currentGuideField = next.field;
+        reply = confirmacion.isEmpty
+            ? next.question
+            : '$confirmacion\n\n${next.question}';
+        suggestions = next.suggestions;
+        suggestionField = next.field;
+      } else {
+        _currentGuideField = null;
+        reply = confirmacion.isEmpty
+            ? '¡Listo! He guardado tu información. Puedes validarla en la '
+                'pestaña Captura o revisar tus resultados en la pestaña '
+                'Pensión.'
+            : '$confirmacion\n\n¡Listo! He guardado tu información. Puedes '
+                'validarla en la pestaña Captura o revisar tus resultados en '
+                'la pestaña Pensión.';
+        suggestions = const <String>[];
+      }
+    }
+    _messages.add(
+      ChatMessage(
+        role: 'assistant',
+        text: reply,
+        suggestions: suggestions,
+        suggestionField: suggestionField,
+      ),
+    );
+    await _saveState();
+    notifyListeners();
+    return AiChat(reply);
   }
 
   // ──────────────────────────────────────────────

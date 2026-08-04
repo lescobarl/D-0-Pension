@@ -640,4 +640,65 @@ void main() {
     expect(last.text, contains('actualizado'));
     harness.service.dispose();
   });
+
+  test(
+      'REGRESIÓN: re-clic en un chip de una pregunta ya respondida actualiza '
+      'ESE campo (bug "2 hijos → 1 hijo no se actualiza")', () async {
+    // Un client que falla si se invoca: todo el llenado debe resolverse local.
+    final mock = MockClient((request) async {
+      throw StateError('No se debe llamar a la IA durante el llenado guiado');
+    });
+
+    final harness = await buildHarness(mock);
+    await harness.service
+        .sendMessage('Ayúdame a llenar mi cálculo de pensión, cuentas conmigo');
+    // Vitales.
+    await harness.service.sendMessage('1300');
+    await harness.service.sendMessage('1500');
+    await harness.service.sendMessage('130');
+    // Opcionales: fechaNacimiento → esposa → hijos → padres → uma.
+    await harness.service.sendMessage('05/03/1975');
+    await harness.service.sendMessage('sí');
+    // Respondemos "2" a hijos: la guía AVANZA a numeroPadres.
+    await harness.service.sendMessage('2');
+    await harness.service.sendMessage('ninguno');
+    await harness.service.sendMessage('20');
+    await settle();
+
+    // Estado previo: hijos=2, padres=0, y la guía ya terminó.
+    expect(harness.provider.numeroHijos, 2);
+    expect(harness.provider.numeroPadres, 0);
+
+    // ── Reproduce el bug ──
+    // El chip viejo "1" de la pregunta de hijos sigue visible (por el
+    // AutomaticKeepAliveClientMixin). El clic viaja con suggestionField
+    // 'numeroHijos' y debe actualizar hijos, NO padres (que es el campo al
+    // que la guía ya había avanzado).
+    await harness.service.sendMessage('1', guideField: 'numeroHijos');
+    await settle();
+
+    // El campo correcto se actualizó y el otro quedó intacto.
+    expect(harness.provider.numeroHijos, 1);
+    expect(harness.provider.numeroPadres, 0);
+
+    // Re-clic en el chip de padres también debe ir a su propio campo.
+    await harness.service.sendMessage('2', guideField: 'numeroPadres');
+    await settle();
+    expect(harness.provider.numeroPadres, 2);
+    expect(harness.provider.numeroHijos, 1);
+
+    // El resto de campos permanece correcto (validación de todos los campos).
+    expect(harness.provider.semanasCotizadas, 380);
+    expect(harness.provider.semanasAntesMod40, 250);
+    expect(harness.provider.salarioPromedio250Semanas, 1500);
+    expect(harness.provider.semanasEnMod40, 130);
+    expect(harness.provider.fechaNacimiento.year, 1975);
+    expect(harness.provider.fechaNacimiento.month, 3);
+    expect(harness.provider.fechaNacimiento.day, 5);
+    expect(harness.provider.tieneEsposa, isTrue);
+    expect(harness.provider.umaMultiplier, 20);
+    // No consumió cupo de sesión diaria (todo local).
+    expect(harness.service.dailySessionCount, 0);
+    harness.service.dispose();
+  });
 }

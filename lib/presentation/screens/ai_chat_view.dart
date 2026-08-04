@@ -124,12 +124,17 @@ class _AiChatViewState extends State<AiChatView>
 
   /// Envía un texto concreto (del campo de entrada, de un chip de ejemplo o de
   /// una sugerencia de respuesta rápida) a [AiChatService.sendMessage].
-  Future<void> _sendText(String text) async {
+  ///
+  /// [guideField] lo aporta un chip de respuesta rápida: es el campo guiado al
+  /// que pertenece el chip, para que el clic se aplique SIEMPRE a ese campo
+  /// (aunque la guía ya haya avanzado a otra pregunta).
+  Future<void> _sendText(String text, {String? guideField}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
     _textController.clear();
-    final result = await _chatService.sendMessage(trimmed);
+    final result =
+        await _chatService.sendMessage(trimmed, guideField: guideField);
 
     if (result is AiFillFields) {
       if (result.setFields.isNotEmpty) {
@@ -616,7 +621,10 @@ class _AiChatViewState extends State<AiChatView>
                               vertical: 2,
                             ),
                             onPressed: _chatService.canSendMessage
-                                ? () => _sendText(suggestion)
+                                ? () => _sendText(
+                                      suggestion,
+                                      guideField: message.suggestionField,
+                                    )
                                 : null,
                           ),
                       ],
