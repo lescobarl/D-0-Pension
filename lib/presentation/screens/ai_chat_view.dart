@@ -759,8 +759,7 @@ class _AiChatViewState extends State<AiChatView> {
                     : 'Has alcanzado el límite de uso',
                 hintStyle: canSend
                     ? TextStyle(
-                        color: AppTheme.primary.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primary.withValues(alpha: 0.35),
                         fontSize: AppTheme.fontSizeInput,
                       )
                     : null,

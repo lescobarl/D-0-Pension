@@ -206,6 +206,13 @@ class _CapturaViewState extends State<CapturaView> {
     _setControllerText(_salarioPromedioController, provider.salarioDiarioPromedio.toStringAsFixed(4));
     _setControllerText(_semanasEnMod40Controller, provider.semanasEnMod40.toStringAsFixed(4));
     _setControllerText(_semanasCotizadasController, provider.semanasCotizadas.toString());
+    // Sincronizar también los campos que la IA puede haber corregido, para que
+    // las correcciones (p. ej. padres = 1) se reflejen en la vista de captura.
+    _setControllerText(_fechaCalculoController, _formatDate(provider.fechaCalculo));
+    _setControllerText(_fechaNacimientoController, _formatDate(provider.fechaNacimiento));
+    _setControllerText(_fechaInicioMod40Controller, _formatDate(provider.startDate));
+    _setControllerText(_numeroHijosController, provider.numeroHijos.toString());
+    _setControllerText(_numeroPadresController, provider.numeroPadres.toString());
     _syncPeriodoControllers(provider);
   }
 

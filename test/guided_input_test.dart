@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:d_0_pension/core/ai/guided_input.dart';
 import 'package:d_0_pension/core/engine/formula_evaluator.dart';
+import 'package:d_0_pension/core/models/periodo_salarial.dart';
 import 'package:d_0_pension/services/persistence_service.dart';
 import 'package:d_0_pension/services/retroactive_provider.dart';
 
@@ -17,7 +18,8 @@ import 'package:d_0_pension/services/retroactive_provider.dart';
 /// 3. `semanasEnMod40`            → vital, SIEMPRE una vez por sesión
 ///                                  (número o "por fechas": inicio/fin)
 /// 4. `salarioDiarioPromedio`     → respaldo (solo si sigue en 0)
-/// 5. Opcionales: fechaNacimiento → edadRetiro → esposa → hijos → padres → uma
+/// 5. Opcionales: fechaNacimiento → esposa → hijos → padres → uma
+///    (edadRetiro NO se pregunta en la guía)
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -96,17 +98,16 @@ void main() {
     expect(guide.suggestions, isEmpty);
   });
 
-  test('semanasEnMod40 ofrece el chip "Por fechas" (número o inicio/fin)',
-      () async {
+  test('semanasEnMod40 NO ofrece chip "Por fechas" (solo número)', () async {
     final provider = await buildProvider();
     final guide = GuidedInput.nextGuide(
         provider, {'semanasCotizadas', 'salarioPromedio250Semanas'});
     expect(guide!.field, 'semanasEnMod40');
-    expect(guide.suggestions, ['Por fechas']);
+    expect(guide.suggestions, isEmpty);
   });
 
-  test('edadRetiro con metadata: sugiere TODAS las edades del dropdown '
-      '(60, 60.51, ..., 65)', () async {
+  test('la guía NO pregunta edadRetiro: tras fechaNacimiento toca tieneEsposa',
+      () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final provider = RetroactiveProvider(
@@ -115,14 +116,11 @@ void main() {
     );
     await provider.initialize();
     // initialize() siembra salarioDiarioPromedio > 0 → respaldo omitido.
-    // Con los vitales + fechaNacimiento ya preguntados, toca edadRetiro.
+    // Con los vitales + fechaNacimiento ya preguntados, la edad se omite y
+    // el siguiente opcional es tieneEsposa.
     final guide =
         GuidedInput.nextGuide(provider, vitales.toSet()..add('fechaNacimiento'));
-    expect(guide!.field, 'edadRetiro');
-    expect(guide.suggestions, [
-      '60', '60.51', '61', '61.51', '62', '62.51',
-      '63', '63.51', '64', '64.51', '65',
-    ]);
+    expect(guide!.field, 'tieneEsposa');
   });
 
   test('applyAnswer: interpreta y aplica respuestas cortas de la guía', () async {
@@ -307,7 +305,6 @@ void main() {
       'semanasEnMod40',
       'salarioDiarioPromedio',
       'fechaNacimiento',
-      'edadRetiro',
       'tieneEsposa',
       'numeroHijos',
       'numeroPadres',
@@ -419,6 +416,14 @@ void main() {
       expect(provider.fechaNacimiento.day, 5, reason: 'para "$text"');
     }
 
+    // DDMMYYYY compacto (8 dígitos): 30011969 → 30/01/1969.
+    final compacto =
+        await GuidedInput.applyAnswer(provider, 'fechaNacimiento', '30011969');
+    expect(compacto!.ok, isTrue, reason: 'debió aceptar "30011969"');
+    expect(provider.fechaNacimiento.year, 1969);
+    expect(provider.fechaNacimiento.month, 1);
+    expect(provider.fechaNacimiento.day, 30);
+
     // Fecha futura → inválida.
     final futura = DateTime.now().add(const Duration(days: 1));
     final futuraText = '${futura.day}/${futura.month}/${futura.year}';
@@ -436,5 +441,42 @@ void main() {
       await GuidedInput.applyAnswer(provider, 'fechaNacimiento', '31/02/1975'),
       isNull,
     );
+  });
+
+  test(
+      'applyAnswer salarioPromedio250Semanas: colapsa el desglose no-Mod40 en '
+      'un único registro de 250 semanas y conserva los periodos Mod40', () async {
+    final provider = await buildProvider();
+    // Sembrar un desglose con varios periodos: 2 no-Mod40 y 1 Mod40.
+    provider.setPeriodos([
+      PeriodoSalarial(salarioDiario: 1000, semanas: 100, esMod40: false),
+      PeriodoSalarial(salarioDiario: 1200, semanas: 150, esMod40: false),
+      PeriodoSalarial(salarioDiario: 800, semanas: 130, esMod40: true),
+    ]);
+    // El usuario teclea su promedio de las 250 semanas.
+    final result = await GuidedInput.applyAnswer(
+      provider,
+      'salarioPromedio250Semanas',
+      '1500',
+    );
+    expect(result!.ok, isTrue);
+
+    // El promedio tecleado se conserva.
+    expect(provider.salarioPromedio250Semanas, 1500);
+    // "Antes" queda en 250 semanas (un único registro no-Mod40).
+    expect(provider.semanasAntesMod40, 250);
+    // El desglose queda: 1 registro no-Mod40 de 250 semanas + el Mod40.
+    final noMod40 = provider.periodos.where((p) => !p.esMod40).toList();
+    final mod40 = provider.periodos.where((p) => p.esMod40).toList();
+    expect(noMod40.length, 1, reason: 'debe quedar UN solo registro no-Mod40');
+    expect(noMod40.single.semanas, 250);
+    expect(noMod40.single.salarioDiario, 1500);
+    // Los periodos Mod40 se conservan intactos.
+    expect(mod40.length, 1);
+    expect(mod40.single.semanas, 130);
+    expect(mod40.single.salarioDiario, 800);
+    // Semanas en Mod40 y total cotizadas se recalculan.
+    expect(provider.semanasEnMod40, 130);
+    expect(provider.semanasCotizadas, 250 + 130);
   });
 }

@@ -60,10 +60,11 @@ class GuidedInput {
     }
 
     // ── Opcionales (se preguntan una sola vez) ──
+    // NOTA: `edadRetiro` NO se pregunta en la guía: la edad se deja con su
+    // valor por defecto y el usuario puede ajustarla después en la calculadora.
     for (final field
         in const [
       'fechaNacimiento',
-      'edadRetiro',
       'tieneEsposa',
       'numeroHijos',
       'numeroPadres',
@@ -107,9 +108,8 @@ class GuidedInput {
         return (
           field: field,
           question: '¿Cuántas semanas estás cotizando en Modalidad 40? '
-              'Responde con un número (por ejemplo, 130) o escribe '
-              '"por fechas" para capturarlas con fecha de inicio y fin.',
-          suggestions: const <String>['Por fechas'],
+              'Responde con un número (por ejemplo, 130).',
+          suggestions: const <String>[],
         );
       case 'm40StartDate':
         return (
@@ -256,7 +256,10 @@ class GuidedInput {
       case 'salarioPromedio250Semanas':
         final v = _extractNum(text);
         if (v == null || v <= 0) return null;
-        provider.setSalarioPromedio250Semanas(v);
+        // El usuario ya conoce su promedio: se colapsa el desglose "antes de
+        // Mod40" en un único registro de 250 semanas con ese promedio,
+        // conservando los periodos de Modalidad 40.
+        provider.setSalarioPromedio250SemanasConDesglose(v);
         return (
           ok: true,
           setFields: ['salarioPromedio250Semanas'],
@@ -344,6 +347,29 @@ class GuidedInput {
         int.tryParse(iso.group(1)!),
         int.tryParse(iso.group(2)!),
         int.tryParse(iso.group(3)!),
+      );
+    }
+
+    // 8 dígitos sin separadores: se infiere el orden. Si los primeros 4 forman
+    // un año plausible (1900-2010) se interpreta como AAAAMMDD (19750305);
+    // de lo contrario como DDMMAAAA (30011969 → 30/01/1969).
+    final compact = RegExp(r'^(\d{8})$').firstMatch(trimmed);
+    if (compact != null) {
+      final s = compact.group(1)!;
+      final first4 = int.tryParse(s.substring(0, 4));
+      if (first4 != null && first4 >= 1900 && first4 <= 2010) {
+        // AAAAMMDD
+        return _validDate(
+          first4,
+          int.tryParse(s.substring(4, 6)),
+          int.tryParse(s.substring(6, 8)),
+        );
+      }
+      // DDMMAAAA
+      return _validDate(
+        int.tryParse(s.substring(4, 8)),
+        int.tryParse(s.substring(2, 4)),
+        int.tryParse(s.substring(0, 2)),
       );
     }
 

@@ -582,6 +582,61 @@ class RetroactiveProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Establece el salario promedio de las últimas 250 semanas y colapsa el
+  /// desglose "antes de Mod40" en UN solo registro de 250 semanas con ese
+  /// promedio, conservando intactos los periodos de Modalidad 40.
+  ///
+  /// El usuario ya conoce su promedio; no tiene sentido recalcularlo a partir
+  /// de varios registros. Se conservan los periodos `esMod40` (afectan semanas
+  /// cotizadas y costo), y el resto del desglose se reemplaza por un único
+  /// [PeriodoSalarial] de 250 semanas con `salarioDiario = v`.
+  void setSalarioPromedio250SemanasConDesglose(double v) {
+    if (v == _inputs.salarioPromedio250Semanas &&
+        _inputs.semanasAntesMod40 == 250) {
+      return;
+    }
+    _inputs.salarioPromedio250Semanas = v;
+    persistence.saveSalarioPromedio250Semanas(v);
+
+    // Conservar solo los periodos Mod40 y reemplazar el resto por un único
+    // registro de 250 semanas con el promedio tecleado.
+    final nuevos = <PeriodoSalarial>[
+      for (final p in _inputs.periodos)
+        if (p.esMod40) p,
+      PeriodoSalarial(
+        salarioDiario: v,
+        semanas: 250,
+        esMod40: false,
+      ),
+    ];
+    _inputs.periodos = nuevos;
+    persistence.savePeriodos(nuevos);
+    // Desglose explícito → "antes" es la fuente primaria (total = antes + en).
+    _semanasAntesMod40Explicit = true;
+    _inputs.semanasAntesMod40 = 250;
+    persistence.saveSemanasAntesMod40(250);
+    _inputs.totalSemanasSinMod40 = 250;
+    persistence.saveTotalSemanasSinMod40(250);
+
+    // Recalcular semanas Mod40 desde los periodos conservados.
+    final semanasEnMod40 =
+        _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
+    _inputs.semanasEnMod40 = semanasEnMod40;
+    persistence.saveSemanasEnMod40(semanasEnMod40);
+    _inputs.semanasCotizadas = (250 + semanasEnMod40).toInt();
+    persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+
+    // Salario diario promedio = promedio ponderado de los periodos (250×v + M40).
+    _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
+    persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
+
+    _calculator.recalcularFactAsig();
+    _calculator.recalcularFactAsigSinMod40();
+    _calculator.recalcularPensionMod40();
+    _calculator.recalcularInversion();
+    notifyListeners();
+  }
+
   /// Setter for the periodos list.
   ///
   /// When the user manually sets the full periodos list (e.g. from persistence

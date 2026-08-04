@@ -24,13 +24,6 @@ class _Harness {
   _Harness(this.provider, this.service);
 }
 
-/// Todas las edades del dropdown de retiro (60, 60.51, ..., 65) como texto,
-/// tal como se ofrecen como chips en la pregunta guiada de edad de retiro.
-final List<String> fullEdadRetiroSuggestions = [
-  '60', '60.51', '61', '61.51', '62', '62.51', '63', '63.51', '64', '64.51',
-  '65',
-];
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -422,9 +415,9 @@ void main() {
         'mi salario promedio de las 250 semanas es 1500');
     await harness.service.sendMessage(
         'estoy cotizando 130 semanas en modalidad 40');
-    // Opcionales: fechaNacimiento → edadRetiro → esposa → hijos → padres → uma.
+    // Opcionales: fechaNacimiento → esposa → hijos → padres → uma.
+    // (edadRetiro ya NO se pregunta en la guía.)
     await harness.service.sendMessage('nací el 5 de marzo de 1975');
-    await harness.service.sendMessage('me pensiono a los 62');
     await harness.service.sendMessage('sí, tengo esposa');
     await harness.service.sendMessage('tengo 2 hijos');
     await harness.service.sendMessage('no tengo padres dependientes');
@@ -521,9 +514,9 @@ void main() {
     await harness.service.sendMessage('1300');
     await harness.service.sendMessage('1500');
     await harness.service.sendMessage('130');
-    // Opcionales: fechaNacimiento → edadRetiro → esposa → hijos → padres → uma.
+    // Opcionales: fechaNacimiento → esposa → hijos → padres → uma.
+    // (edadRetiro ya NO se pregunta en la guía.)
     await harness.service.sendMessage('05/03/1975');
-    await harness.service.sendMessage('62');
     await harness.service.sendMessage('sí');
     await harness.service.sendMessage('2');
     await harness.service.sendMessage('ninguno');
@@ -539,17 +532,17 @@ void main() {
     expect(harness.service.dailySessionCount, 0);
     // Los valores quedaron aplicados en el proveedor (los vitales SIEMPRE se
     // preguntan aunque hubiera defaults sembrados).
-    // total=1300, en=130, antes=1170: el flujo guiado fija primero el total con
-    // setSemanasCotizadas(1300) (total primario → antes=1165.2857); luego
-    // setSemanasEnMod40(130) PRESERVA el total tecleado y re-deriva antes
-    // (=1300-130=1170), escalando los periodos Mod40 a 130 semanas.
-    expect(harness.provider.semanasCotizadas, 1300);
+    // Al teclear el promedio de las 250 semanas, el desglose "antes de Mod40"
+    // se colapsa a un único registro de 250 semanas (setSalarioPromedio250Semanas
+    // ConDesglose → antes=250). Luego setSemanasEnMod40(130) deriva el total
+    // = antes + en = 250 + 130 = 380.
+    expect(harness.provider.semanasCotizadas, 380);
+    expect(harness.provider.semanasAntesMod40, 250);
     expect(harness.provider.salarioPromedio250Semanas, 1500);
     expect(harness.provider.semanasEnMod40, 130);
     expect(harness.provider.fechaNacimiento.year, 1975);
     expect(harness.provider.fechaNacimiento.month, 3);
     expect(harness.provider.fechaNacimiento.day, 5);
-    expect(harness.provider.edadRetiro, 62);
     expect(harness.provider.tieneEsposa, isTrue);
     expect(harness.provider.numeroHijos, 2);
     expect(harness.provider.numeroPadres, 0);
@@ -589,7 +582,8 @@ void main() {
     expect(last.text, contains('250'));
     expect(last.suggestions, isEmpty);
 
-    // Tras el salario 250, toca semanasEnMod40: re-ask con chip "Por fechas".
+    // Tras el salario 250, toca semanasEnMod40: re-ask sin chips (el botón
+    // "Por fechas" se eliminó).
     await harness.service.sendMessage('1500');
     await harness.service.sendMessage('quizás más adelante');
     await settle();
@@ -598,7 +592,7 @@ void main() {
     expect(last.role, 'assistant');
     expect(last.text, contains('No entendí tu respuesta'));
     expect(last.text, contains('Modalidad 40'));
-    expect(last.suggestions, ['Por fechas']);
+    expect(last.suggestions, isEmpty);
 
     // Tras las semanas de M40, toca fechaNacimiento: re-ask de la fecha.
     await harness.service.sendMessage('130');
@@ -611,8 +605,8 @@ void main() {
     expect(last.text, contains('fecha'));
     expect(last.suggestions, isEmpty);
 
-    // Tras la fecha, toca edadRetiro: una edad no interpretable se vuelve a
-    // preguntar con TODAS las edades del dropdown como chips.
+    // Tras la fecha, toca tieneEsposa (edadRetiro ya NO se pregunta): una
+    // respuesta no interpretable se vuelve a preguntar con chips Sí/No.
     await harness.service.sendMessage('05/03/1975');
     await harness.service.sendMessage('quizás más adelante');
     await settle();
@@ -620,8 +614,8 @@ void main() {
     last = harness.service.messages.last;
     expect(last.role, 'assistant');
     expect(last.text, contains('No entendí tu respuesta'));
-    expect(last.text, contains('edad'));
-    expect(last.suggestions, fullEdadRetiroSuggestions);
+    expect(last.text, contains('esposa'));
+    expect(last.suggestions, ['Sí', 'No']);
     harness.service.dispose();
   });
 
