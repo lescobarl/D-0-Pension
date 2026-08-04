@@ -327,7 +327,8 @@ void main() {
     expect(guide.suggestions, ['Sí', 'No']);
   });
 
-  test('numeroHijos ofrece chips 1-4 y numeroPadres 0-2', () async {
+  test('numeroHijos ofrece chips 0-4 (incluye "0") y numeroPadres 0-2',
+      () async {
     final provider = await buildProvider();
     provider.setSemanasCotizadas(1200);
     provider.setSalarioDiarioPromedio(500);
@@ -341,7 +342,8 @@ void main() {
       'tieneEsposa',
     });
     expect(hijos!.field, 'numeroHijos');
-    expect(hijos.suggestions, ['1', '2', '3', '4']);
+    // Incluye "0": el usuario puede no tener hijos.
+    expect(hijos.suggestions, ['0', '1', '2', '3', '4']);
 
     final padres = GuidedInput.nextGuide(provider, {
       'semanasCotizadas',

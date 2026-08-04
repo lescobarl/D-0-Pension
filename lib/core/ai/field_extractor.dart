@@ -316,9 +316,27 @@ class FieldExtractor {
         }
       }
 
-      // Dirección 2: número → campo ("tengo 1300 semanas cotizadas").
+      // Dirección 1b: campo → número directo, sin conector explícito
+      // ("semanas cotizadas 1900", "salario 500", "hijos 2"). Es la forma
+      // coloquial más común y antes se perdía (dependía de la IA). Se acepta
+      // un conector opcional para "semanas cotizadas en 1900".
+      final direct = RegExp(r'^\s*(?:' + connectors + r'\s*)?(\d+(?:\.\d+)?)')
+          .firstMatch(after);
+      if (direct != null) {
+        final value = _tryDouble(direct.group(1)!);
+        if (value != null && value > 0) {
+          valueFor[m.canonical] = value;
+          continue;
+        }
+      }
+
+      // Dirección 2: número → campo ("tengo 1300 semanas cotizadas",
+      // "250 en modalidad 40"). Se permite un conector opcional entre el
+      // número y el campo ("250 en modalidad 40", "1300 a semanas").
       final before = normalized.substring(0, m.start);
-      final beforeMatch = RegExp(r'(\d+(?:\.\d+)?)\s*$').firstMatch(before);
+      final beforeMatch = RegExp(
+        r'(\d+(?:\.\d+)?)\s*(?:' + connectors + r')?\s*$',
+      ).firstMatch(before);
       if (beforeMatch != null) {
         final value = _tryDouble(beforeMatch.group(1)!);
         if (value != null && value > 0) {
@@ -509,6 +527,12 @@ class FieldExtractor {
     'semanasenmod40': 'semanasEnMod40',
     'semanasenm40': 'semanasEnMod40',
     'semanasconmod40': 'semanasEnMod40',
+    // "250 en modalidad 40" / "250 en mod 40" → semanas en Modalidad 40.
+    // El sinónimo más específico ("semanas en mod 40") gana por longitud;
+    // "costo modalidad 40" gana por su alias propio (costomodalidad40).
+    'modalidad40': 'semanasEnMod40',
+    'mod40': 'semanasEnMod40',
+    'm40': 'semanasEnMod40',
     'totalsemanassinmod40': 'totalSemanasSinMod40',
     'semanassinmod40': 'totalSemanasSinMod40',
     'semanastotalsinmod40': 'totalSemanasSinMod40',

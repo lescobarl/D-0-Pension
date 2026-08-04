@@ -716,4 +716,41 @@ void main() {
     expect(harness.service.dailySessionCount, 0);
     harness.service.dispose();
   });
+
+  test(
+      'REGRESIÓN: "semanas cotizadas 1900" y "250 en modalidad 40" no se '
+      'confunden (la IA no aplica semanas; el guard determinista sí)', () async {
+    // La IA devuelve un fill_fields que NO incluye las semanas (simula que la
+    // IA no las aplica). El guard determinista detectRequestedEdits debe
+    // aplicarlas correctamente: total=1900, en=250, antes=1650.
+    final content = jsonEncode({
+      'type': 'fill_fields',
+      'values': <String, dynamic>{},
+      'message': 'He registrado tus datos.',
+      'missing_fields': <String>[],
+    });
+    final mock = MockClient((request) async => openAiResponse(content));
+
+    final harness = await buildHarness(mock);
+
+    // El usuario escribe "semanas cotizadas 1900" (número tras el campo, sin
+    // conector). Antes se perdía y dependía de la IA.
+    final r1 = await harness.service.sendMessage('semanas cotizadas 1900');
+    await settle();
+    expect(r1, isA<AiFillFields>());
+    expect(harness.provider.semanasCotizadas, 1900);
+
+    // Luego escribe "250 en modalidad 40". Antes se confundía con el total.
+    final r2 = await harness.service.sendMessage('250 en modalidad 40');
+    await settle();
+    expect(r2, isA<AiFillFields>());
+    expect(harness.provider.semanasEnMod40, 250);
+
+    // Invariante: total = antes + en, con el total de 1900 conservado.
+    expect(harness.provider.semanasCotizadas, 1900);
+    expect(harness.provider.semanasAntesMod40 + harness.provider.semanasEnMod40,
+        closeTo(1900, 0.001));
+    expect(harness.provider.semanasAntesMod40, closeTo(1650, 0.001));
+    harness.service.dispose();
+  });
 }

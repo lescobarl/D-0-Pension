@@ -150,7 +150,8 @@ class GuidedInput {
         return (
           field: field,
           question: '¿Cuántos hijos tienes?',
-          suggestions: const <String>['1', '2', '3', '4'],
+          // Incluye "0": el usuario puede no tener hijos.
+          suggestions: const <String>['0', '1', '2', '3', '4'],
         );
       case 'numeroPadres':
         return (

@@ -393,6 +393,45 @@ void main() {
     );
   });
 
+  test('detectRequestedEdits: campo → número directo sin conector '
+      '("semanas cotizadas 1900")', () {
+    // Regresión: "semanas cotizadas 1900" (número tras el campo, sin conector)
+    // se perdía y dependía de la IA. Ahora se detecta de forma determinista.
+    expect(
+      FieldExtractor.detectRequestedEdits('semanas cotizadas 1900'),
+      {'semanasCotizadas': 1900},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('salario 500'),
+      {'salarioDiarioPromedio': 500},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('hijos 2'),
+      {'numeroHijos': 2},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('semanas cotizadas en 1900'),
+      {'semanasCotizadas': 1900},
+    );
+  });
+
+  test('detectRequestedEdits: "250 en modalidad 40" → semanasEnMod40', () {
+    // Regresión: el usuario escribe "250 en modalidad 40" y antes se perdía
+    // (dependía de la IA, que podía confundirlo con semanas cotizadas totales).
+    expect(
+      FieldExtractor.detectRequestedEdits('250 en modalidad 40'),
+      {'semanasEnMod40': 250},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('250 en mod 40'),
+      {'semanasEnMod40': 250},
+    );
+    expect(
+      FieldExtractor.detectRequestedEdits('250 en m40'),
+      {'semanasEnMod40': 250},
+    );
+  });
+
   test('detectRequestedEdits: "X Umas" → umaMultiplier (NO salario)', () {
     // Regresión: "15 Umas" se mapeaba a salarioDiarioPromedio. Ahora el plural
     // "Umas" debe ir a umaMultiplier, nunca a salario.
