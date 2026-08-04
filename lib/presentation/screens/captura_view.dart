@@ -464,7 +464,7 @@ class _CapturaViewState extends State<CapturaView> {
                 Expanded(
                   // El total (antes + en Mod40) es el campo canónico que la IA
                   // actualiza con "semanas cotizadas"; los componentes se derivan.
-                  child: _buildValidatedNumberField('Semanas Cotizadas', _semanasCotizadasController, (v) {
+                  child: _buildValidatedNumberField('Semanas cotizadas IMSS', _semanasCotizadasController, (v) {
                     final parsed = double.tryParse(v);
                     if (parsed != null) provider.setSemanasCotizadas(parsed.round());
                   }, (value) {
@@ -704,7 +704,7 @@ class _CapturaViewState extends State<CapturaView> {
           color: AppTheme.primary,
         ),
         title: Text(
-          'Captura de salario promedio y Modalidad 40',
+          'Captura de salario promedio y Modalidad 40 (Desglose)',
           style: TextStyle(
             fontSize: AppTheme.fontSizeLabel,
             fontWeight: FontWeight.w600,
@@ -851,7 +851,7 @@ class _CapturaViewState extends State<CapturaView> {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          periodo.esMod40 ? 'Mod40' : 'P${index + 1}',
+                          periodo.esMod40 ? 'M40' : 'P${index + 1}',
                           style: TextStyle(
                             fontSize: AppTheme.fontSizeTableData,
                             fontWeight: FontWeight.w500,

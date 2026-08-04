@@ -48,7 +48,7 @@ void main() {
 
     // ── Cambio 2: Etiqueta de desglose ──
     expect(
-      find.text('Captura de salario promedio y Modalidad 40'),
+      find.text('Captura de salario promedio y Modalidad 40 (Desglose)'),
       findsOneWidget,
     );
 
@@ -76,7 +76,7 @@ void main() {
 
     // ── Cambio 3: Toggle de modo fechas en el desglose ──
     // El desglose es un ExpansionTile colapsado por defecto; expandirlo.
-    final desgloseTitle = find.text('Captura de salario promedio y Modalidad 40');
+    final desgloseTitle = find.text('Captura de salario promedio y Modalidad 40 (Desglose)');
     expect(desgloseTitle, findsOneWidget);
     await tester.ensureVisible(desgloseTitle);
     await tester.pumpAndSettle();
