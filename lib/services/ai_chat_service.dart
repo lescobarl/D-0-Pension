@@ -270,6 +270,35 @@ class AiChatService extends ChangeNotifier {
 
   /// Send a user message to OpenRouter and process the response.
   Future<AiResponseResult?> sendMessage(String text) async {
+    // ── Inicio del llenado guiado (chip "Ayúdame a llenar mi cálculo") ──
+    // Respuesta 100% determinista y local: la app decide qué dato falta y
+    // pregunta UNO a la vez (en orden fijo), sin llamar a la IA ni consumir
+    // cupo diario/sesión. El usuario puede seguir respondiendo igual que en
+    // el flujo guiado normal.
+    if (_isGuidedStartIntent(text)) {
+      _messages.add(ChatMessage(role: 'user', text: text));
+      final guide = GuidedInput.nextGuide(_provider, _guidedFields);
+      final String reply;
+      final List<String> suggestions;
+      if (guide != null) {
+        _guidedFields.add(guide.field);
+        reply = guide.question;
+        suggestions = guide.suggestions;
+      } else {
+        reply = '¡Listo! Ya tengo los datos necesarios para calcular tu '
+            'pensión. Revisa los resultados en las pestañas de la '
+            'calculadora.';
+        suggestions = const <String>[];
+      }
+      _messages.add(ChatMessage(
+        role: 'assistant',
+        text: reply,
+        suggestions: suggestions,
+      ));
+      notifyListeners();
+      return AiChat(reply);
+    }
+
     // Count a consultation lazily: only the first message of a fresh session
     // consumes a daily slot. Page loads and "Limpiar conversación" do not.
     if (_sessionMessageCount == 0) {
@@ -668,6 +697,28 @@ class AiChatService extends ChangeNotifier {
     return lower.contains('falta alg') ||
         lower.contains('falta algun dato') ||
         lower.contains('te falta');
+  }
+
+  /// True cuando el mensaje pide iniciar el llenado guiado ("ayúdame a llenar
+  /// mi cálculo", "cuenta conmigo, soy tu IA", ...). La app responde de forma
+  /// 100% determinista (preguntando los datos faltantes uno a la vez) sin
+  /// llamar a la IA.
+  bool _isGuidedStartIntent(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('ayudame a llenar') ||
+        lower.contains('ayúdame a llenar') ||
+        lower.contains('ayudo a llenar') ||
+        lower.contains('ayuda a llenar') ||
+        lower.contains('llenar mi calculo') ||
+        lower.contains('llenar mi cálculo') ||
+        lower.contains('llenar tu calculo') ||
+        lower.contains('llenar tu cálculo') ||
+        lower.contains('llena mi calculo') ||
+        lower.contains('llena mi cálculo') ||
+        lower.contains('cuenta conmigo') ||
+        lower.contains('cuentas conmigo') ||
+        lower.contains('soy tu ia') ||
+        lower.contains('empieza a preguntarme');
   }
 
   // ──────────────────────────────────────────────

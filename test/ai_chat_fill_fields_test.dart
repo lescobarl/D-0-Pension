@@ -378,4 +378,68 @@ void main() {
     expect(last.suggestions, isEmpty);
     harness.service.dispose();
   });
+
+  test(
+      'GUIADA: el chip "Ayúdame a llenar mi cálculo" inicia el llenado guiado '
+      'sin llamar a la IA ni consumir cupo diario', () async {
+    // Un client que falla si se invoca: la guía debe resolverse localmente.
+    final mock = MockClient((request) async {
+      throw StateError('No se debe llamar a la IA en el inicio guiado');
+    });
+
+    final harness = await buildHarness(mock);
+    expect(harness.service.dailySessionCount, 0);
+    expect(harness.service.messages, isEmpty);
+
+    final result = await harness.service
+        .sendMessage('Ayúdame a llenar mi cálculo de pensión, cuentas conmigo');
+    await settle();
+
+    expect(result, isA<AiChat>());
+    // El llenado guiado es local: NO consume cupo de sesión diaria.
+    expect(harness.service.dailySessionCount, 0);
+    // El mensaje del usuario quedó en el historial y el asistente respondió
+    // con la pregunta guiada del primer dato pendiente.
+    expect(harness.service.messages.first.role, 'user');
+    final last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    // Con los defaults sembrados (semanas/salario > 0) el primer dato
+    // pendiente es la edad de retiro (primer opcional aún no preguntado).
+    expect(last.text, contains('edad'));
+    expect(last.suggestions, ['60', '62', '65']);
+    harness.service.dispose();
+  });
+
+  test(
+      'GUIADA: con la calculadora vacía, el inicio guiado pregunta semanas '
+      'primero (desde cero, sin API)', () async {
+    final mock = MockClient((request) async {
+      throw StateError('No se debe llamar a la IA en el inicio guiado');
+    });
+
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    // SIN initialize(): el estado queda vacío (semanas = 0, salario = 0), por
+    // lo que la guía empieza por el primer dato obligatorio.
+    final provider = RetroactiveProvider(
+      evaluator: FormulaEvaluator(),
+      persistence: PersistenceService(prefs),
+    );
+    final service = AiChatService(
+      provider: provider,
+      apiKey: 'test-key',
+      client: mock,
+    );
+
+    final result = await service.sendMessage('Ayúdame a llenar mi cálculo');
+    await settle();
+
+    expect(result, isA<AiChat>());
+    expect(service.dailySessionCount, 0);
+    final last = service.messages.last;
+    expect(last.role, 'assistant');
+    expect(last.text, contains('semanas'));
+    expect(last.suggestions, isEmpty);
+    service.dispose();
+  });
 }
