@@ -51,14 +51,91 @@ void main() {
     expect(guide.suggestions, isEmpty);
   });
 
-  test('obligatorios llenos: pide edadRetiro (primer opcional) con chips 60/62/65',
-      () async {
+  test('obligatorios llenos: pide edadRetiro (primer opcional) con los rangos '
+      'de edad del dropdown (fallback 60..65 si el proveedor no está '
+      'inicializado)', () async {
     final provider = await buildProvider();
     provider.setSemanasCotizadas(1200);
     provider.setSalarioDiarioPromedio(500);
     final guide = GuidedInput.nextGuide(provider, <String>{});
     expect(guide!.field, 'edadRetiro');
-    expect(guide.suggestions, ['60', '62', '65']);
+    // Proveedor sin initialize() (sin metadata) → lista de respaldo 60..65.
+    expect(guide.suggestions, ['60', '61', '62', '63', '64', '65']);
+  });
+
+  test('edadRetiro con metadata: sugiere TODAS las edades del dropdown '
+      '(60, 60.51, ..., 65)', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final provider = RetroactiveProvider(
+      evaluator: FormulaEvaluator(),
+      persistence: PersistenceService(prefs),
+    );
+    await provider.initialize();
+    // initialize() siembra semanas/salario > 0 → primer opcional = edadRetiro.
+    final guide = GuidedInput.nextGuide(provider, <String>{});
+    expect(guide!.field, 'edadRetiro');
+    expect(guide.suggestions, [
+      '60', '60.51', '61', '61.51', '62', '62.51',
+      '63', '63.51', '64', '64.51', '65',
+    ]);
+  });
+
+  test('applyAnswer: interpreta y aplica respuestas cortas de la guía', () async {
+    final provider = await buildProvider();
+
+    final semanas =
+        await GuidedInput.applyAnswer(provider, 'semanasCotizadas', '1200');
+    expect(semanas!.ok, isTrue);
+    expect(semanas.setFields, ['semanasCotizadas']);
+    expect(provider.semanasCotizadas, 1200);
+
+    final salario =
+        await GuidedInput.applyAnswer(provider, 'salarioDiarioPromedio', '500.50');
+    expect(salario!.ok, isTrue);
+    expect(salario.setFields, ['salarioDiarioPromedio']);
+    expect(provider.salarioDiarioPromedio, 500.5);
+
+    final esposa =
+        await GuidedInput.applyAnswer(provider, 'tieneEsposa', 'sí, tengo esposa');
+    expect(esposa!.ok, isTrue);
+    expect(provider.tieneEsposa, isTrue);
+
+    final hijos = await GuidedInput.applyAnswer(provider, 'numeroHijos', 'dos');
+    expect(hijos!.ok, isTrue);
+    expect(hijos.setFields, ['numeroHijos']);
+    expect(provider.numeroHijos, 2);
+
+    final padres =
+        await GuidedInput.applyAnswer(provider, 'numeroPadres', 'no tengo');
+    expect(padres!.ok, isTrue);
+    expect(padres.setFields, ['numeroPadres']);
+    expect(provider.numeroPadres, 0);
+  });
+
+  test('applyAnswer: devuelve null cuando la respuesta no se puede interpretar',
+      () async {
+    final provider = await buildProvider();
+    provider.setSemanasCotizadas(1200);
+    provider.setSalarioDiarioPromedio(500);
+
+    expect(
+      await GuidedInput.applyAnswer(provider, 'tieneEsposa', 'quizás'),
+      isNull,
+    );
+    expect(
+      await GuidedInput.applyAnswer(provider, 'semanasCotizadas', 'hola'),
+      isNull,
+    );
+    expect(
+      await GuidedInput.applyAnswer(provider, 'numeroHijos', 'muchos'),
+      isNull,
+    );
+    // Fuera de rango para edad de retiro.
+    expect(
+      await GuidedInput.applyAnswer(provider, 'edadRetiro', '45'),
+      isNull,
+    );
   });
 
   test('opcionales se piden una sola vez y en orden fijo: edad → esposa → '

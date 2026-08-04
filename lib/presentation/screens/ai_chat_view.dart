@@ -497,7 +497,7 @@ class _AiChatViewState extends State<AiChatView> {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -506,13 +506,13 @@ class _AiChatViewState extends State<AiChatView> {
               (index) {
                 if (index == messages.length && _chatService.isLoading) {
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 3),
+                    padding: const EdgeInsets.only(bottom: 1),
                     child: _buildTypingIndicator(),
                   );
                 }
                 final message = messages[index];
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 3),
+                  padding: const EdgeInsets.only(bottom: 1),
                   child: _buildMessageBubble(message),
                 );
               },
@@ -539,7 +539,7 @@ class _AiChatViewState extends State<AiChatView> {
         if (!isUser) const SizedBox(width: 8),
         Flexible(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.only(
@@ -576,7 +576,7 @@ class _AiChatViewState extends State<AiChatView> {
                 // el mensaje del asistente y se envían con un solo toque.
                 if (!isUser && (message.suggestions?.isNotEmpty ?? false))
                   Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: 4),
                     child: Wrap(
                       spacing: 6,
                       runSpacing: 6,

@@ -138,6 +138,12 @@ class AiChatService extends ChangeNotifier {
   // que se llenen y no se registran aquí.
   final Set<String> _guidedFields = {};
 
+  // Campo de la pregunta guiada actualmente activa (solo en el flujo
+  // determinista iniciado por el chip "Ayúdame a llenar mi cálculo"). Mientras
+  // esté fijado, la siguiente respuesta del usuario se interpreta y aplica
+  // localmente sin llamar a la IA (causa raíz del bug `"type":"fill_fields"`).
+  String? _currentGuideField;
+
   // Session tracking
   int _sessionMessageCount = 0;
   int _dailySessionCount = 0;
@@ -256,6 +262,7 @@ class AiChatService extends ChangeNotifier {
   void _startNewSession() {
     _sessionMessageCount = 0;
     _guidedFields.clear();
+    _currentGuideField = null;
     // NOTA: aquí ya NO se incrementa _dailySessionCount. Una consulta se
     // cuenta de forma perezosa en sendMessage(), solo cuando el usuario envía
     // el primer mensaje de una sesión nueva. Antes, cada apertura de la
@@ -282,9 +289,11 @@ class AiChatService extends ChangeNotifier {
       final List<String> suggestions;
       if (guide != null) {
         _guidedFields.add(guide.field);
+        _currentGuideField = guide.field;
         reply = guide.question;
         suggestions = guide.suggestions;
       } else {
+        _currentGuideField = null;
         reply = '¡Listo! Ya tengo los datos necesarios para calcular tu '
             'pensión. Revisa los resultados en las pestañas de la '
             'calculadora.';
@@ -295,6 +304,53 @@ class AiChatService extends ChangeNotifier {
         text: reply,
         suggestions: suggestions,
       ));
+      notifyListeners();
+      return AiChat(reply);
+    }
+
+    // ── Respuesta a la pregunta guiada activa (flujo 100% determinista) ──
+    // Mientras haya una pregunta guiada pendiente, la respuesta corta ("Sí",
+    // "62", "2") se interpreta y aplica LOCALMENTE: sin llamar a la IA y sin
+    // consumir cupo de sesión/día. Causa raíz del error `"type":"fill_fields"`:
+    // antes, estas respuestas se enviaban a la IA, que devolvía JSON truncado
+    // que se filtraba a la UI como texto visible.
+    if (_currentGuideField != null) {
+      _messages.add(ChatMessage(role: 'user', text: text));
+      final answer = await GuidedInput.applyAnswer(
+        _provider,
+        _currentGuideField!,
+        text,
+      );
+      final String reply;
+      final List<String> suggestions;
+      if (answer == null) {
+        // No se pudo interpretar → se vuelve a preguntar el mismo dato.
+        final guide = GuidedInput.questionFor(_provider, _currentGuideField!);
+        reply = 'No entendí tu respuesta. ${guide.question}';
+        suggestions = guide.suggestions;
+        _messages.add(
+          ChatMessage(role: 'assistant', text: reply, suggestions: suggestions),
+        );
+        notifyListeners();
+        return AiChat(reply);
+      }
+      final next = GuidedInput.nextGuide(_provider, _guidedFields);
+      if (next != null) {
+        _guidedFields.add(next.field);
+        _currentGuideField = next.field;
+        reply = next.question;
+        suggestions = next.suggestions;
+      } else {
+        _currentGuideField = null;
+        reply = '¡Listo! Ya tengo los datos necesarios para calcular tu '
+            'pensión. Revisa los resultados en las pestañas de la '
+            'calculadora.';
+        suggestions = const <String>[];
+      }
+      _messages.add(
+        ChatMessage(role: 'assistant', text: reply, suggestions: suggestions),
+      );
+      await _saveState();
       notifyListeners();
       return AiChat(reply);
     }
@@ -376,7 +432,7 @@ class AiChatService extends ChangeNotifier {
       // ── Guía determinista: la APP decide qué dato falta y pregunta UNO a
       // la vez (en orden fijo), reemplazando la pregunta vaga "¿Falta algún
       // dato?" de la IA. La IA propone; la app guía. ──
-      String displayMessage = _getDisplayMessage(result);
+      String displayMessage = _sanitizeMessage(_getDisplayMessage(result));
       List<String> suggestions = const <String>[];
       if (result is AiFillFields || setFields.isNotEmpty) {
         final guide = GuidedInput.nextGuide(_provider, _guidedFields);
@@ -614,9 +670,24 @@ class AiChatService extends ChangeNotifier {
         (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
       // Try to extract the "message" field from stray JSON.
       final m = RegExp(r'"message"\s*:\s*"([^"]+)"').firstMatch(trimmed);
-      if (m != null) return m.group(1)!.trim();
+      if (m != null) return _sanitizeMessage(m.group(1)!.trim());
     }
-    return t.trim();
+    return _sanitizeMessage(t.trim());
+  }
+
+  /// Evita que JSON crudo (p. ej. `"type":"fill_fields"` truncado) se filtre a
+  /// la UI como texto visible. Causa raíz del error que el usuario veía tras
+  /// la pregunta del cónyuge: la IA devolvía JSON malformado que se mostraba
+  /// tal cual.
+  String _sanitizeMessage(String message) {
+    if (message.contains('"type"') ||
+        message.contains('fill_fields') ||
+        message.contains('"values"') ||
+        message.contains('missing_fields')) {
+      return 'He actualizado los datos que me indicaste. '
+          '¿Hay algo más que quieras ajustar?';
+    }
+    return message;
   }
 
   /// Extract JSON from text that may contain markdown code blocks.

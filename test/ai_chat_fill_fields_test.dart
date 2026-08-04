@@ -24,6 +24,13 @@ class _Harness {
   _Harness(this.provider, this.service);
 }
 
+/// Todas las edades del dropdown de retiro (60, 60.51, ..., 65) como texto,
+/// tal como se ofrecen como chips en la pregunta guiada de edad de retiro.
+final List<String> fullEdadRetiroSuggestions = [
+  '60', '60.51', '61', '61.51', '62', '62.51', '63', '63.51', '64', '64.51',
+  '65',
+];
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -306,7 +313,8 @@ void main() {
     // concreta del SIGUIENTE dato faltante (edad de retiro, primer opcional).
     expect(last.text, contains('edad'));
     expect(last.text, isNot(contains('Falta')));
-    expect(last.suggestions, ['60', '62', '65']);
+    // Todos los rangos de edad del dropdown como chips.
+    expect(last.suggestions, fullEdadRetiroSuggestions);
     harness.service.dispose();
   });
 
@@ -406,7 +414,8 @@ void main() {
     // Con los defaults sembrados (semanas/salario > 0) el primer dato
     // pendiente es la edad de retiro (primer opcional aún no preguntado).
     expect(last.text, contains('edad'));
-    expect(last.suggestions, ['60', '62', '65']);
+    // Todos los rangos de edad del dropdown como chips.
+    expect(last.suggestions, fullEdadRetiroSuggestions);
     harness.service.dispose();
   });
 
@@ -441,5 +450,81 @@ void main() {
     expect(last.text, contains('semanas'));
     expect(last.suggestions, isEmpty);
     service.dispose();
+  });
+
+  test(
+      'GUIADA: tras el chip, cada respuesta corta se aplica localmente sin '
+      'llamar a la IA (flujo determinista de extremo a extremo)', () async {
+    // Un client que falla si se invoca: todo el llenado debe resolverse local.
+    final mock = MockClient((request) async {
+      throw StateError('No se debe llamar a la IA durante el llenado guiado');
+    });
+
+    final harness = await buildHarness(mock);
+    await harness.service
+        .sendMessage('Ayúdame a llenar mi cálculo de pensión, cuentas conmigo');
+    await harness.service.sendMessage('62');
+    await harness.service.sendMessage('sí');
+    await harness.service.sendMessage('2');
+    await harness.service.sendMessage('ninguno');
+    await settle();
+
+    // El flujo termina con el mensaje de listo sin pasar por la IA.
+    final last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    expect(last.text, contains('¡Listo!'));
+    expect(last.suggestions, isEmpty);
+    // No consumió cupo de sesión diaria (todo local).
+    expect(harness.service.dailySessionCount, 0);
+    // Los valores quedaron aplicados en el proveedor.
+    expect(harness.provider.edadRetiro, 62);
+    expect(harness.provider.tieneEsposa, isTrue);
+    expect(harness.provider.numeroHijos, 2);
+    expect(harness.provider.numeroPadres, 0);
+    harness.service.dispose();
+  });
+
+  test(
+      'GUIADA: una respuesta no interpretable vuelve a preguntar el mismo '
+      'dato sin llamar a la IA', () async {
+    final mock = MockClient((request) async {
+      throw StateError('No se debe llamar a la IA durante el llenado guiado');
+    });
+
+    final harness = await buildHarness(mock);
+    await harness.service
+        .sendMessage('Ayúdame a llenar mi cálculo de pensión, cuentas conmigo');
+    await harness.service.sendMessage('quizás más adelante');
+    await settle();
+
+    final last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    expect(last.text, contains('No entendí tu respuesta'));
+    expect(last.text, contains('edad'));
+    // La pregunta se repite con las mismas opciones completas del dropdown.
+    expect(last.suggestions, fullEdadRetiroSuggestions);
+    harness.service.dispose();
+  });
+
+  test(
+      'AI: un JSON truncado de fill_fields NO se filtra a la UI (se muestra '
+      'un mensaje elegante)', () async {
+    // JSON truncado (falta el cierre): reproduce el bug del error visible
+    // `"type":"fill_fields"` tras la pregunta del cónyuge.
+    final content = '{"type":"fill_fields","values":{"tieneEsposa":true},'
+        '"message":"Registrado.","missing_fields":[]';
+    final mock = MockClient((request) async => openAiResponse(content));
+
+    final harness = await buildHarness(mock);
+    await harness.service.sendMessage('tengo esposa');
+    await settle();
+
+    final last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    expect(last.text, isNot(contains('fill_fields')));
+    expect(last.text, isNot(contains('"type"')));
+    expect(last.text, isNot(contains('"values"')));
+    expect(last.text, contains('actualizado'));
+    harness.service.dispose();
   });
 }
