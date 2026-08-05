@@ -1263,7 +1263,7 @@ class _CapturaViewState extends State<CapturaView> {
         // Label above the dropdown (uniform with other fields)
         Padding(
           padding: const EdgeInsets.only(bottom: 2),
-          child: Text('Edad',
+          child: Text('Edad de pension',
               style: const TextStyle(
                 fontSize: AppTheme.fontSizeBodySmall,
                 color: AppTheme.textSecondary,
