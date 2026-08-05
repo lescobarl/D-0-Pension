@@ -456,6 +456,9 @@ void main() {
       PeriodoSalarial(salarioDiario: 1200, semanas: 150, esMod40: false),
       PeriodoSalarial(salarioDiario: 800, semanas: 130, esMod40: true),
     ]);
+    // El usuario captura su total de semanas cotizadas ante el IMSS (fuente
+    // primaria del total; el desglose "antes" se deriva como total - Mod40).
+    provider.setSemanasCotizadas(1300);
     // El usuario teclea su promedio de las 250 semanas.
     final result = await GuidedInput.applyAnswer(
       provider,
@@ -466,8 +469,8 @@ void main() {
 
     // El promedio tecleado se conserva.
     expect(provider.salarioPromedio250Semanas, 1500);
-    // "Antes" queda en 250 semanas (un único registro no-Mod40).
-    expect(provider.semanasAntesMod40, 250);
+    // El total capturado (1300) se conserva: "antes" = total - en = 1170.
+    expect(provider.semanasAntesMod40, closeTo(1170, 0.001));
     // El desglose queda: 1 registro no-Mod40 de 250 semanas + el Mod40.
     final noMod40 = provider.periodos.where((p) => !p.esMod40).toList();
     final mod40 = provider.periodos.where((p) => p.esMod40).toList();
@@ -478,8 +481,9 @@ void main() {
     expect(mod40.length, 1);
     expect(mod40.single.semanas, 130);
     expect(mod40.single.salarioDiario, 800);
-    // Semanas en Mod40 y total cotizadas se recalculan.
+    // Semanas en Mod40 se recalculan desde los periodos Mod40; el total
+    // capturado por el usuario (1300) NO se sobrescribe con "antes + en".
     expect(provider.semanasEnMod40, 130);
-    expect(provider.semanasCotizadas, 250 + 130);
+    expect(provider.semanasCotizadas, 1300);
   });
 }

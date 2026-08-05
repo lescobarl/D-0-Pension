@@ -392,8 +392,22 @@ class RetroactiveProvider extends ChangeNotifier {
           _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
       _inputs.semanasEnMod40 = semanasEnMod40;
       persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
-      _inputs.semanasCotizadas = (_inputs.semanasAntesMod40 + _inputs.semanasEnMod40).toInt();
-      persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+      // El total capturado por el usuario (semanasCotizadas, p. ej. 1961) es la
+      // fuente primaria: se conserva y se deriva "antes" = total - en. Solo si
+      // el total cargado es inválido se recalcula como antes + en.
+      final totalCargado = _inputs.semanasCotizadas;
+      if (totalCargado > 0 && totalCargado >= _inputs.semanasEnMod40) {
+        final antesDerivado = (totalCargado - _inputs.semanasEnMod40)
+            .clamp(0.0, totalCargado.toDouble());
+        _inputs.semanasAntesMod40 = antesDerivado;
+        persistence.saveSemanasAntesMod40(antesDerivado);
+        _inputs.totalSemanasSinMod40 = antesDerivado.toInt();
+        persistence.saveTotalSemanasSinMod40(antesDerivado.toInt());
+      } else {
+        _inputs.semanasCotizadas =
+            (_inputs.semanasAntesMod40 + _inputs.semanasEnMod40).toInt();
+        persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+      }
 
       // Auto-calculate endDate from startDate + semanasEnMod40
       if (_inputs.semanasEnMod40 > 0) {
@@ -569,8 +583,7 @@ class RetroactiveProvider extends ChangeNotifier {
           _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
       _inputs.semanasEnMod40 = semanasEnMod40;
       persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
-      _inputs.semanasCotizadas = (_inputs.semanasAntesMod40 + _inputs.semanasEnMod40).toInt();
-      persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+      _reconcileTotalSemanas();
       _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
       persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
     }
@@ -591,8 +604,7 @@ class RetroactiveProvider extends ChangeNotifier {
   /// cotizadas y costo), y el resto del desglose se reemplaza por un único
   /// [PeriodoSalarial] de 250 semanas con `salarioDiario = v`.
   void setSalarioPromedio250SemanasConDesglose(double v) {
-    if (v == _inputs.salarioPromedio250Semanas &&
-        _inputs.semanasAntesMod40 == 250) {
+    if (v == _inputs.salarioPromedio250Semanas) {
       return;
     }
     _inputs.salarioPromedio250Semanas = v;
@@ -611,20 +623,17 @@ class RetroactiveProvider extends ChangeNotifier {
     ];
     _inputs.periodos = nuevos;
     persistence.savePeriodos(nuevos);
-    // Desglose explícito → "antes" es la fuente primaria (total = antes + en).
-    _semanasAntesMod40Explicit = true;
-    _inputs.semanasAntesMod40 = 250;
-    persistence.saveSemanasAntesMod40(250);
-    _inputs.totalSemanasSinMod40 = 250;
-    persistence.saveTotalSemanasSinMod40(250);
 
     // Recalcular semanas Mod40 desde los periodos conservados.
     final semanasEnMod40 =
         _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
     _inputs.semanasEnMod40 = semanasEnMod40;
     persistence.saveSemanasEnMod40(semanasEnMod40);
-    _inputs.semanasCotizadas = (250 + semanasEnMod40).toInt();
-    persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+    // El total capturado por el usuario (semanasCotizadas, p. ej. 1961) es la
+    // fuente primaria: NO se sobrescribe con "antes + en". Tampoco se fuerza
+    // "antes = 250" ni el modo desglose explícito, para que un
+    // setSemanasEnMod40 posterior (flujo guiado) conserve el total y derive
+    // antes = total - en.
 
     // Salario diario promedio = promedio ponderado de los periodos (250×v + M40).
     _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
@@ -653,9 +662,9 @@ class RetroactiveProvider extends ChangeNotifier {
         _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
     _inputs.semanasEnMod40 = semanasEnMod40;
     persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
-    // Update total cotizadas semanas
-    _inputs.semanasCotizadas = (_inputs.semanasAntesMod40 + _inputs.semanasEnMod40).toInt();
-    persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+    // Reconciliar total vs. desglose (invariante total = antes + en) sin
+    // sobrescribir el total capturado por el usuario.
+    _reconcileTotalSemanas();
     // Recalculate Salario Promedio from the new periods (Excel E19).
     _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
     persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
@@ -693,9 +702,9 @@ class RetroactiveProvider extends ChangeNotifier {
     ErrorHandler.logDebug('Semanas Mod40 actualizadas:');
     ErrorHandler.logDebug('  - Valor calculado: $semanasEnMod40');
     ErrorHandler.logDebug('  - Valor asignado: ${_inputs.semanasEnMod40}');
-    // Update total cotizadas semanas
-    _inputs.semanasCotizadas = (_inputs.semanasAntesMod40 + _inputs.semanasEnMod40).toInt();
-    persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+    // Reconciliar total vs. desglose (invariante total = antes + en) sin
+    // sobrescribir el total capturado por el usuario.
+    _reconcileTotalSemanas();
     // Recalculate Salario Promedio from the updated periods (Excel E19).
     _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
     persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
@@ -752,9 +761,9 @@ class RetroactiveProvider extends ChangeNotifier {
         _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
     _inputs.semanasEnMod40 = semanasEnMod40;
     persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
-    // Update total cotizadas semanas
-    _inputs.semanasCotizadas = (_inputs.semanasAntesMod40 + _inputs.semanasEnMod40).toInt();
-    persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+    // Reconciliar total vs. desglose (invariante total = antes + en) sin
+    // sobrescribir el total capturado por el usuario.
+    _reconcileTotalSemanas();
     // Recalculate Salario Promedio after removal
     _inputs.salarioDiarioPromedio = nuevoSalarioPromedio;
     persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
@@ -950,6 +959,29 @@ class RetroactiveProvider extends ChangeNotifier {
   }
 
   // --- Semanas (desglose) setters ---
+  /// Reconciliar el total de semanas cotizadas con el desglose (invariante
+  /// total = antes + en) SIN sobrescribir el dato que el usuario capturó.
+  ///
+  /// - Modo desglose explícito (`_semanasAntesMod40Explicit == true`): "antes"
+  ///   es la fuente primaria → total = antes + en.
+  /// - Modo total primario (flujo guiado: el usuario tecleó primero el total):
+  ///   se PRESERVA `semanasCotizadas` y se deriva antes = total - en, alineando
+  ///   también `totalSemanasSinMod40`.
+  void _reconcileTotalSemanas() {
+    if (_semanasAntesMod40Explicit) {
+      _inputs.semanasCotizadas =
+          (_inputs.semanasAntesMod40 + _inputs.semanasEnMod40).toInt();
+      persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+    } else {
+      final total = _inputs.semanasCotizadas.toDouble();
+      final antes = (total - _inputs.semanasEnMod40).clamp(0.0, total);
+      _inputs.semanasAntesMod40 = antes;
+      persistence.saveSemanasAntesMod40(antes);
+      _inputs.totalSemanasSinMod40 = antes.toInt();
+      persistence.saveTotalSemanasSinMod40(antes.toInt());
+    }
+  }
+
   void setSemanasAntesMod40(double v) {
     // Desglose explícito → "antes" es la fuente primaria (total = antes + en).
     // Se marca ANTES del guard para que llamadas con el valor semilla (p. ej.

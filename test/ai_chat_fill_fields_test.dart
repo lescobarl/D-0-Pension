@@ -532,12 +532,11 @@ void main() {
     expect(harness.service.dailySessionCount, 0);
     // Los valores quedaron aplicados en el proveedor (los vitales SIEMPRE se
     // preguntan aunque hubiera defaults sembrados).
-    // Al teclear el promedio de las 250 semanas, el desglose "antes de Mod40"
-    // se colapsa a un único registro de 250 semanas (setSalarioPromedio250Semanas
-    // ConDesglose → antes=250). Luego setSemanasEnMod40(130) deriva el total
-    // = antes + en = 250 + 130 = 380.
-    expect(harness.provider.semanasCotizadas, 380);
-    expect(harness.provider.semanasAntesMod40, 250);
+    // El total capturado (1300) se PRESERVA: el promedio de las 250 semanas ya
+    // no sobrescribe el desglose (antes=250) ni el total. setSemanasEnMod40(130)
+    // deriva antes = total - en = 1300 - 130 = 1170.
+    expect(harness.provider.semanasCotizadas, 1300);
+    expect(harness.provider.semanasAntesMod40, closeTo(1170, 0.001));
     expect(harness.provider.salarioPromedio250Semanas, 1500);
     expect(harness.provider.semanasEnMod40, 130);
     expect(harness.provider.fechaNacimiento.year, 1975);
@@ -703,8 +702,8 @@ void main() {
     expect(reClickPadresFill.values['numeroPadres'], 2);
 
     // El resto de campos permanece correcto (validación de todos los campos).
-    expect(harness.provider.semanasCotizadas, 380);
-    expect(harness.provider.semanasAntesMod40, 250);
+    expect(harness.provider.semanasCotizadas, 1300);
+    expect(harness.provider.semanasAntesMod40, closeTo(1170, 0.001));
     expect(harness.provider.salarioPromedio250Semanas, 1500);
     expect(harness.provider.semanasEnMod40, 130);
     expect(harness.provider.fechaNacimiento.year, 1975);
