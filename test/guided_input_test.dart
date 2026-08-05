@@ -18,8 +18,8 @@ import 'package:d_0_pension/services/retroactive_provider.dart';
 /// 3. `semanasEnMod40`            → vital, SIEMPRE una vez por sesión
 ///                                  (número o "por fechas": inicio/fin)
 /// 4. `salarioDiarioPromedio`     → respaldo (solo si sigue en 0)
-/// 5. Opcionales: fechaNacimiento → esposa → hijos → padres → uma
-///    (edadRetiro NO se pregunta en la guía)
+/// 5. Opcionales: fechaNacimiento → edadRetiro → esposa → hijos → padres → uma
+///    (edadRetiro SÍ se pregunta: las opciones salen del dropdown 60-65)
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -106,8 +106,8 @@ void main() {
     expect(guide.suggestions, isEmpty);
   });
 
-  test('la guía NO pregunta edadRetiro: tras fechaNacimiento toca tieneEsposa',
-      () async {
+  test('la guía SÍ pregunta edadRetiro: tras fechaNacimiento toca edadRetiro '
+      '(dropdown de edad de pensión)', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final provider = RetroactiveProvider(
@@ -116,11 +116,17 @@ void main() {
     );
     await provider.initialize();
     // initialize() siembra salarioDiarioPromedio > 0 → respaldo omitido.
-    // Con los vitales + fechaNacimiento ya preguntados, la edad se omite y
-    // el siguiente opcional es tieneEsposa.
+    // Con los vitales + fechaNacimiento ya preguntados, el siguiente opcional
+    // es edadRetiro: las opciones salen del dropdown de edad de pensión.
     final guide =
         GuidedInput.nextGuide(provider, vitales.toSet()..add('fechaNacimiento'));
-    expect(guide!.field, 'tieneEsposa');
+    expect(guide!.field, 'edadRetiro');
+    expect(guide.question, contains('edad'));
+    // Opciones del dropdown de edad de pensión (60-65), como texto.
+    expect(guide.suggestions, isNotEmpty);
+    expect(guide.suggestions.first, '60');
+    expect(guide.suggestions, contains('62'));
+    expect(guide.suggestions, contains('65'));
   });
 
   test('applyAnswer: interpreta y aplica respuestas cortas de la guía', () async {
@@ -162,6 +168,13 @@ void main() {
     expect(provider.fechaNacimiento.year, 1975);
     expect(provider.fechaNacimiento.month, 3);
     expect(provider.fechaNacimiento.day, 5);
+
+    final edadRetiro =
+        await GuidedInput.applyAnswer(provider, 'edadRetiro', '62');
+    expect(edadRetiro!.ok, isTrue);
+    expect(edadRetiro.setFields, ['edadRetiro']);
+    expect(edadRetiro.nextField, isNull);
+    expect(provider.edadRetiro, 62);
 
     final esposa =
         await GuidedInput.applyAnswer(provider, 'tieneEsposa', 'sí, tengo esposa');
@@ -305,6 +318,7 @@ void main() {
       'semanasEnMod40',
       'salarioDiarioPromedio',
       'fechaNacimiento',
+      'edadRetiro',
       'tieneEsposa',
       'numeroHijos',
       'numeroPadres',

@@ -60,11 +60,12 @@ class GuidedInput {
     }
 
     // ── Opcionales (se preguntan una sola vez) ──
-    // NOTA: `edadRetiro` NO se pregunta en la guía: la edad se deja con su
-    // valor por defecto y el usuario puede ajustarla después en la calculadora.
+    // `edadRetiro` SÍ se pregunta en la guía: las opciones salen del dropdown
+    // de edad de pensión (chips 60-65). Orden según la prioridad documentada.
     for (final field
         in const [
       'fechaNacimiento',
+      'edadRetiro',
       'tieneEsposa',
       'numeroHijos',
       'numeroPadres',

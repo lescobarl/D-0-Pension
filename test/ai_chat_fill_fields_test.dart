@@ -415,9 +415,11 @@ void main() {
         'mi salario promedio de las 250 semanas es 1500');
     await harness.service.sendMessage(
         'estoy cotizando 130 semanas en modalidad 40');
-    // Opcionales: fechaNacimiento → esposa → hijos → padres → uma.
-    // (edadRetiro ya NO se pregunta en la guía.)
+    // Opcionales: fechaNacimiento → edadRetiro (dropdown 60-65) → esposa →
+    // hijos → padres → uma.
     await harness.service.sendMessage('nací el 5 de marzo de 1975');
+    // Edad de pensión: se elige del dropdown (el mock responde 62).
+    await harness.service.sendMessage('62');
     await harness.service.sendMessage('sí, tengo esposa');
     await harness.service.sendMessage('tengo 2 hijos');
     await harness.service.sendMessage('no tengo padres dependientes');
@@ -514,9 +516,11 @@ void main() {
     await harness.service.sendMessage('1300');
     await harness.service.sendMessage('1500');
     await harness.service.sendMessage('130');
-    // Opcionales: fechaNacimiento → esposa → hijos → padres → uma.
-    // (edadRetiro ya NO se pregunta en la guía.)
+    // Opcionales: fechaNacimiento → edadRetiro (dropdown 60-65) → esposa →
+    // hijos → padres → uma.
     await harness.service.sendMessage('05/03/1975');
+    // Edad de pensión: 62 (del dropdown).
+    await harness.service.sendMessage('62');
     await harness.service.sendMessage('sí');
     await harness.service.sendMessage('2');
     await harness.service.sendMessage('ninguno');
@@ -549,6 +553,8 @@ void main() {
     expect(harness.provider.fechaNacimiento.year, 1975);
     expect(harness.provider.fechaNacimiento.month, 3);
     expect(harness.provider.fechaNacimiento.day, 5);
+    // Prueba productiva: la edad de pensión se aplicó desde el dropdown (62).
+    expect(harness.provider.edadRetiro, 62);
     expect(harness.provider.tieneEsposa, isTrue);
     expect(harness.provider.numeroHijos, 2);
     expect(harness.provider.numeroPadres, 0);
@@ -611,9 +617,24 @@ void main() {
     expect(last.text, contains('fecha'));
     expect(last.suggestions, isEmpty);
 
-    // Tras la fecha, toca tieneEsposa (edadRetiro ya NO se pregunta): una
-    // respuesta no interpretable se vuelve a preguntar con chips Sí/No.
+    // Tras la fecha, toca edadRetiro (dropdown de edad de pensión): una
+    // respuesta no interpretable se vuelve a preguntar con los chips 60-65.
     await harness.service.sendMessage('05/03/1975');
+    await harness.service.sendMessage('quizás más adelante');
+    await settle();
+
+    last = harness.service.messages.last;
+    expect(last.role, 'assistant');
+    expect(last.text, contains('No entendí tu respuesta'));
+    expect(last.text, contains('edad'));
+    expect(last.suggestions, isNotEmpty);
+    expect(last.suggestions!.first, '60');
+    expect(last.suggestions, contains('62'));
+    expect(last.suggestions, contains('65'));
+
+    // Tras responder la edad (62), toca tieneEsposa: una respuesta no
+    // interpretable se vuelve a preguntar con chips Sí/No.
+    await harness.service.sendMessage('62');
     await harness.service.sendMessage('quizás más adelante');
     await settle();
 
@@ -662,8 +683,10 @@ void main() {
     await harness.service.sendMessage('1300');
     await harness.service.sendMessage('1500');
     await harness.service.sendMessage('130');
-    // Opcionales: fechaNacimiento → esposa → hijos → padres → uma.
+    // Opcionales: fechaNacimiento → edadRetiro (dropdown 60-65) → esposa →
+    // hijos → padres → uma.
     await harness.service.sendMessage('05/03/1975');
+    await harness.service.sendMessage('62');
     await harness.service.sendMessage('sí');
     // Respondemos "2" a hijos: la guía AVANZA a numeroPadres.
     await harness.service.sendMessage('2');
@@ -716,6 +739,7 @@ void main() {
     expect(harness.provider.fechaNacimiento.year, 1975);
     expect(harness.provider.fechaNacimiento.month, 3);
     expect(harness.provider.fechaNacimiento.day, 5);
+    expect(harness.provider.edadRetiro, 62);
     expect(harness.provider.tieneEsposa, isTrue);
     expect(harness.provider.umaMultiplier, 20);
     // No consumió cupo de sesión diaria (todo local).
