@@ -462,8 +462,8 @@ class _CapturaViewState extends State<CapturaView> {
             Row(
               children: [
                 Expanded(
-                  // El total (antes + en Mod40) es el campo canónico que la IA
-                  // actualiza con "semanas cotizadas"; los componentes se derivan.
+                  // "Semanas cotizadas" = historial IMSS ANTES de Modalidad 40
+                  // (fuente primaria); el total CON Mod40 se deriva en el cálculo.
                   child: _buildValidatedNumberField('Semanas cotizadas IMSS', _semanasCotizadasController, (v) {
                     final parsed = double.tryParse(v);
                     if (parsed != null) provider.setSemanasCotizadas(parsed.round());
@@ -475,9 +475,6 @@ class _CapturaViewState extends State<CapturaView> {
                     }
                     if (parsed < 0) {
                       return ValidationResult.error('No puede ser negativo');
-                    }
-                    if (parsed < provider.semanasEnMod40) {
-                      return ValidationResult.error('No puede ser menor que las semanas en Modalidad 40');
                     }
                     if (parsed > 5000) {
                       return ValidationResult.warning('Valor muy alto de semanas');

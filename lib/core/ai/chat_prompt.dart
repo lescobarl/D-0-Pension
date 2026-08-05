@@ -87,7 +87,7 @@ Cuando el usuario pida CAMBIAR, ajustar, mover, subir, bajar, corregir, modifica
 | fechaCalculo | string (YYYY-MM-DD) | Fecha del cálculo |
 | edadRetiro | number | Edad de retiro con Modalidad 40 (60-65) |
 | pensionYear | number | Año de pensión (ej. 2024, 2025) |
-| semanasCotizadas | number | Semanas totales cotizadas ante el IMSS |
+| semanasCotizadas | number | Semanas cotizadas ANTES de Modalidad 40 |
 | semanasAntesMod40 | number | Semanas cotizadas ANTES de entrar a Modalidad 40 |
 | semanasEnMod40 | number | Semanas cotizadas DENTRO de Modalidad 40 |
 | totalSemanasSinMod40 | number | Total de semanas sin Modalidad 40 |

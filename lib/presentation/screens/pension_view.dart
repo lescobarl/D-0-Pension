@@ -45,7 +45,7 @@ class _PensionViewState extends State<PensionView> {
       ['Fecha de Nacimiento', _formatDate(provider.fechaNacimiento)],
       ['Salario Diario Promedio (250 sem)', fmt(provider.salarioDiarioPromedio)],
       ['Salario Promedio 250 Sem. (Anterior)', fmt(provider.salarioPromedio250Semanas)],
-      ['Semanas Cotizadas', provider.semanasCotizadas.toString()],
+      ['Semanas Cotizadas (antes M40)', provider.semanasCotizadas.toString()],
       ['Semanas antes Mod40', provider.semanasAntesMod40.toStringAsFixed(0)],
       ['Edad Retiro', '${provider.edadRetiro.toStringAsFixed(2)} años'],
       ['Tiene Esposa', provider.tieneEsposa ? 'SÍ' : 'NO'],

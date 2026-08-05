@@ -4,8 +4,8 @@ import 'package:d_0_pension/core/engine/formula_evaluator.dart';
 /// ESCENARIO DEL USUARIO:
 /// Fecha Cálculo: 21/07/2026
 /// Fecha Nacimiento: 30/01/1969
-/// Salario Promedio 250 sem (anterior): $2,677.31
-/// Nuevo Salario Promedio (con M40): $2,296.68
+/// Salario Promedio 250 sem (anterior): $2,281.53
+/// Nuevo Salario Promedio (con M40): $2,677.31
 /// Semanas antes Mod40: 1960
 /// Edad Retiro: 60.51 años
 /// Esposa: SÍ, Hijos: 1, Padres: 0
@@ -32,8 +32,8 @@ void main() {
 
   test('ESCENARIO USUARIO - Pensión con M40', () {
     // ===== INPUTS =====
-    const salarioDiarioPromedio = 2296.68; // Nuevo Salario Promedio (con M40)
-    const salarioPromedio250 = 2677.31; // Salario promedio 250 sem (sin M40)
+    const salarioDiarioPromedio = 2677.31; // Nuevo Salario Promedio (con M40)
+    const salarioPromedio250 = 2281.53; // Salario promedio 250 sem (sin M40)
     const umaDiaria = 128.11;
     const salarioMinimoDiario = 372.04;
     const pensionYear = 2029;

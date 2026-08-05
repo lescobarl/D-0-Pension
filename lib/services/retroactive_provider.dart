@@ -61,19 +61,14 @@ class RetroactiveProvider extends ChangeNotifier {
   /// Lo usa CapturaView para mostrar un SnackBar "Configuración recuperada".
   bool _loadedFromPersistence = false;
 
-  /// True cuando el desglose "antes Mod40" se fijó explícitamente (vía
-  /// [setSemanasAntesMod40] / [setTotalSemanasSinMod40]); false cuando el
-  /// TOTAL (semanasCotizadas) es la fuente primaria (vía [setSemanasCotizadas]).
+  /// Modelo semántico de semanas:
   ///
-  /// Reconciliar total vs. desglose (invariante total = antes + en):
-  /// [setSemanasCotizadas] trata el total como primario (antes = total - en),
-  /// mientras que [setSemanasEnMod40] trata "antes" como primario. El flag
-  /// decide cuál gana dentro de [setSemanasEnMod40]:
-  ///   - false (total primario): se PRESERVA el total tecleado y se re-deriva
-  ///     antes (= total - v), de modo que el usuario vea el total exacto que
-  ///     escribió (p. ej. 1300, no 1295 ni 1430).
-  ///   - true (antes explícito): se conserva antes y total = antes + v.
-  bool _semanasAntesMod40Explicit = false;
+  /// `semanasCotizadas` = historial IMSS ANTES de Modalidad 40 (fuente
+  /// primaria; coincide con Excel "SEMANAS COTIZADAS ANTES DE MODALIDAD 40").
+  /// `semanasAntesMod40` y `totalSemanasSinMod40` son alias del mismo valor.
+  /// El total CON Modalidad 40 (= `semanasCotizadas + semanasEnMod40`) lo
+  /// calcula el [RetroactiveCalculator] en recalcularFactAsig; NO se resta
+  /// semanasEnMod40 en ningún punto del modelo.
 
   RetroactiveProvider({
     required this.evaluator,
@@ -128,7 +123,7 @@ class RetroactiveProvider extends ChangeNotifier {
   double get edadActual =>
       InputValidator.calcularEdadActual(_inputs.fechaNacimiento, _inputs.fechaCalculo);
 
-  /// Total de semanas cotizadas (antes Mod40 + en Mod40).
+  /// Total de semanas cotizadas ANTES de Modalidad 40 (historial IMSS).
   int get totalSemanasCotizadas => _inputs.semanasCotizadas;
 
   /// True si se cumple el mínimo legal de 500 semanas (Art. 154/162 LSS 1973).
@@ -392,21 +387,27 @@ class RetroactiveProvider extends ChangeNotifier {
           _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
       _inputs.semanasEnMod40 = semanasEnMod40;
       persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
-      // El total capturado por el usuario (semanasCotizadas, p. ej. 1961) es la
-      // fuente primaria: se conserva y se deriva "antes" = total - en. Solo si
-      // el total cargado es inválido se recalcula como antes + en.
-      final totalCargado = _inputs.semanasCotizadas;
-      if (totalCargado > 0 && totalCargado >= _inputs.semanasEnMod40) {
-        final antesDerivado = (totalCargado - _inputs.semanasEnMod40)
-            .clamp(0.0, totalCargado.toDouble());
-        _inputs.semanasAntesMod40 = antesDerivado;
-        persistence.saveSemanasAntesMod40(antesDerivado);
-        _inputs.totalSemanasSinMod40 = antesDerivado.toInt();
-        persistence.saveTotalSemanasSinMod40(antesDerivado.toInt());
+      // `semanasCotizadas` es el historial IMSS ANTES de Modalidad 40 (fuente
+      // primaria). Se alinean `semanasAntesMod40` y `totalSemanasSinMod40` al
+      // mismo valor; el total CON Mod40 (= antes + en) lo calcula el
+      // RetroactiveCalculator, sin restar semanasEnMod40.
+      if (_inputs.semanasCotizadas > 0) {
+        final antes = _inputs.semanasCotizadas.toDouble();
+        _inputs.semanasAntesMod40 = antes;
+        persistence.saveSemanasAntesMod40(antes);
+        _inputs.totalSemanasSinMod40 = _inputs.semanasCotizadas;
+        persistence.saveTotalSemanasSinMod40(_inputs.semanasCotizadas);
       } else {
-        _inputs.semanasCotizadas =
-            (_inputs.semanasAntesMod40 + _inputs.semanasEnMod40).toInt();
+        // Total cargado inválido: derivarlo desde el desglose pre-M40 si existe.
+        final antes = _inputs.semanasAntesMod40 > 0
+            ? _inputs.semanasAntesMod40
+            : _inputs.totalSemanasSinMod40.toDouble();
+        _inputs.semanasCotizadas = antes.toInt();
         persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+        _inputs.semanasAntesMod40 = antes;
+        persistence.saveSemanasAntesMod40(antes);
+        _inputs.totalSemanasSinMod40 = antes.toInt();
+        persistence.saveTotalSemanasSinMod40(antes.toInt());
       }
 
       // Auto-calculate endDate from startDate + semanasEnMod40
@@ -500,21 +501,15 @@ class RetroactiveProvider extends ChangeNotifier {
 
   void setSemanasCotizadas(int v) {
     if (v == _inputs.semanasCotizadas) return;
-    // El total es la fuente primaria: al fijarlo se deriva antes. Desactiva el
-    // modo "antes explícito" para que un setSemanasEnMod40 posterior PRESERVE
-    // este total (antes = total - en) en lugar de sumar sobre antes.
-    _semanasAntesMod40Explicit = false;
-    // `semanasCotizadas` es el TOTAL = semanasAntesMod40 + semanasEnMod40.
-    // Al fijar el total se deriva el componente "antes Mod40" (invariante
-    // total = antes + en) y se alinea `totalSemanasSinMod40` para que la
-    // guardia de migración de initialize() y las rutas de recomputación
-    // (setPeriodos, setSemanasEnMod40, etc.) conserven el valor solicitado en
-    // lugar de revertirlo al desglose anterior.
-    final antesDerivado = (v - _inputs.semanasEnMod40).clamp(0.0, v.toDouble());
-    _inputs.semanasAntesMod40 = antesDerivado.toDouble();
-    persistence.saveSemanasAntesMod40(antesDerivado.toDouble());
-    _inputs.totalSemanasSinMod40 = antesDerivado.toInt();
-    persistence.saveTotalSemanasSinMod40(antesDerivado.toInt());
+    // `semanasCotizadas` = historial IMSS ANTES de Modalidad 40 (fuente
+    // primaria). Al fijarlo se alinean `semanasAntesMod40` y
+    // `totalSemanasSinMod40` al mismo valor. El total CON Mod40
+    // (= antes + en) lo calcula el RetroactiveCalculator en recalcularFactAsig;
+    // NO se resta semanasEnMod40 aquí.
+    _inputs.semanasAntesMod40 = v.toDouble();
+    persistence.saveSemanasAntesMod40(v.toDouble());
+    _inputs.totalSemanasSinMod40 = v;
+    persistence.saveTotalSemanasSinMod40(v);
     _inputs.semanasCotizadas = v;
     persistence.saveSemanasCotizadas(v);
     _calculator.recalcularFactAsig();
@@ -776,11 +771,17 @@ class RetroactiveProvider extends ChangeNotifier {
 
   void setTotalSemanasSinMod40(int v) {
     if (v == _inputs.totalSemanasSinMod40) return;
-    // Desglose explícito → "antes" es la fuente primaria (total = antes + en).
-    _semanasAntesMod40Explicit = true;
+    // `totalSemanasSinMod40` es alias de las semanas ANTES de Mod40: se alinea
+    // con `semanasCotizadas` y `semanasAntesMod40` (mismo valor).
     _inputs.totalSemanasSinMod40 = v;
     persistence.saveTotalSemanasSinMod40(v);
+    _inputs.semanasCotizadas = v;
+    persistence.saveSemanasCotizadas(v);
+    _inputs.semanasAntesMod40 = v.toDouble();
+    persistence.saveSemanasAntesMod40(v.toDouble());
+    _calculator.recalcularFactAsig();
     _calculator.recalcularFactAsigSinMod40();
+    _calculator.recalcularPensionMod40();
     _calculator.recalcularInversion();
     notifyListeners();
   }
@@ -959,22 +960,23 @@ class RetroactiveProvider extends ChangeNotifier {
   }
 
   // --- Semanas (desglose) setters ---
-  /// Reconciliar el total de semanas cotizadas con el desglose (invariante
-  /// total = antes + en) SIN sobrescribir el dato que el usuario capturó.
+  /// Reconciliar los campos de semanas ANTES de Mod40 (invariante:
+  /// `semanasAntesMod40` == `totalSemanasSinMod40` == `semanasCotizadas`).
   ///
-  /// - Modo desglose explícito (`_semanasAntesMod40Explicit == true`): "antes"
-  ///   es la fuente primaria → total = antes + en.
-  /// - Modo total primario (flujo guiado: el usuario tecleó primero el total):
-  ///   se PRESERVA `semanasCotizadas` y se deriva antes = total - en, alineando
-  ///   también `totalSemanasSinMod40`.
+  /// `semanasCotizadas` es la fuente primaria (historial IMSS antes de M40);
+  /// solo si es inválido se usa `semanasAntesMod40` como respaldo.
   void _reconcileTotalSemanas() {
-    if (_semanasAntesMod40Explicit) {
-      _inputs.semanasCotizadas =
-          (_inputs.semanasAntesMod40 + _inputs.semanasEnMod40).toInt();
-      persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
+    if (_inputs.semanasCotizadas > 0) {
+      _inputs.semanasAntesMod40 = _inputs.semanasCotizadas.toDouble();
+      persistence.saveSemanasAntesMod40(_inputs.semanasAntesMod40);
+      _inputs.totalSemanasSinMod40 = _inputs.semanasCotizadas;
+      persistence.saveTotalSemanasSinMod40(_inputs.totalSemanasSinMod40);
     } else {
-      final total = _inputs.semanasCotizadas.toDouble();
-      final antes = (total - _inputs.semanasEnMod40).clamp(0.0, total);
+      final antes = _inputs.semanasAntesMod40 > 0
+          ? _inputs.semanasAntesMod40
+          : _inputs.totalSemanasSinMod40.toDouble();
+      _inputs.semanasCotizadas = antes.toInt();
+      persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
       _inputs.semanasAntesMod40 = antes;
       persistence.saveSemanasAntesMod40(antes);
       _inputs.totalSemanasSinMod40 = antes.toInt();
@@ -983,18 +985,14 @@ class RetroactiveProvider extends ChangeNotifier {
   }
 
   void setSemanasAntesMod40(double v) {
-    // Desglose explícito → "antes" es la fuente primaria (total = antes + en).
-    // Se marca ANTES del guard para que llamadas con el valor semilla (p. ej.
-    // 1960) también activen el modo desglose explícito.
-    _semanasAntesMod40Explicit = true;
+    // `semanasAntesMod40` es alias de las semanas ANTES de Mod40: se alinea
+    // con `semanasCotizadas` y `totalSemanasSinMod40` (mismo valor).
     if (v == _inputs.semanasAntesMod40) return;
     _inputs.semanasAntesMod40 = v;
     persistence.saveSemanasAntesMod40(v);
-    // Recalculate total semanas sin Mod40
     _inputs.totalSemanasSinMod40 = v.toInt();
     persistence.saveTotalSemanasSinMod40(_inputs.totalSemanasSinMod40);
-    // Recalculate total semanas con Mod40 (semanasCotizadas = antes + en)
-    _inputs.semanasCotizadas = (v + _inputs.semanasEnMod40).toInt();
+    _inputs.semanasCotizadas = v.toInt();
     persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
     // Recalculate Salario Promedio (con Mod40) when the weight distribution changes
     // WITHOUT overwriting the user's desglose de periodos.
@@ -1075,25 +1073,11 @@ class RetroactiveProvider extends ChangeNotifier {
     // Nada cambió (ni desglose ni escalar): no hay nada que reconciliar.
     if (!changed) return;
 
-    // Reconciliar total vs. desglose (invariante total = antes + en).
-    if (_semanasAntesMod40Explicit) {
-      // "antes" es primario (desglose explícito): conservar antes y derivar el
-      // total = antes + en.
-      _inputs.semanasCotizadas = (_inputs.semanasAntesMod40 + v).toInt();
-      persistence.saveSemanasCotizadas(_inputs.semanasCotizadas);
-    } else {
-      // El total es primario (p. ej. flujo guiado: el usuario tecleó primero el
-      // total y después las semanas Mod40): PRESERVAR el total y re-derivar
-      // antes = total - v, para que el valor que escribió el usuario (1300) no
-      // se pierda en 1295 o se infle a 1430.
-      final total = _inputs.semanasCotizadas.toDouble();
-      final antes = (total - v).clamp(0.0, total);
-      _inputs.semanasAntesMod40 = antes;
-      persistence.saveSemanasAntesMod40(antes);
-      _inputs.totalSemanasSinMod40 = antes.toInt();
-      persistence.saveTotalSemanasSinMod40(antes.toInt());
-      // semanasCotizadas (el total) NO se modifica: queda en el valor tecleado.
-    }
+    // Modelo semántico: `semanasCotizadas` es el historial ANTES de M40 y NO
+    // cambia al modificar las semanas en Modalidad 40. El total CON Mod40
+    // (= antes + en) lo calcula el RetroactiveCalculator en recalcularFactAsig.
+    // Solo se re-alinea el alias del desglose (invariante de los tres campos).
+    _reconcileTotalSemanas();
     // Auto-calculate endDate from startDate + semanasEnMod40
     if (v > 0) {
       _inputs.endDate = _inputs.startDate.add(Duration(days: (v * 7).round()));

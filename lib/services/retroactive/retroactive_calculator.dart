@@ -51,7 +51,9 @@ class RetroactiveCalculator {
         umaDiaria: inputs.umaDiaria,
         salarioMinimoDiario: inputs.salarioMinimoDiario,
         pensionYear: inputs.pensionYear,
-        semanasCotizadas: inputs.semanasCotizadas,
+        // Total CON Modalidad 40 = semanas antes M40 + semanas en M40.
+        // semanasCotizadas es int y semanasEnMod40 es double → se redondea a int.
+        semanasCotizadas: (inputs.semanasCotizadas + inputs.semanasEnMod40).round(),
         tieneEsposa: inputs.tieneEsposa,
         numeroHijos: inputs.numeroHijos,
         numeroPadres: inputs.numeroPadres,
