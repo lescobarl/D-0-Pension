@@ -1007,35 +1007,74 @@ class RetroactiveProvider extends ChangeNotifier {
   }
 
   void setSemanasEnMod40(double v) {
-    if (v == _inputs.semanasEnMod40) return;
-    _inputs.semanasEnMod40 = v;
-    persistence.saveSemanasEnMod40(v);
-    // Escalar las semanas de los periodos Mod40 para que sumen v. Esto hace que
-    // el valor capturado persista: _recalculatePromedioFromPeriodos() re-deriva
-    // semanasEnMod40 desde los periodos, así que mantener periodos y escalar en
-    // sincronía evita que el valor se revierta silenciosamente (p. ej. los
-    // periodos baseline traen 134.714 semanas Mod40 en vez del default 130).
+    // El desglose es la fuente de verdad: el PRIMER registro esMod40
+    // ("Mod40 → Semanas") contiene las semanas de Modalidad 40 y el escalar
+    // semanasEnMod40 se deriva de la suma de las semanas de los periodos
+    // esMod40 (ver updatePeriodo). La respuesta de la IA se escribe en ese
+    // primer registro del desglose y el escalar se re-deriva desde ahí.
+    var changed = v != _inputs.semanasEnMod40;
+
     if (_inputs.periodos.isNotEmpty) {
-      final totalActual = _inputs.periodos.fold<double>(
-          0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
-      if (totalActual > 0 && (totalActual - v).abs() > 0.0001) {
-        final factor = v / totalActual;
-        _inputs.periodos = [
-          for (final p in _inputs.periodos)
-            if (p.esMod40)
-              PeriodoSalarial(
+      final firstMod40Index = _inputs.periodos.indexWhere((p) => p.esMod40);
+      final mod40Count = _inputs.periodos.where((p) => p.esMod40).length;
+      final alreadyInDesglose = firstMod40Index != -1 &&
+          mod40Count == 1 &&
+          (_inputs.periodos[firstMod40Index].semanas - v).abs() < 0.0001;
+
+      if (!alreadyInDesglose) {
+        changed = true;
+        if (firstMod40Index == -1) {
+          // No hay periodo Mod40: crear el PRIMER registro del desglose con las
+          // semanas que respondió el usuario y el salario de referencia.
+          final salario = salarioRegistrado > 0
+              ? salarioRegistrado
+              : (salarioPromedio250Semanas > 0 ? salarioPromedio250Semanas : 0.0);
+          _inputs.periodos = [
+            PeriodoSalarial(salarioDiario: salario, semanas: v, esMod40: true),
+            ..._inputs.periodos,
+          ];
+        } else {
+          // Ya existen periodos Mod40: el primer registro toma v y se colapsan
+          // los registros Mod40 adicionales para que la suma (el escalar) sea
+          // exactamente v (invariante: escalar = primer registro del desglose).
+          final rebuilt = <PeriodoSalarial>[];
+          for (var i = 0; i < _inputs.periodos.length; i++) {
+            final p = _inputs.periodos[i];
+            if (!p.esMod40) {
+              rebuilt.add(p);
+            } else if (i == firstMod40Index) {
+              rebuilt.add(PeriodoSalarial(
                 fechaInicio: p.fechaInicio,
                 fechaTermino: p.fechaTermino,
                 salarioDiario: p.salarioDiario,
-                semanas: p.semanas * factor,
+                semanas: v,
                 esMod40: true,
-              )
-            else
-              p,
-        ];
+              ));
+            }
+            // Los periodos Mod40 adicionales se colapsan (no se agregan).
+          }
+          _inputs.periodos = rebuilt;
+        }
         persistence.savePeriodos(_inputs.periodos);
       }
+
+      // Derivar el escalar desde el desglose (fuente de verdad): siempre se
+      // sincroniza con la suma de las semanas de los periodos esMod40.
+      v = _inputs.periodos.fold<double>(
+          0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
+      _inputs.semanasEnMod40 = v;
+      persistence.saveSemanasEnMod40(v);
+    } else {
+      // Desglose vacío (p. ej. flujo previo a capturar el promedio): se
+      // conserva el comportamiento original de solo escalar, sin crear
+      // periodos, para no romper el flujo inicial.
+      _inputs.semanasEnMod40 = v;
+      persistence.saveSemanasEnMod40(v);
     }
+
+    // Nada cambió (ni desglose ni escalar): no hay nada que reconciliar.
+    if (!changed) return;
+
     // Reconciliar total vs. desglose (invariante total = antes + en).
     if (_semanasAntesMod40Explicit) {
       // "antes" es primario (desglose explícito): conservar antes y derivar el

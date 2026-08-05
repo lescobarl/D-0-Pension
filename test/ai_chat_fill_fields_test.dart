@@ -539,6 +539,13 @@ void main() {
     expect(harness.provider.semanasAntesMod40, closeTo(1170, 0.001));
     expect(harness.provider.salarioPromedio250Semanas, 1500);
     expect(harness.provider.semanasEnMod40, 130);
+    // Prueba productiva del invariante: la respuesta de la IA (130) quedó en el
+    // PRIMER registro del desglose (Mod40 → Semanas) y el escalar se deriva de
+    // ahí (updatePeriodo fold de esMod40), NO al revés.
+    expect(harness.provider.periodos.first.esMod40, isTrue,
+        reason: 'El primer registro del desglose debe ser el periodo Mod40');
+    expect(harness.provider.periodos.first.semanas, closeTo(130, 0.001),
+        reason: 'Las semanas Mod40 respondidas deben vivir en el primer registro');
     expect(harness.provider.fechaNacimiento.year, 1975);
     expect(harness.provider.fechaNacimiento.month, 3);
     expect(harness.provider.fechaNacimiento.day, 5);
