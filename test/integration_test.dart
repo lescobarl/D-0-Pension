@@ -18,6 +18,8 @@ import 'package:d_0_pension/presentation/screens/config_view.dart';
 import 'package:d_0_pension/presentation/screens/home_tabs_screen.dart';
 import 'package:d_0_pension/presentation/screens/inversion_view.dart';
 import 'package:d_0_pension/presentation/screens/pension_view.dart';
+import 'package:d_0_pension/services/billing/payment_provider.dart';
+import 'package:d_0_pension/services/billing/play_billing_service.dart';
 import 'package:d_0_pension/services/persistence_service.dart';
 import 'package:d_0_pension/services/retroactive_provider.dart';
 import 'package:flutter/material.dart';
@@ -30,10 +32,13 @@ void main() {
 
   late RetroactiveProvider provider;
   late FormulaEvaluator evaluator;
+  late SharedPreferences prefs;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues(<String, Object>{});
-    final prefs = await SharedPreferences.getInstance();
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'disclaimer_seen': true,
+    });
+    prefs = await SharedPreferences.getInstance();
     final persistence = PersistenceService(prefs);
     evaluator = FormulaEvaluator();
     await evaluator.initialize();
@@ -82,7 +87,10 @@ void main() {
     test('Pension anual 100% matches FactAsig cuantiaTotalPensionVejez', () {
       final fact = provider.factAsigCalculation!;
       final pension = provider.pensionMod40Calculation!;
-      expect(pension.pensionAnual100, closeTo(fact.cuantiaTotalPensionVejez, 0.01));
+      expect(
+        pension.pensionAnual100,
+        closeTo(fact.cuantiaTotalPensionVejez, 0.01),
+      );
     });
 
     test('Pension mensual matches across FactAsig and PensionMod40', () {
@@ -91,11 +99,17 @@ void main() {
       expect(pension.pensionMensual, closeTo(fact.totalPensionMensual, 0.01));
     });
 
-    test('Inversion pensionMensualConMod40 matches PensionMod40 pensionMensual', () {
-      final pension = provider.pensionMod40Calculation!;
-      final inv = provider.inversionCalculation!;
-      expect(inv.pensionMensualConMod40, closeTo(pension.pensionMensual, 0.01));
-    });
+    test(
+      'Inversion pensionMensualConMod40 matches PensionMod40 pensionMensual',
+      () {
+        final pension = provider.pensionMod40Calculation!;
+        final inv = provider.inversionCalculation!;
+        expect(
+          inv.pensionMensualConMod40,
+          closeTo(pension.pensionMensual, 0.01),
+        );
+      },
+    );
 
     test('CostoMod40 inversionTotal matches Retroactive costoModalidad40', () {
       final costo = provider.costoMod40Calculation!;
@@ -114,13 +128,13 @@ void main() {
   // GROUP 3: Edad de retiro propagation
   // ═══════════════════════════════════════════════════════════════
   group('3. Edad de retiro propagation', () {
-    test('Changing edadRetiro recalculates FactAsig and PensionMod40', () {
+    test('Changing edadRetiro recalculates FactAsig and PensionMod40', () async {
       // Default edad is 65 (100%), so first change to 60 (75%) to get a lower baseline
-      provider.setEdadRetiro(60);
+      await provider.setEdadRetiro(60);
       final lowerPension = provider.pensionMod40Calculation!.pensionMensual;
 
       // Now change to 65 (100%) — pension should increase
-      provider.setEdadRetiro(65);
+      await provider.setEdadRetiro(65);
 
       final fact = provider.factAsigCalculation!;
       final pension = provider.pensionMod40Calculation!;
@@ -133,12 +147,19 @@ void main() {
       expect(fact.totalPensionMensual, greaterThan(lowerPension));
     });
 
-    test('Changing edadRetiro recalculates Inversion', () {
-      provider.setEdadRetiro(65);
+    test('Changing edadRetiro recalculates Inversion', () async {
+      // Excel F46: flujoConMod40 = (projectionP247 + (80 - edadRetiro) * pension) * 1.54.
+      // Raising edadRetiro increases the pension % (61→80%, 65→100%), and that
+      // increase outweighs the slightly shorter horizon (80-61=19 vs 80-65=15),
+      // so the Con Mod40 flujo is strictly higher at edad 65 than at 61.
+      await provider.setEdadRetiro(61);
+      final flujoAt61 = provider.inversionCalculation!.flujoHasta80ConMod40;
 
-      final inv = provider.inversionCalculation!;
-      // Flujo hasta 80 should be less (fewer years: 80-65=15 vs 80-61=19)
-      expect(inv.flujoHasta80ConMod40, lessThan(35000000));
+      await provider.setEdadRetiro(65);
+      final flujoAt65 = provider.inversionCalculation!.flujoHasta80ConMod40;
+
+      // Ensures the edad change actually propagated to the inversion model.
+      expect(flujoAt65, greaterThan(flujoAt61));
     });
   });
 
@@ -146,23 +167,27 @@ void main() {
   // GROUP 4: Salario propagation (the bug fix)
   // ═══════════════════════════════════════════════════════════════
   group('4. Salario propagation (bug fix validation)', () {
-    test('setSalarioDiarioPromedio recalculates both FactAsig AND PensionMod40', () {
-      final originalPensionMensual = provider.pensionMod40Calculation!.pensionMensual;
+    test(
+      'setSalarioDiarioPromedio recalculates both FactAsig AND PensionMod40',
+      () {
+        final originalPensionMensual =
+            provider.pensionMod40Calculation!.pensionMensual;
 
-      // Increase salary significantly
-      provider.setSalarioDiarioPromedio(3500.0);
+        // Increase salary significantly
+        provider.setSalarioDiarioPromedio(3500.0);
 
-      final fact = provider.factAsigCalculation!;
-      final pension = provider.pensionMod40Calculation!;
+        final fact = provider.factAsigCalculation!;
+        final pension = provider.pensionMod40Calculation!;
 
-      // Both should have increased (FactAsig uses _salarioDiarioPromedio directly)
-      expect(fact.totalPensionMensual, greaterThan(originalPensionMensual));
-      // PensionMod40 also uses _salarioDiarioPromedio via _recalculateFactAsig chain
-      expect(pension.pensionMensual, greaterThan(originalPensionMensual));
+        // Both should have increased (FactAsig uses _salarioDiarioPromedio directly)
+        expect(fact.totalPensionMensual, greaterThan(originalPensionMensual));
+        // PensionMod40 also uses _salarioDiarioPromedio via _recalculateFactAsig chain
+        expect(pension.pensionMensual, greaterThan(originalPensionMensual));
 
-      // They should still match each other
-      expect(pension.pensionMensual, closeTo(fact.totalPensionMensual, 0.01));
-    });
+        // They should still match each other
+        expect(pension.pensionMensual, closeTo(fact.totalPensionMensual, 0.01));
+      },
+    );
 
     test('setSalarioDiarioPromedio also recalculates Inversion', () {
       provider.setSalarioDiarioPromedio(3500.0);
@@ -212,9 +237,11 @@ void main() {
     testWidgets('PensionView renders without errors', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: ChangeNotifierProvider<RetroactiveProvider>.value(
-            value: provider,
-            child: const PensionView(),
+          home: Scaffold(
+            body: ChangeNotifierProvider<RetroactiveProvider>.value(
+              value: provider,
+              child: const PensionView(),
+            ),
           ),
         ),
       );
@@ -266,8 +293,15 @@ void main() {
     testWidgets('HomeTabsScreen renders without errors', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: ChangeNotifierProvider<RetroactiveProvider>.value(
-            value: provider,
+          home: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<RetroactiveProvider>.value(
+                value: provider,
+              ),
+              ChangeNotifierProvider<PaymentProvider>(
+                create: (_) => PaymentProvider(PlayBillingService(), prefs),
+              ),
+            ],
             child: const HomeTabsScreen(),
           ),
         ),
@@ -310,20 +344,29 @@ void main() {
   // GROUP 11: Edge cases and boundary conditions
   // ═══════════════════════════════════════════════════════════════
   group('11. Edge cases and boundary conditions', () {
-    test('EdadRetiro=60 gives correct percentage (Art. 168 LSS)', () {
-      provider.setEdadRetiro(60);
+    test('EdadRetiro=60 gives correct percentage (Art. 168 LSS)', () async {
+      await provider.setEdadRetiro(60);
       // 60 years = 75% (Art. 168 LSS: 60 years = 75%)
-      expect(provider.pensionMod40Calculation!.porcentajePorEdad, closeTo(0.75, 0.01));
+      expect(
+        provider.pensionMod40Calculation!.porcentajePorEdad,
+        closeTo(0.75, 0.01),
+      );
     });
 
-    test('EdadRetiro=65 gives 100%', () {
-      provider.setEdadRetiro(65);
-      expect(provider.pensionMod40Calculation!.porcentajePorEdad, closeTo(1.0, 0.01));
+    test('EdadRetiro=65 gives 100%', () async {
+      await provider.setEdadRetiro(65);
+      expect(
+        provider.pensionMod40Calculation!.porcentajePorEdad,
+        closeTo(1.0, 0.01),
+      );
     });
 
-    test('EdadRetiro=70 gives 100% (max cap)', () {
-      provider.setEdadRetiro(70);
-      expect(provider.pensionMod40Calculation!.porcentajePorEdad, closeTo(1.0, 0.01));
+    test('EdadRetiro=70 gives 100% (max cap)', () async {
+      await provider.setEdadRetiro(70);
+      expect(
+        provider.pensionMod40Calculation!.porcentajePorEdad,
+        closeTo(1.0, 0.01),
+      );
     });
 
     test('Zero hijos means no asignacion hijos', () {
@@ -346,7 +389,10 @@ void main() {
       final fact1 = provider.factAsigCalculation!;
 
       // 2 hijos should be roughly double 1 hijo
-      expect(fact2.asignacionHijos, closeTo(fact1.asignacionHijos * 2, fact1.asignacionHijos * 0.1));
+      expect(
+        fact2.asignacionHijos,
+        closeTo(fact1.asignacionHijos * 2, fact1.asignacionHijos * 0.1),
+      );
     });
 
     test('SalarioDiarioPromedio=0 does not crash', () {

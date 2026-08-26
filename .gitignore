@@ -62,6 +62,7 @@ app.*.map.json
 # Backup snapshots (no git -> tar.gz / folder backups kept locally)
 /respaldo_*/
 /respaldo_*.tar.gz
+/backups/
 
 # Generated validation outputs
 /cross_validate_scenarios_output.json

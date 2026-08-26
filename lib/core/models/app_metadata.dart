@@ -9,6 +9,12 @@ class AppMetadata {
   final LegalNotes legalNotes;
   final TestScenarios testScenarios;
 
+  /// Cuenta de validación integrada (acceso libre), si está configurada.
+  ///
+  /// Se lee de `json['auth']['builtin_account']`. Solo esta cuenta entra con
+  /// el flujo completo sin pagar; el resto sigue el flujo normal (pago).
+  final BuiltinAccountConfig? builtinAccount;
+
   AppMetadata({
     required this.appName,
     required this.version,
@@ -18,6 +24,7 @@ class AppMetadata {
     required this.theme,
     required this.legalNotes,
     TestScenarios? testScenarios,
+    this.builtinAccount,
   }) : testScenarios = testScenarios ?? TestScenarios.empty();
 
   factory AppMetadata.fromJson(Map<String, dynamic> json) {
@@ -25,20 +32,33 @@ class AppMetadata {
       appName: json['app_name'] as String? ?? '',
       version: json['version'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      tabs: (json['tabs'] as List<dynamic>?)
+      tabs:
+          (json['tabs'] as List<dynamic>?)
               ?.map((e) => TabConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       financialRules: FinancialRules.fromJson(
-          json['financial_rules'] as Map<String, dynamic>? ?? {}),
-      theme: ThemeConfig.fromJson(
-          json['theme'] as Map<String, dynamic>? ?? {}),
+        json['financial_rules'] as Map<String, dynamic>? ?? {},
+      ),
+      theme: ThemeConfig.fromJson(json['theme'] as Map<String, dynamic>? ?? {}),
       legalNotes: LegalNotes.fromJson(
-          json['legal_notes'] as Map<String, dynamic>? ?? {}),
+        json['legal_notes'] as Map<String, dynamic>? ?? {},
+      ),
       testScenarios: json['test_scenarios'] != null
-          ? TestScenarios.fromJson(json['test_scenarios'] as Map<String, dynamic>)
+          ? TestScenarios.fromJson(
+              json['test_scenarios'] as Map<String, dynamic>,
+            )
           : TestScenarios.empty(),
+      builtinAccount: _parseBuiltinAccount(json['auth']),
     );
+  }
+
+  /// Extrae la cuenta de validación integrada de `json['auth']` (si existe).
+  static BuiltinAccountConfig? _parseBuiltinAccount(Object? auth) {
+    if (auth is! Map<String, dynamic>) return null;
+    final raw = auth['builtin_account'];
+    if (raw is! Map<String, dynamic>) return null;
+    return BuiltinAccountConfig.fromJson(raw);
   }
 }
 
@@ -50,6 +70,7 @@ class AppMetadata {
 /// calculator to ensure App and Excel start from identical inputs.
 class DefaultValues {
   final DateTime fechaNacimiento;
+  final DateTime? fechaAlta;
   final int edadMinimaPension;
   final int semanasDescontadasAfore;
   final bool tieneEsposa;
@@ -74,6 +95,7 @@ class DefaultValues {
 
   const DefaultValues({
     required this.fechaNacimiento,
+    this.fechaAlta,
     required this.edadMinimaPension,
     required this.semanasDescontadasAfore,
     required this.tieneEsposa,
@@ -110,32 +132,50 @@ class DefaultValues {
       }
     }
 
+    // Nullable date parse: missing/invalid yields null (unknown), preserving
+    // the "no fecha de alta" semantics for Regla A instead of an epoch sentinel.
+    DateTime? parseNullableDate(String? key) {
+      final str = json[key] as String?;
+      if (str == null) return null;
+      try {
+        return DateTime.parse(str);
+      } catch (_) {
+        return null;
+      }
+    }
+
     // NOTE: No hardcoded scenario values. All defaults come from app_metadata.json
     // (default_values section). If a key is missing, returns 0/empty neutral value
     // so the UI gracefully handles missing data.
     return DefaultValues(
       fechaNacimiento: parseDate('fecha_nacimiento'),
+      fechaAlta: parseNullableDate('fecha_alta'),
       edadMinimaPension: json['edad_minima_pension'] as int? ?? 0,
       semanasDescontadasAfore: json['semanas_descontadas_afore'] as int? ?? 0,
       tieneEsposa: json['tiene_esposa'] as bool? ?? false,
       numeroHijos: json['numero_hijos'] as int? ?? 0,
       numeroPadres: json['numero_padres'] as int? ?? 0,
-      salarioPromedio250Semanas: (json['salario_promedio_250_semanas'] as num?)?.toDouble() ?? 0,
+      salarioPromedio250Semanas:
+          (json['salario_promedio_250_semanas'] as num?)?.toDouble() ?? 0,
       totalSemanasSinMod40: json['total_semanas_sin_mod40'] as int? ?? 0,
       edadRetiro: (json['edad_retiro'] as num?)?.toDouble() ?? 0,
       semanasAntesMod40: (json['semanas_antes_mod40'] as num?)?.toDouble() ?? 0,
       semanasEnMod40: (json['semanas_en_mod40'] as num?)?.toDouble() ?? 0,
-      totalSemanasConMod40: (json['total_semanas_con_mod40'] as num?)?.toDouble() ?? 0,
-      salarioDiarioPromedio: (json['salario_diario_promedio'] as num?)?.toDouble() ?? 0,
+      totalSemanasConMod40:
+          (json['total_semanas_con_mod40'] as num?)?.toDouble() ?? 0,
+      salarioDiarioPromedio:
+          (json['salario_diario_promedio'] as num?)?.toDouble() ?? 0,
       umaDiaria: (json['uma_diaria'] as num?)?.toDouble() ?? 0,
-      salarioMinimoDiario: (json['salario_minimo_diario'] as num?)?.toDouble() ?? 0,
+      salarioMinimoDiario:
+          (json['salario_minimo_diario'] as num?)?.toDouble() ?? 0,
       pensionYear: json['pension_year'] as int? ?? 0,
       semanasCotizadas: json['semanas_cotizadas'] as int? ?? 0,
       salarioRegistrado: (json['salario_registrado'] as num?)?.toDouble() ?? 0,
       retroactiveYears: (json['retroactive_years'] as num?)?.toDouble() ?? 0,
       salarioDiario: (json['salario_diario'] as num?)?.toDouble() ?? 0,
       edadRetiroSinMod40: (json['edad_retiro_sin_mod40'] as num?)?.toInt() ?? 0,
-      participacionBancoMax: (json['participacion_banco_max'] as num?)?.toDouble() ?? 0,
+      participacionBancoMax:
+          (json['participacion_banco_max'] as num?)?.toDouble() ?? 0,
     );
   }
 }
@@ -318,25 +358,57 @@ class FinancialRules {
       umaDaily2024: _getDouble(json, 'uma_daily_2024'),
       minWageDaily2024: _getDouble(json, 'min_wage_daily_2024'),
       inflationAnnualRate: _getDouble(json, 'inflation_annual_rate'),
-      umaProjectionTable: _getList(json, 'uma_projection_table', UmaProjectionEntry.fromJson),
-      minWageProjectionTable: _getList(json, 'min_wage_projection_table', MinWageProjectionEntry.fromJson),
-      monthlyInflationRates: _parseMonthlyInflationRates(json['monthly_inflation_rates'] as Map<String, dynamic>?),
+      umaProjectionTable: _getList(
+        json,
+        'uma_projection_table',
+        UmaProjectionEntry.fromJson,
+      ),
+      minWageProjectionTable: _getList(
+        json,
+        'min_wage_projection_table',
+        MinWageProjectionEntry.fromJson,
+      ),
+      monthlyInflationRates: _parseMonthlyInflationRates(
+        json['monthly_inflation_rates'] as Map<String, dynamic>?,
+      ),
       recargoMonthlyRate: _getDouble(json, 'recargo_monthly_rate'),
-      recargoMonthlyRatePost2026: _getDouble(json, 'recargo_monthly_rate_post_2026'),
+      recargoMonthlyRatePost2026: _getDouble(
+        json,
+        'recargo_monthly_rate_post_2026',
+      ),
       recargoYearThreshold: _getInt(json, 'recargo_year_threshold'),
       maxUmaMultiplier: _getInt(json, 'max_uma_multiplier'),
       maxRetroactiveYears: _getInt(json, 'max_retroactive_years'),
       minRetroactiveYears: _getInt(json, 'min_retroactive_years'),
       aforeRecoveryRate: _getDouble(json, 'afore_recovery_rate'),
-      aforeRetroactiveRecoveryRate: _getDouble(json, 'afore_retroactive_recovery_rate'),
-      inflationYearFactors: _getList(json, 'inflation_year_factors', YearFactor.fromJson),
-      costoMod40Rates: _getList(json, 'costo_mod40_rates', CostoMod40Rate.fromJson),
-      pensionAgePercentages: _getList(json, 'pension_age_percentages', PensionAgePercentage.fromJson),
+      aforeRetroactiveRecoveryRate: _getDouble(
+        json,
+        'afore_retroactive_recovery_rate',
+      ),
+      inflationYearFactors: _getList(
+        json,
+        'inflation_year_factors',
+        YearFactor.fromJson,
+      ),
+      costoMod40Rates: _getList(
+        json,
+        'costo_mod40_rates',
+        CostoMod40Rate.fromJson,
+      ),
+      pensionAgePercentages: _getList(
+        json,
+        'pension_age_percentages',
+        PensionAgePercentage.fromJson,
+      ),
       pensionAgeDropdown: json['pension_age_dropdown'] != null
-          ? PensionAgeDropdown.fromJson(json['pension_age_dropdown'] as Map<String, dynamic>)
+          ? PensionAgeDropdown.fromJson(
+              json['pension_age_dropdown'] as Map<String, dynamic>,
+            )
           : PensionAgeDropdown.fromJson({}),
       edadRoundingRule: json['edad_rounding_rule'] != null
-          ? EdadRoundingRule.fromJson(json['edad_rounding_rule'] as Map<String, dynamic>)
+          ? EdadRoundingRule.fromJson(
+              json['edad_rounding_rule'] as Map<String, dynamic>,
+            )
           : EdadRoundingRule.fromJson({}),
       presidentialDecreeRate: _getDouble(json, 'presidential_decree_rate'),
       aguinaldoFactor: _getDouble(json, 'aguinaldo_factor'),
@@ -344,10 +416,22 @@ class FinancialRules {
       weeksPerYear: _getInt(json, 'weeks_per_year'),
       minWeeksForIncrement: _getInt(json, 'min_weeks_for_increment'),
       lifeExpectancyYears: _getInt(json, 'life_expectancy_years'),
-      asignacionEsposaPercentage: _getDouble(json, 'asignacion_esposa_percentage'),
-      asignacionHijosPercentage: _getDouble(json, 'asignacion_hijos_percentage'),
-      asignacionPadresPercentage: _getDouble(json, 'asignacion_padres_percentage'),
-      ayudaAsistencialNoBeneficiarios: _getDouble(json, 'ayuda_asistencial_no_beneficiarios'),
+      asignacionEsposaPercentage: _getDouble(
+        json,
+        'asignacion_esposa_percentage',
+      ),
+      asignacionHijosPercentage: _getDouble(
+        json,
+        'asignacion_hijos_percentage',
+      ),
+      asignacionPadresPercentage: _getDouble(
+        json,
+        'asignacion_padres_percentage',
+      ),
+      ayudaAsistencialNoBeneficiarios: _getDouble(
+        json,
+        'ayuda_asistencial_no_beneficiarios',
+      ),
       ayudaAsistencialUnPadre: _getDouble(json, 'ayuda_asistencial_un_padre'),
       financingTermMonths: _getInt(json, 'financing_term_months'),
       financingProcessingMonths: _getInt(json, 'financing_processing_months'),
@@ -356,16 +440,28 @@ class FinancialRules {
       minWageGrowthRate: _getDouble(json, 'min_wage_growth_rate'),
       tasaFinanciamiento: _getDouble(json, 'tasa_financiamiento'),
       tasaDescuento: _getDouble(json, 'tasa_descuento'),
-      cuantiaBasicaPercentages: _getList(json, 'cuantia_basica_percentages', UmasPercentage.fromJson),
-      incrementoPercentages: _getList(json, 'incremento_percentages', UmasPercentage.fromJson),
+      cuantiaBasicaPercentages: _getList(
+        json,
+        'cuantia_basica_percentages',
+        UmasPercentage.fromJson,
+      ),
+      incrementoPercentages: _getList(
+        json,
+        'incremento_percentages',
+        UmasPercentage.fromJson,
+      ),
       defaultStartDate: _parseDate(json['default_start_date'] as String?),
       defaultEndDate: _parseDate(json['default_end_date'] as String?),
       creditTable: _getList(json, 'credit_table', CreditTableEntry.fromJson),
       pensionActual: json['pension_actual'] != null
-          ? PensionActualData.fromJson(json['pension_actual'] as Map<String, dynamic>)
+          ? PensionActualData.fromJson(
+              json['pension_actual'] as Map<String, dynamic>,
+            )
           : null,
       defaultValues: json['default_values'] != null
-          ? DefaultValues.fromJson(json['default_values'] as Map<String, dynamic>)
+          ? DefaultValues.fromJson(
+              json['default_values'] as Map<String, dynamic>,
+            )
           : DefaultValues.fromJson({}),
       flujoFactor: _getDouble(json, 'flujo_factor'),
       monthsWithAguinaldo: _getInt(json, 'months_with_aguinaldo'),
@@ -376,8 +472,16 @@ class FinancialRules {
       epsilonValor: _getDouble(json, 'epsilon_valor'),
       redondeoCredito: _getInt(json, 'redondeo_credito'),
       inflacionAniosProyeccion: _getInt(json, 'inflacion_anios_proyeccion'),
-      veredictoThresholds: _getList(json, 'veredicto_thresholds', VeredictoThreshold.fromJson),
-      veredictoDefault: json['veredicto_default'] as String? ?? (throw ArgumentError('Missing required field: financial_rules.veredicto_default in app_metadata.json')),
+      veredictoThresholds: _getList(
+        json,
+        'veredicto_thresholds',
+        VeredictoThreshold.fromJson,
+      ),
+      veredictoDefault:
+          json['veredicto_default'] as String? ??
+          (throw ArgumentError(
+            'Missing required field: financial_rules.veredicto_default in app_metadata.json',
+          )),
     );
   }
 
@@ -385,7 +489,9 @@ class FinancialRules {
   static int _getInt(Map<String, dynamic> json, String key) {
     final val = json[key];
     if (val == null) {
-      throw ArgumentError('Missing required field: financial_rules.$key in app_metadata.json');
+      throw ArgumentError(
+        'Missing required field: financial_rules.$key in app_metadata.json',
+      );
     }
     return (val as num).toInt();
   }
@@ -394,7 +500,9 @@ class FinancialRules {
   static double _getDouble(Map<String, dynamic> json, String key) {
     final val = json[key];
     if (val == null) {
-      throw ArgumentError('Missing required field: financial_rules.$key in app_metadata.json');
+      throw ArgumentError(
+        'Missing required field: financial_rules.$key in app_metadata.json',
+      );
     }
     return (val as num).toDouble();
   }
@@ -407,9 +515,13 @@ class FinancialRules {
   ) {
     final val = json[key];
     if (val == null) {
-      throw ArgumentError('Missing required field: financial_rules.$key in app_metadata.json');
+      throw ArgumentError(
+        'Missing required field: financial_rules.$key in app_metadata.json',
+      );
     }
-    return (val as List<dynamic>).map((e) => fromJson(e as Map<String, dynamic>)).toList();
+    return (val as List<dynamic>)
+        .map((e) => fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Parse a date string in "yyyy-MM-dd" format, throwing if missing.
@@ -421,9 +533,13 @@ class FinancialRules {
   }
 
   /// Parse monthly inflation rates from JSON, throwing if missing.
-  static Map<String, double> _parseMonthlyInflationRates(Map<String, dynamic>? json) {
+  static Map<String, double> _parseMonthlyInflationRates(
+    Map<String, dynamic>? json,
+  ) {
     if (json == null) {
-      throw ArgumentError('Missing required field: financial_rules.monthly_inflation_rates in app_metadata.json');
+      throw ArgumentError(
+        'Missing required field: financial_rules.monthly_inflation_rates in app_metadata.json',
+      );
     }
     return json.map((key, value) => MapEntry(key, (value as num).toDouble()));
   }
@@ -585,12 +701,9 @@ class EdadRoundingRule {
   });
 
   factory EdadRoundingRule.fromJson(Map<String, dynamic> json) {
-    final halfNum =
-        json['increment_half_threshold_ratio'] as int? ?? 27;
-    final halfDen =
-        json['increment_half_threshold_denominator'] as int? ?? 52;
-    final quarterNum =
-        json['increment_quarter_threshold_ratio'] as int? ?? 13;
+    final halfNum = json['increment_half_threshold_ratio'] as int? ?? 27;
+    final halfDen = json['increment_half_threshold_denominator'] as int? ?? 52;
+    final quarterNum = json['increment_quarter_threshold_ratio'] as int? ?? 13;
     final quarterDen =
         json['increment_quarter_threshold_denominator'] as int? ?? 52;
     return EdadRoundingRule(
@@ -622,7 +735,7 @@ class EdadRoundingRule {
     if (rawIncrements < 0) {
       return 0.0;
     }
-    
+
     final intPart = rawIncrements.floor();
     final fracPart = rawIncrements - intPart;
     if (fracPart >= incrementHalfThreshold) {
@@ -764,20 +877,29 @@ class PensionActualData {
       edadFechaBaja: (json['edad_fecha_baja'] as num?)?.toDouble() ?? 0.0,
       semanasCotizacion: json['semanas_cotizacion'] as int? ?? 0,
       salarioPromedio: (json['salario_promedio'] as num?)?.toDouble() ?? 0.0,
-      aniosParaPensionarse: (json['anios_para_pensionarse'] as num?)?.toDouble() ?? 0.0,
-      cuantiaBasicaPension: (json['cuantia_basica_pension'] as num?)?.toDouble() ?? 0.0,
-      incrementosAnuales: (json['incrementos_anuales'] as num?)?.toDouble() ?? 0.0,
-      asignacionesFamiliares: (json['asignaciones_familiares'] as num?)?.toDouble() ?? 0.0,
+      aniosParaPensionarse:
+          (json['anios_para_pensionarse'] as num?)?.toDouble() ?? 0.0,
+      cuantiaBasicaPension:
+          (json['cuantia_basica_pension'] as num?)?.toDouble() ?? 0.0,
+      incrementosAnuales:
+          (json['incrementos_anuales'] as num?)?.toDouble() ?? 0.0,
+      asignacionesFamiliares:
+          (json['asignaciones_familiares'] as num?)?.toDouble() ?? 0.0,
       ayudaAsistencial: (json['ayuda_asistencial'] as num?)?.toDouble() ?? 0.0,
-      pensionMinimaAnio: (json['pension_minima_anio'] as num?)?.toDouble() ?? 0.0,
-      totalPensionVejez: (json['total_pension_vejez'] as num?)?.toDouble() ?? 0.0,
+      pensionMinimaAnio:
+          (json['pension_minima_anio'] as num?)?.toDouble() ?? 0.0,
+      totalPensionVejez:
+          (json['total_pension_vejez'] as num?)?.toDouble() ?? 0.0,
       porcentajeEdad: (json['porcentaje_edad'] as num?)?.toDouble() ?? 0.0,
       totalPension: (json['total_pension'] as num?)?.toDouble() ?? 0.0,
       aplicaPensionMinima: json['aplica_pension_minima'] as String? ?? 'NO',
-      importePensionAnual: (json['importe_pension_anual'] as num?)?.toDouble() ?? 0.0,
-      importePensionMensual: (json['importe_pension_mensual'] as num?)?.toDouble() ?? 0.0,
+      importePensionAnual:
+          (json['importe_pension_anual'] as num?)?.toDouble() ?? 0.0,
+      importePensionMensual:
+          (json['importe_pension_mensual'] as num?)?.toDouble() ?? 0.0,
       aguinaldo: (json['aguinaldo'] as num?)?.toDouble() ?? 0.0,
-      pensionMensualActualizada: (json['pension_mensual_actualizada'] as num?)?.toDouble() ?? 0.0,
+      pensionMensualActualizada:
+          (json['pension_mensual_actualizada'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -801,18 +923,12 @@ class LegalNotes {
 
   factory LegalNotes.fromJson(Map<String, dynamic> json) {
     return LegalNotes(
-      pagoRetroactivo:
-          json['pago_retroactivo'] as String? ?? '',
-      factAsig:
-          json['fact_asig'] as String? ?? '',
-      pensionMod40:
-          json['pension_mod40'] as String? ?? '',
-      costoMod40:
-          json['costo_mod40'] as String? ?? '',
-      inversion:
-          json['inversion'] as String? ?? '',
-      financiamiento:
-          json['financiamiento'] as String? ?? '',
+      pagoRetroactivo: json['pago_retroactivo'] as String? ?? '',
+      factAsig: json['fact_asig'] as String? ?? '',
+      pensionMod40: json['pension_mod40'] as String? ?? '',
+      costoMod40: json['costo_mod40'] as String? ?? '',
+      inversion: json['inversion'] as String? ?? '',
+      financiamiento: json['financiamiento'] as String? ?? '',
     );
   }
 }
@@ -840,11 +956,11 @@ class TestScenarios {
   /// Returns an empty [TestScenarios] with all scenarios initialised to
   /// [TestScenario.empty] so callers never deal with null.
   factory TestScenarios.empty() => TestScenarios(
-        baseUser: TestScenario.empty(),
-        seniorSolo: TestScenario.empty(),
-        edadMediaPadres: TestScenario.empty(),
-        jovenFamilia: TestScenario.empty(),
-      );
+    baseUser: TestScenario.empty(),
+    seniorSolo: TestScenario.empty(),
+    edadMediaPadres: TestScenario.empty(),
+    jovenFamilia: TestScenario.empty(),
+  );
 
   factory TestScenarios.fromJson(Map<String, dynamic> json) {
     return TestScenarios(
@@ -856,11 +972,11 @@ class TestScenarios {
           : TestScenario.empty(),
       edadMediaPadres: json['edad_media_padres'] != null
           ? TestScenario.fromJson(
-              json['edad_media_padres'] as Map<String, dynamic>)
+              json['edad_media_padres'] as Map<String, dynamic>,
+            )
           : TestScenario.empty(),
       jovenFamilia: json['joven_familia'] != null
-          ? TestScenario.fromJson(
-              json['joven_familia'] as Map<String, dynamic>)
+          ? TestScenario.fromJson(json['joven_familia'] as Map<String, dynamic>)
           : TestScenario.empty(),
     );
   }
@@ -927,22 +1043,22 @@ class TestScenario {
   factory TestScenario.fromJson(Map<String, dynamic> json) {
     return TestScenario(
       description: json['description'] as String?,
-      salarioPromedio250Semanas:
-          (json['salario_promedio_250_semanas'] as num?)?.toDouble(),
-      salarioRegistradoMod40:
-          (json['salario_registrado_mod40'] as num?)?.toDouble(),
+      salarioPromedio250Semanas: (json['salario_promedio_250_semanas'] as num?)
+          ?.toDouble(),
+      salarioRegistradoMod40: (json['salario_registrado_mod40'] as num?)
+          ?.toDouble(),
       semanasEnMod40: (json['semanas_en_mod40'] as num?)?.toDouble(),
       umaDiaria: (json['uma_diaria'] as num?)?.toDouble(),
-      salarioMinimoDiario:
-          (json['salario_minimo_diario'] as num?)?.toDouble(),
+      salarioMinimoDiario: (json['salario_minimo_diario'] as num?)?.toDouble(),
       pensionYear: json['pension_year'] as int?,
       semanasAntesMod40: (json['semanas_antes_mod40'] as num?)?.toDouble(),
-      semanasCotizadasConMod40: (json['semanas_cotizadas_con_mod40'] as num?)?.toInt(),
+      semanasCotizadasConMod40: (json['semanas_cotizadas_con_mod40'] as num?)
+          ?.toInt(),
       edadRetiro: (json['edad_retiro'] as num?)?.toDouble(),
       edadRetiroSinMod40: (json['edad_retiro_sin_mod40'] as num?)?.toInt(),
       numeroPadres: json['numero_padres'] as int?,
-      salarioDiarioPromedio:
-          (json['salario_diario_promedio'] as num?)?.toDouble(),
+      salarioDiarioPromedio: (json['salario_diario_promedio'] as num?)
+          ?.toDouble(),
       semanasCotizadas: json['semanas_cotizadas'] as int?,
       tieneEsposa: json['tiene_esposa'] as bool?,
       numeroHijos: json['numero_hijos'] as int?,
@@ -962,15 +1078,54 @@ class VeredictoThreshold {
   final int maxMeses;
   final String label;
 
-  const VeredictoThreshold({
-    required this.maxMeses,
-    required this.label,
-  });
+  const VeredictoThreshold({required this.maxMeses, required this.label});
 
   factory VeredictoThreshold.fromJson(Map<String, dynamic> json) {
     return VeredictoThreshold(
       maxMeses: json['max_meses'] as int? ?? 0,
       label: json['label'] as String? ?? '',
     );
+  }
+}
+
+/// Cuenta de validación integrada (acceso libre al flujo completo).
+///
+/// Definida en [assets/config/app_metadata.json] bajo `"auth.builtin_account"`
+/// (editable sin recompilar): `enabled`, `username`, `password`, `license_days`.
+///
+/// Solo esta cuenta entra sin pagar; el resto sigue el flujo normal. La
+/// comparación de usuario es case-insensitive y con trim (como en ASMR).
+class BuiltinAccountConfig {
+  final bool enabled;
+  final String username;
+  final String password;
+  final int licenseDays;
+
+  const BuiltinAccountConfig({
+    required this.enabled,
+    required this.username,
+    required this.password,
+    required this.licenseDays,
+  });
+
+  factory BuiltinAccountConfig.fromJson(Map<String, dynamic> json) {
+    return BuiltinAccountConfig(
+      enabled: json['enabled'] as bool? ?? true,
+      username: json['username'] as String? ?? '',
+      password: json['password'] as String? ?? '',
+      licenseDays: json['license_days'] as int? ?? 365,
+    );
+  }
+
+  /// Valida credenciales: usuario (trim + case-insensitive) y password exacta.
+  bool matches(String username, String password) {
+    if (!enabled) return false;
+    return matchesUsername(username) && password == this.password;
+  }
+
+  /// Compara solo el nombre de usuario (trim + case-insensitive).
+  bool matchesUsername(String username) {
+    if (!enabled) return false;
+    return username.trim().toLowerCase() == this.username.trim().toLowerCase();
   }
 }

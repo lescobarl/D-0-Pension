@@ -1,4 +1,6 @@
 import '../../services/retroactive_provider.dart';
+import '../utils/pension_constants.dart';
+import 'date_parse.dart';
 
 /// Maps AI-extracted JSON values to [RetroactiveProvider] setters.
 ///
@@ -55,10 +57,29 @@ class FieldExtractor {
     }
 
     // ── Force-projection setters FIRST (so later explicit values win) ──
+    // Opt-out primero: si la IA entiende que el usuario NO quiere Modalidad 40,
+    // los campos de M40 que lleguen después se ignoran.
+    apply('modalidad40OptOut', (v) {
+      final b = _tryBool(v);
+      if (b == null) return false;
+      provider.setModalidad40OptOut(b);
+      return true;
+    });
     apply('fechaNacimiento', (v) {
       final d = _toDate(v);
       if (d == null) return false;
       provider.setFechaNacimiento(d);
+      return true;
+    });
+    apply('fechaAlta', (v) {
+      final d = _toDate(v);
+      if (d == null) return false;
+      // La Ley 73 NO ampara a quien se dio de alta en el IMSS a partir del
+      // 1 de julio de 1997: se rechaza la fecha para no dejar avanzar el
+      // cálculo con un valor legalmente inválido. Mismo criterio que
+      // guided_input.dart y la pestaña Pensión (sin hardcode).
+      if (!d.isBefore(PensionConstants.fechaLimiteLey73)) return false;
+      provider.setFechaAlta(d);
       return true;
     });
     apply('edadRetiro', (v) {
@@ -88,6 +109,7 @@ class FieldExtractor {
       return true;
     });
     apply('umaMultiplier', (v) {
+      if (provider.modalidad40OptOut) return false;
       final n = _tryDouble(v);
       if (n == null || n <= 0) return false;
       provider.setUmaMultiplier(n);
@@ -125,6 +147,7 @@ class FieldExtractor {
       return true;
     });
     apply('semanasEnMod40', (v) {
+      if (provider.modalidad40OptOut) return false;
       final n = _tryDouble(v);
       if (n == null || n < 0) return false;
       provider.setSemanasEnMod40(n);
@@ -165,12 +188,14 @@ class FieldExtractor {
 
     // ── Fechas de Modalidad 40 ──
     apply('startDate', (v) {
+      if (provider.modalidad40OptOut) return false;
       final d = _toDate(v);
       if (d == null) return false;
       provider.setStartDate(d);
       return true;
     });
     apply('endDate', (v) {
+      if (provider.modalidad40OptOut) return false;
       final d = _toDate(v);
       if (d == null) return false;
       provider.setEndDate(d);
@@ -276,8 +301,9 @@ class FieldExtractor {
       // Permite espacios entre letras manteniendo límites de palabra
       // (evita que 'uma' case dentro de 'consuma' o 'fin' dentro de 'definir').
       final phrase = synonym.split('').join(r'\s*');
-      for (final m
-          in RegExp(r'\b(?:' + phrase + r')\b').allMatches(normalized)) {
+      for (final m in RegExp(
+        r'\b(?:' + phrase + r')\b',
+      ).allMatches(normalized)) {
         found.add((
           canonical: canonical,
           synonym: synonym,
@@ -296,8 +322,9 @@ class FieldExtractor {
     final valueFor = <String, dynamic>{};
     final usedRanges = <({int start, int end})>[];
     for (final m in found) {
-      final overlaps =
-          usedRanges.any((r) => m.start < r.end && m.end > r.start);
+      final overlaps = usedRanges.any(
+        (r) => m.start < r.end && m.end > r.start,
+      );
       if (overlaps) continue;
       usedRanges.add((start: m.start, end: m.end));
 
@@ -305,9 +332,9 @@ class FieldExtractor {
       // "conector + número" tras el campo: "semanas en mod 40 a 1300"
       // → "a 1300" (no "en 40").
       final after = normalized.substring(m.end);
-      final valueMatches = RegExp(connectors + r'\s*(\d+(?:\.\d+)?)')
-          .allMatches(after)
-          .toList();
+      final valueMatches = RegExp(
+        connectors + r'\s*(\d+(?:\.\d+)?)',
+      ).allMatches(after).toList();
       if (valueMatches.isNotEmpty) {
         final value = _tryDouble(valueMatches.last.group(1)!);
         if (value != null && value > 0) {
@@ -320,8 +347,9 @@ class FieldExtractor {
       // ("semanas cotizadas 1900", "salario 500", "hijos 2"). Es la forma
       // coloquial más común y antes se perdía (dependía de la IA). Se acepta
       // un conector opcional para "semanas cotizadas en 1900".
-      final direct = RegExp(r'^\s*(?:' + connectors + r'\s*)?(\d+(?:\.\d+)?)')
-          .firstMatch(after);
+      final direct = RegExp(
+        r'^\s*(?:' + connectors + r'\s*)?(\d+(?:\.\d+)?)',
+      ).firstMatch(after);
       if (direct != null) {
         final value = _tryDouble(direct.group(1)!);
         if (value != null && value > 0) {
@@ -364,7 +392,13 @@ class FieldExtractor {
   /// word boundaries for full-sentence matching).
   static String _stripAccents(String input) {
     const accents = {
-      'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n',
+      'á': 'a',
+      'é': 'e',
+      'í': 'i',
+      'ó': 'o',
+      'ú': 'u',
+      'ü': 'u',
+      'ñ': 'n',
     };
     var s = input;
     accents.forEach((k, v) => s = s.replaceAll(k, v));
@@ -389,6 +423,8 @@ class FieldExtractor {
     switch (fieldName) {
       case 'fechaNacimiento':
         return 'Fecha de nacimiento';
+      case 'fechaAlta':
+        return 'Fecha de alta (IMSS)';
       case 'fechaCalculo':
         return 'Fecha de cálculo';
       case 'edadRetiro':
@@ -450,7 +486,13 @@ class FieldExtractor {
   /// Normalize a key: lowercase, strip accents, remove spaces/underscores.
   static String _normalizeKey(String key) {
     const accents = {
-      'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n',
+      'á': 'a',
+      'é': 'e',
+      'í': 'i',
+      'ó': 'o',
+      'ú': 'u',
+      'ü': 'u',
+      'ñ': 'n',
     };
     var s = key.toLowerCase();
     accents.forEach((k, v) => s = s.replaceAll(k, v));
@@ -466,6 +508,11 @@ class FieldExtractor {
     'fechanacer': 'fechaNacimiento',
     'fechacalculo': 'fechaCalculo',
     'fechadecalculo': 'fechaCalculo',
+    'fechaalta': 'fechaAlta',
+    'fechadealta': 'fechaAlta',
+    'fechadealtaseguro': 'fechaAlta',
+    'fechadealtaimss': 'fechaAlta',
+    'alta': 'fechaAlta',
     // Edad de retiro
     'edadretiro': 'edadRetiro',
     'edad': 'edadRetiro',
@@ -533,6 +580,13 @@ class FieldExtractor {
     'modalidad40': 'semanasEnMod40',
     'mod40': 'semanasEnMod40',
     'm40': 'semanasEnMod40',
+    // Opt-out Modalidad 40: expresiones de "no quiero / sin Modalidad 40".
+    'modalidad40optout': 'modalidad40OptOut',
+    'sinmodalidad40': 'modalidad40OptOut',
+    'sinmod40': 'modalidad40OptOut',
+    'noquieromodalidad40': 'modalidad40OptOut',
+    'noquieromod40': 'modalidad40OptOut',
+    'nosermod40': 'modalidad40OptOut',
     'totalsemanassinmod40': 'totalSemanasSinMod40',
     'semanassinmod40': 'totalSemanasSinMod40',
     'semanastotalsinmod40': 'totalSemanasSinMod40',
@@ -593,7 +647,11 @@ class FieldExtractor {
     if (value is num) return value != 0;
     if (value is String) {
       final s = value.trim().toLowerCase();
-      if (s == 'true' || s == 'si' || s == 'sí' || s == 'verdadero' || s == '1') {
+      if (s == 'true' ||
+          s == 'si' ||
+          s == 'sí' ||
+          s == 'verdadero' ||
+          s == '1') {
         return true;
       }
       if (s == 'false' || s == 'no' || s == 'falso' || s == '0') {
@@ -603,38 +661,15 @@ class FieldExtractor {
     return null;
   }
 
-  /// Parse a date from common string formats: `YYYY-MM-DD`, `YYYY/MM/DD`,
-  /// `DD-MM-YYYY`, `DD/MM/YYYY` (Mexican day-first). Returns `null` if the
-  /// value cannot be parsed.
+  /// Parse a date from common string formats using the SAME parser as the
+  /// guided flow ([rawDate] + [isRealDate]): ISO `YYYY-MM-DD`, compact
+  /// `AAAAMMDD` / `DDMMAAAA`, `DD-MM-YYYY` / `DD/MM/YYYY` (día primero) y
+  /// nombres de mes en español. Returns `null` if the value cannot be parsed.
   static DateTime? _toDate(dynamic value) {
     if (value is DateTime) return value;
     if (value is! String) return null;
-    final s = value.trim();
-    if (s.isEmpty) return null;
-
-    // YYYY-MM-DD or YYYY/MM/DD
-    var m = RegExp(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$').firstMatch(s);
-    if (m != null) {
-      return _buildDate(
-        int.parse(m.group(1)!),
-        int.parse(m.group(2)!),
-        int.parse(m.group(3)!),
-      );
-    }
-    // DD-MM-YYYY or DD/MM/YYYY
-    m = RegExp(r'^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$').firstMatch(s);
-    if (m != null) {
-      return _buildDate(
-        int.parse(m.group(3)!),
-        int.parse(m.group(2)!),
-        int.parse(m.group(1)!),
-      );
-    }
-    return null;
-  }
-
-  static DateTime? _buildDate(int year, int month, int day) {
-    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-    return DateTime(year, month, day);
+    final raw = rawDate(value);
+    if (raw == null || !isRealDate(raw.$1, raw.$2, raw.$3)) return null;
+    return DateTime(raw.$1!, raw.$2!, raw.$3!);
   }
 }

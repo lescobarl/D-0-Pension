@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/ai/api_key_obfuscator.dart';
 import '../../core/ai/fair_use_policy.dart';
-import '../../core/ai/field_extractor.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/error_handler.dart';
 import '../../services/ai_chat_service.dart';
@@ -41,8 +40,9 @@ class _AiChatViewState extends State<AiChatView>
   int _lastMessageCount = 0;
   bool _lastLoading = false;
   bool _initialized = false;
-  String? _lastAppliedMessage;
-  bool _lastAppliedIsWarning = false;
+  // Flujo natural IA → Captura: recuerda si la captura ya estaba completa para
+  // navegar a Captura UNA sola vez (en el flanco incompleto → completo).
+  bool _captureWasComplete = false;
 
   String _apiKey = '';
 
@@ -56,11 +56,9 @@ class _AiChatViewState extends State<AiChatView>
     // Never let a missing/corrupt key block the assistant UI.
     String key = '';
     try {
-      final jsonStr =
-          await rootBundle.loadString('assets/config/api_key.json');
+      final jsonStr = await rootBundle.loadString('assets/config/api_key.json');
       final json = jsonDecode(jsonStr) as Map<String, dynamic>;
-      final obfuscated =
-          json['openrouter_api_key_obfuscated'] as String? ?? '';
+      final obfuscated = json['openrouter_api_key_obfuscated'] as String? ?? '';
       key = obfuscated.isEmpty ? '' : ApiKeyObfuscator.decode(obfuscated);
     } catch (_) {
       key = '';
@@ -71,23 +69,26 @@ class _AiChatViewState extends State<AiChatView>
 
   void _initChatService() {
     final provider = context.read<RetroactiveProvider>();
-    _chatService = AiChatService(
-      provider: provider,
-      apiKey: _apiKey,
-    );
+    _chatService = AiChatService(provider: provider, apiKey: _apiKey);
     _chatService.addListener(_onServiceChanged);
-    _chatService.initialize().then((_) {
-      if (mounted) {
-        setState(() => _initialized = true);
-        // Show the most recent messages (or the welcome card) on first load.
-        _scrollToBottom();
-      }
-    }).catchError((Object e) {
-      // Ensure the "Iniciando asistente..." screen is never left hanging.
-      if (mounted) {
-        setState(() => _initialized = true);
-      }
-    });
+    _chatService
+        .initialize()
+        .then((_) {
+          if (mounted) {
+            setState(() => _initialized = true);
+            // Arranca desde el estado real de completitud (la sesión restaurada
+            // puede venir ya completa y no debe re-saltar a Captura por error).
+            _captureWasComplete = _chatService.isCaptureComplete;
+            // Show the most recent messages (or the welcome card) on first load.
+            _scrollToBottom();
+          }
+        })
+        .catchError((Object e) {
+          // Ensure the "Iniciando asistente..." screen is never left hanging.
+          if (mounted) {
+            setState(() => _initialized = true);
+          }
+        });
   }
 
   @override
@@ -100,7 +101,9 @@ class _AiChatViewState extends State<AiChatView>
 
   void _onServiceChanged() {
     if (mounted) {
-      ErrorHandler.logDebug('AiChatView - Rebuild triggered at ${DateTime.now().toIso8601String()}');
+      ErrorHandler.logDebug(
+        'AiChatView - Rebuild triggered at ${DateTime.now().toIso8601String()}',
+      );
       final count = _chatService.messages.length;
       final loading = _chatService.isLoading;
       // React to BOTH the message count and the loading state: the loading
@@ -113,7 +116,9 @@ class _AiChatViewState extends State<AiChatView>
         setState(() {});
         _scrollToBottom();
       } else {
-        ErrorHandler.logDebug('Skipping rebuild - message count and loading unchanged');
+        ErrorHandler.logDebug(
+          'Skipping rebuild - message count and loading unchanged',
+        );
       }
     }
   }
@@ -132,48 +137,93 @@ class _AiChatViewState extends State<AiChatView>
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
+    // Se lee el proveedor ANTES del await: así no se usa el context después de
+    // una brecha asíncrona (lint use_build_context_synchronously).
+    final provider = context.read<RetroactiveProvider>();
     _textController.clear();
-    final result =
-        await _chatService.sendMessage(trimmed, guideField: guideField);
+    final result = await _chatService.sendMessage(
+      trimmed,
+      guideField: guideField,
+    );
 
-    if (result is AiFillFields) {
-      if (result.setFields.isNotEmpty) {
-        final details = result.setFields
-            .map((f) =>
-                '• ${FieldExtractor.fieldLabel(f)}: ${_formatAppliedValue(result.values, f)}')
-            .join('\n');
-        _lastAppliedMessage = '✅ Datos aplicados en la calculadora:\n$details';
-        _lastAppliedIsWarning = false;
-      } else {
-        _lastAppliedMessage =
-            '⚠️ No pude aplicar ningún campo. Repítelo claro, por ejemplo: '
-            '"Pon mi edad de retiro en 63 años".';
-        _lastAppliedIsWarning = true;
-      }
-      setState(() {});
-    } else if (result is AiError) {
-      _lastAppliedMessage = '⚠️ ${result.error}';
-      _lastAppliedIsWarning = true;
+    if (result is AiFillFields || result is AiError) {
       setState(() {});
     }
 
     _scrollToBottom();
+
+    // ── Flujo natural IA → Captura ──
+    // Cuando ya no falta ningún dato capturable, se avisa con un SnackBar y,
+    // tras un breve retraso para que el usuario lea la confirmación, se cambia
+    // a la pestaña Captura para revisar y guardar (solo en el flanco de
+    // incompleto → completo; una sola vez por sesión).
+    //
+    // Regla A (Ley 73): aunque la captura esté completa, si hay errores
+    // bloqueantes (p. ej. nacimiento o alta posteriores a 1997-07-01, régimen
+    // de la Ley 1997) NO se permite avanzar: se avisa y se permanece en la IA
+    // Experta para corregir los datos.
+    final wasComplete = _captureWasComplete;
+    final nowComplete = _chatService.isCaptureComplete;
+    _captureWasComplete = nowComplete;
+    if (nowComplete && !wasComplete && provider.hasBlockingErrors) {
+      await _warnNoSePuedeAvanzar(provider);
+    } else if (nowComplete && !wasComplete) {
+      await _goToCapturaForReview();
+    }
   }
 
-  String _formatAppliedValue(Map<String, dynamic> values, String field) {
-    final v = FieldExtractor.valueFor(values, field);
-    if (v == null) return 'actualizado';
-    if (v is num) {
-      return v == v.roundToDouble() ? v.toStringAsFixed(0) : '$v';
+  /// Flujo natural IA Experta → Captura: avisa que la captura quedó completa
+  /// y, tras un breve retraso para que el adulto mayor lea el mensaje, cambia
+  /// a la pestaña Captura para revisar y guardar sus datos.
+  Future<void> _goToCapturaForReview() async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          '✅ ¡Captura completa! Revisa y guarda tus datos en la pestaña '
+          'Captura.',
+        ),
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    // Retraso breve: da tiempo a leer la confirmación antes del cambio.
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+    // Cambio defensivo de pestaña: solo si existe un DefaultTabController
+    // ancestro (DefaultTabController.of lanza si no hay); así no se rompen
+    // los tests que montan la vista suelta sin el shell de pestañas.
+    if (context.findAncestorWidgetOfExactType<DefaultTabController>() != null) {
+      DefaultTabController.of(context).animateTo(1);
     }
-    return '$v';
+  }
+
+  /// No se puede avanzar a Captura: hay errores bloqueantes que impiden
+  /// calcular la pensión (por ejemplo, la Ley 73 no aplica). Muestra un aviso
+  /// claro para el adulto mayor y permanece en la IA Experta para corregir.
+  Future<void> _warnNoSePuedeAvanzar(RetroactiveProvider provider) async {
+    if (!mounted) return;
+    final mensajeLey73 = provider.ley73BlockingMessage;
+    final texto = mensajeLey73 != null
+        ? '⚠️ $mensajeLey73 Por eso no puedo avanzar a la captura: '
+              'corrige tus datos para continuar.'
+        : '⚠️ Hay datos que impiden calcular tu pensión. '
+              'Corrige los errores en la pestaña Captura para continuar.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(texto),
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _startNewSession() async {
     await _chatService.startNewSession();
     setState(() {
-      _lastAppliedMessage = null;
-      _lastAppliedIsWarning = false;
+      // El servicio limpia el conjunto de campos guiados: la captura vuelve a
+      // estar incompleta y puede volver a completarse (y navegar) de nuevo.
+      _captureWasComplete = false;
     });
     _scrollToBottom();
   }
@@ -239,12 +289,6 @@ class _AiChatViewState extends State<AiChatView>
           padding: const EdgeInsets.fromLTRB(8, 2, 8, 4),
           child: _buildHeader(),
         ),
-        // Aviso de campos aplicados (compacto, justo sobre la conversación).
-        if (_lastAppliedMessage != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-            child: _buildAppliedNotification(),
-          ),
         // Conversación con scroll propio: aprovecha todo el espacio y el área
         // de entrada (botón Enviar) permanece siempre visible abajo.
         Expanded(
@@ -308,7 +352,11 @@ class _AiChatViewState extends State<AiChatView>
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Icon(Icons.smart_toy, color: AppTheme.accent, size: 14),
+            child: const Icon(
+              Icons.smart_toy,
+              color: AppTheme.accent,
+              size: 14,
+            ),
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -347,7 +395,10 @@ class _AiChatViewState extends State<AiChatView>
                       label: const Text('Limpiar conversación'),
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.white70,
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 0,
+                        ),
                         minimumSize: const Size(0, 0),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
@@ -360,49 +411,6 @@ class _AiChatViewState extends State<AiChatView>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────
-  // Applied fields notification (green)
-  // ──────────────────────────────────────────────
-
-  Widget _buildAppliedNotification() {
-    final isWarning = _lastAppliedIsWarning;
-    final Color background =
-        isWarning ? Colors.amber.shade50 : Colors.green.shade50;
-    final Color foreground =
-        isWarning ? Colors.orange.shade800 : Colors.green;
-    final IconData icon =
-        isWarning ? Icons.warning_amber_rounded : Icons.check_circle;
-    return Card(
-      color: background,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: foreground, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SelectionArea(
-                child: SelectableText(
-                  _lastAppliedMessage!,
-                  style: TextStyle(
-                    fontSize: AppTheme.fontSizeBody,
-                    color: foreground,
-                  ),
-                ),
-              ),
-            ),
-            IconButton(
-              onPressed: () => setState(() => _lastAppliedMessage = null),
-              icon: Icon(Icons.close, color: foreground, size: 18),
-              tooltip: 'Cerrar aviso',
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -497,11 +505,7 @@ class _AiChatViewState extends State<AiChatView>
                 ),
               ),
             ),
-            const Icon(
-              Icons.arrow_forward,
-              size: 18,
-              color: AppTheme.primary,
-            ),
+            const Icon(Icons.arrow_forward, size: 18, color: AppTheme.primary),
           ],
         ),
       ),
@@ -546,8 +550,9 @@ class _AiChatViewState extends State<AiChatView>
     final iconBg = isUser ? AppTheme.accent : AppTheme.primary;
 
     return Row(
-      mainAxisAlignment:
-          isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: isUser
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (!isUser) _buildAvatar(icon, iconBg),
@@ -622,17 +627,18 @@ class _AiChatViewState extends State<AiChatView>
                             ),
                             onPressed: _chatService.canSendMessage
                                 ? () => _sendText(
-                                      suggestion,
-                                      // El chip viaja con el campo al que
-                                      // pertenece. Respaldo: si la sesión es
-                                      // antigua (sin suggestionField) pero la
-                                      // guía sigue activa, se aplica al campo
-                                      // guiado actual en lugar de caer en la IA
-                                      // y mostrar "No pude aplicar ningún
-                                      // campo".
-                                      guideField: message.suggestionField ??
-                                          _chatService.currentGuideField,
-                                    )
+                                    suggestion,
+                                    // El chip viaja con el campo al que
+                                    // pertenece. Respaldo: si la sesión es
+                                    // antigua (sin suggestionField) pero la
+                                    // guía sigue activa, se aplica al campo
+                                    // guiado actual en lugar de caer en la IA
+                                    // y mostrar "No pude aplicar ningún
+                                    // campo".
+                                    guideField:
+                                        message.suggestionField ??
+                                        _chatService.currentGuideField,
+                                  )
                                 : null,
                           ),
                       ],
@@ -671,9 +677,7 @@ class _AiChatViewState extends State<AiChatView>
               bottomLeft: Radius.circular(2),
               bottomRight: Radius.circular(12),
             ),
-            border: Border.all(
-              color: AppTheme.primary.withValues(alpha: 0.2),
-            ),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -819,7 +823,9 @@ class _AiChatViewState extends State<AiChatView>
                             ),
                           )
                         : const Icon(Icons.send),
-                    label: Text(_chatService.isLoading ? 'Enviando...' : 'Enviar'),
+                    label: Text(
+                      _chatService.isLoading ? 'Enviando...' : 'Enviar',
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,

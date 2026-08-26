@@ -30,9 +30,9 @@ void main() {
   // agrupan en UN solo testWidgets (un único flujo completo por proceso).
   // La prueba unitaria pura se mantiene como test() aparte (los test() puros
   // sí funcionan repetidamente en el mismo proceso).
-  testWidgets(
-      'Captura: subtítulo, etiqueta desglose, descargo y modo fechas',
-      (WidgetTester tester) async {
+  testWidgets('Captura: subtítulo, etiqueta desglose, descargo y modo fechas', (
+    WidgetTester tester,
+  ) async {
     final provider = await _buildProvider();
 
     await tester.pumpWidget(
@@ -47,10 +47,12 @@ void main() {
     expect(find.text('Captura SIMPLIFICADA'), findsOneWidget);
 
     // ── Cambio 2: Etiqueta de desglose ──
+    // El titulo y el badge "(Desglose)" son Text separados en el mismo renglon.
     expect(
-      find.text('Captura de salario promedio y Modalidad 40 (Desglose)'),
+      find.text('Captura de salario promedio y Modalidad 40'),
       findsOneWidget,
     );
+    expect(find.text('(Desglose)'), findsOneWidget);
 
     // ── Cambio 4: Descargo de responsabilidad como diálogo modal ──
     // Ya no es una tarjeta ExpansionTile al final del scroll; se abre desde
@@ -76,7 +78,9 @@ void main() {
 
     // ── Cambio 3: Toggle de modo fechas en el desglose ──
     // El desglose es un ExpansionTile colapsado por defecto; expandirlo.
-    final desgloseTitle = find.text('Captura de salario promedio y Modalidad 40 (Desglose)');
+    final desgloseTitle = find.text(
+      'Captura de salario promedio y Modalidad 40',
+    );
     expect(desgloseTitle, findsOneWidget);
     await tester.ensureVisible(desgloseTitle);
     await tester.pumpAndSettle();
@@ -112,8 +116,7 @@ void main() {
     }
   });
 
-  test('PeriodoSalarial: semanas se calculan desde fechas (fin-inicio)/7',
-      () {
+  test('PeriodoSalarial: semanas se calculan desde fechas (fin-inicio)/7', () {
     final inicio = DateTime(2020, 1, 1);
     final fin = DateTime(2020, 1, 29);
     final dias = fin.difference(inicio).inDays;

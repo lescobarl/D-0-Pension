@@ -9,13 +9,18 @@ import '../../core/utils/input_validator.dart';
 import '../../presentation/widgets/validation_indicator.dart';
 import '../../services/retroactive_provider.dart';
 
-/// Ultra-compact data capture view fitting entirely on one screen.
+/// Data capture view with all four sections on one scrollable screen.
 ///
-/// Four sections in a single compact layout:
-/// - DATOS PERSONALES (fecha cálculo, nacimiento, esposa, hijos, padres)
+/// Layout natural-height con espaciado cómodo: cada sección ocupa solo el
+/// espacio que su contenido necesita y las separaciones (márgenes, gaps y
+/// padding interno) son amplias para que el formulario se lea fácil, pensado
+/// para personas mayores. El scroll es solo una red de seguridad en ventanas
+/// muy cortas, no un requisito para llegar a todos los campos.
+///
+/// Tres secciones:
+/// - DATOS PERSONALES (fecha cálculo, nacimiento, fecha de alta, esposa, hijos, padres)
 /// - DATOS LABORALES (salario, semanas antes Mod40, edad retiro, UMA, salario mínimo)
-/// - MODALIDAD 40 (inicio, semanas, salario, total)
-/// - DESGLOSE SAL. PROM MOD 40 (periodos detallados)
+/// - MODALIDAD 40 (inicio, semanas, salario, total y desglose de periodos)
 class CapturaView extends StatefulWidget {
   const CapturaView({super.key});
 
@@ -29,11 +34,11 @@ class _CapturaViewState extends State<CapturaView> {
   /// Prevents showing the "Configuración recuperada" SnackBar more than once.
   bool _hasShownLoadMessage = false;
   late TextEditingController _fechaNacimientoController;
+  late TextEditingController _fechaAltaController;
   late TextEditingController _salarioPromedio250Controller;
   late TextEditingController _semanasCotizadasController;
   late TextEditingController _semanasEnMod40Controller;
   late TextEditingController _salarioPromedioController;
-  late TextEditingController _fechaInicioMod40Controller;
   late TextEditingController _numeroHijosController;
   late TextEditingController _numeroPadresController;
   late TextEditingController _umaDiariaController;
@@ -59,20 +64,20 @@ class _CapturaViewState extends State<CapturaView> {
     _fechaNacimientoController = TextEditingController(
       text: _formatDate(p.fechaNacimiento),
     );
+    _fechaAltaController = TextEditingController(
+      text: p.fechaAlta != null ? _formatDate(p.fechaAlta!) : '',
+    );
     _salarioPromedio250Controller = TextEditingController(
-      text: p.salarioPromedio250Semanas.toStringAsFixed(4),
+      text: p.salarioPromedio250Semanas.toStringAsFixed(2),
     );
     _semanasCotizadasController = TextEditingController(
       text: p.semanasCotizadas.toString(),
     );
     _semanasEnMod40Controller = TextEditingController(
-      text: p.semanasEnMod40.toStringAsFixed(4),
+      text: p.semanasEnMod40.toStringAsFixed(0),
     );
     _salarioPromedioController = TextEditingController(
-      text: p.salarioDiarioPromedio.toStringAsFixed(4),
-    );
-    _fechaInicioMod40Controller = TextEditingController(
-      text: _formatDate(p.startDate),
+      text: p.salarioDiarioPromedio.toStringAsFixed(2),
     );
     _numeroHijosController = TextEditingController(
       text: p.numeroHijos.toString(),
@@ -81,24 +86,22 @@ class _CapturaViewState extends State<CapturaView> {
       text: p.numeroPadres.toString(),
     );
     _umaDiariaController = TextEditingController(
-      text: p.umaDiaria.toStringAsFixed(5),
+      text: p.umaDiaria.toStringAsFixed(2),
     );
     _salarioMinimoDiarioController = TextEditingController(
-      text: p.salarioMinimoDiario.toStringAsFixed(5),
+      text: p.salarioMinimoDiario.toStringAsFixed(2),
     );
-
-
   }
 
   @override
   void dispose() {
     _fechaCalculoController.dispose();
     _fechaNacimientoController.dispose();
+    _fechaAltaController.dispose();
     _salarioPromedio250Controller.dispose();
     _semanasCotizadasController.dispose();
     _semanasEnMod40Controller.dispose();
     _salarioPromedioController.dispose();
-    _fechaInicioMod40Controller.dispose();
     _numeroHijosController.dispose();
     _numeroPadresController.dispose();
     _umaDiariaController.dispose();
@@ -130,19 +133,29 @@ class _CapturaViewState extends State<CapturaView> {
     // Add controllers for new periods only — never overwrite existing text
     for (int i = 0; i < periodos.length; i++) {
       if (i >= _periodoControllers.length) {
-        _periodoControllers.add(_PeriodoControllers(
-          TextEditingController(text: periodos[i].salarioDiario.toStringAsFixed(4)),
-          TextEditingController(text: periodos[i].semanas.toStringAsFixed(2)),
-          FocusNode(),
-          FocusNode(),
-        ));
+        _periodoControllers.add(
+          _PeriodoControllers(
+            TextEditingController(
+              text: periodos[i].salarioDiario.toStringAsFixed(2),
+            ),
+            TextEditingController(text: periodos[i].semanas.toStringAsFixed(2)),
+            FocusNode(),
+            FocusNode(),
+          ),
+        );
       } else {
         final controller = _periodoControllers[i];
         if (!controller.salarioFocus.hasFocus) {
-          _setControllerText(controller.salario, periodos[i].salarioDiario.toStringAsFixed(4));
+          _setControllerText(
+            controller.salario,
+            periodos[i].salarioDiario.toStringAsFixed(2),
+          );
         }
         if (!controller.semanasFocus.hasFocus) {
-          _setControllerText(controller.semanas, periodos[i].semanas.toStringAsFixed(2));
+          _setControllerText(
+            controller.semanas,
+            periodos[i].semanas.toStringAsFixed(2),
+          );
         }
       }
     }
@@ -155,11 +168,16 @@ class _CapturaViewState extends State<CapturaView> {
   /// during a reset operation.
   void _forceSyncPeriodoControllers(RetroactiveProvider provider) {
     final periodos = provider.periodos;
-    for (int i = 0; i < periodos.length && i < _periodoControllers.length; i++) {
-      _periodoControllers[i].salario.text =
-          periodos[i].salarioDiario.toStringAsFixed(4);
-      _periodoControllers[i].semanas.text =
-          periodos[i].semanas.toStringAsFixed(2);
+    for (
+      int i = 0;
+      i < periodos.length && i < _periodoControllers.length;
+      i++
+    ) {
+      _periodoControllers[i].salario.text = periodos[i].salarioDiario
+          .toStringAsFixed(2);
+      _periodoControllers[i].semanas.text = periodos[i].semanas.toStringAsFixed(
+        2,
+      );
     }
   }
 
@@ -168,7 +186,9 @@ class _CapturaViewState extends State<CapturaView> {
   }
 
   /// Parses date from YYYY-MM-DD or YYYYMMDD format.
-  DateTime _parseDate(String text) {
+  /// Returns null when the text cannot be parsed into a valid date (never
+  /// falls back to "today", which would silently corrupt the state).
+  DateTime? _parseDate(String text) {
     try {
       String cleaned = text.replaceAll('-', '').trim();
       if (cleaned.length == 8) {
@@ -181,7 +201,7 @@ class _CapturaViewState extends State<CapturaView> {
     } catch (e) {
       debugPrint('[CapturaView] Error parsing date "$text": $e');
     }
-    return DateTime.now();
+    return null;
   }
 
   /// Formats YYYYMMDD → YYYY-MM-DD for display.
@@ -200,19 +220,49 @@ class _CapturaViewState extends State<CapturaView> {
 
   void _syncControllersFromProvider(RetroactiveProvider provider) {
     if (!mounted) return;
-    _setControllerText(_umaDiariaController, provider.umaDiaria.toStringAsFixed(5));
-    _setControllerText(_salarioMinimoDiarioController, provider.salarioMinimoDiario.toStringAsFixed(5));
-    _setControllerText(_salarioPromedio250Controller, provider.salarioPromedio250Semanas.toStringAsFixed(4));
-    _setControllerText(_salarioPromedioController, provider.salarioDiarioPromedio.toStringAsFixed(4));
-    _setControllerText(_semanasEnMod40Controller, provider.semanasEnMod40.toStringAsFixed(4));
-    _setControllerText(_semanasCotizadasController, provider.semanasCotizadas.toString());
+    _setControllerText(
+      _umaDiariaController,
+      provider.umaDiaria.toStringAsFixed(2),
+    );
+    _setControllerText(
+      _salarioMinimoDiarioController,
+      provider.salarioMinimoDiario.toStringAsFixed(2),
+    );
+    _setControllerText(
+      _salarioPromedio250Controller,
+      provider.salarioPromedio250Semanas.toStringAsFixed(2),
+    );
+    _setControllerText(
+      _salarioPromedioController,
+      provider.salarioDiarioPromedio.toStringAsFixed(2),
+    );
+    _setControllerText(
+      _semanasEnMod40Controller,
+      provider.semanasEnMod40.toStringAsFixed(0),
+    );
+    _setControllerText(
+      _semanasCotizadasController,
+      provider.semanasCotizadas.toString(),
+    );
     // Sincronizar también los campos que la IA puede haber corregido, para que
     // las correcciones (p. ej. padres = 1) se reflejen en la vista de captura.
-    _setControllerText(_fechaCalculoController, _formatDate(provider.fechaCalculo));
-    _setControllerText(_fechaNacimientoController, _formatDate(provider.fechaNacimiento));
-    _setControllerText(_fechaInicioMod40Controller, _formatDate(provider.startDate));
+    _setControllerText(
+      _fechaCalculoController,
+      _formatDate(provider.fechaCalculo),
+    );
+    _setControllerText(
+      _fechaNacimientoController,
+      _formatDate(provider.fechaNacimiento),
+    );
+    _setControllerText(
+      _fechaAltaController,
+      provider.fechaAlta != null ? _formatDate(provider.fechaAlta!) : '',
+    );
     _setControllerText(_numeroHijosController, provider.numeroHijos.toString());
-    _setControllerText(_numeroPadresController, provider.numeroPadres.toString());
+    _setControllerText(
+      _numeroPadresController,
+      provider.numeroPadres.toString(),
+    );
     _syncPeriodoControllers(provider);
   }
 
@@ -237,22 +287,39 @@ class _CapturaViewState extends State<CapturaView> {
         }
 
         // Natural-height layout: each section takes only the space its content
-        // needs (no stretching, no hidden fields). Compact spacing keeps
-        // everything on one screen on normal windows; the scroll view is only
-        // a safety net for very short windows.
+        // needs (no stretching, no hidden fields). Márgenes y separaciones
+        // amplios para que el formulario respire y sea fácil de leer (usuarios
+        // mayores); el scroll es solo una red de seguridad en ventanas cortas.
+        // Las áreas de error/advertencia se insertan solo cuando hay mensajes,
+        // evitando renglones vacíos desperdiciados bajo el encabezado.
+        final errorArea = _buildErrorArea(provider);
+        final warningArea = _buildWarningArea(provider);
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
+          padding: const EdgeInsets.fromLTRB(
+            12,
+            AppTheme.spacingXs,
+            12,
+            AppTheme.spacingXs,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
-              const SizedBox(height: 1),
+              if (errorArea != null) ...[
+                const SizedBox(height: AppTheme.spacingXs),
+                errorArea,
+              ],
+              if (warningArea != null) ...[
+                const SizedBox(height: AppTheme.spacingXs),
+                warningArea,
+              ],
+              const SizedBox(height: AppTheme.spacingXs),
               _buildDatosPersonales(provider),
-              const SizedBox(height: 1),
+              const SizedBox(height: AppTheme.spacingXs),
               _buildDatosLaborales(provider),
-              const SizedBox(height: 1),
+              const SizedBox(height: AppTheme.spacingXs),
               _buildDatosMod40(provider),
-              const SizedBox(height: 1),
+              const SizedBox(height: AppTheme.spacingXs),
               _buildSaveButton(provider),
             ],
           ),
@@ -263,7 +330,10 @@ class _CapturaViewState extends State<CapturaView> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: AppTheme.spacingSm,
+      ),
       decoration: BoxDecoration(
         color: AppTheme.primary,
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
@@ -276,7 +346,11 @@ class _CapturaViewState extends State<CapturaView> {
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Icon(Icons.edit_note, color: AppTheme.accent, size: 14),
+            child: const Icon(
+              Icons.edit_note,
+              color: AppTheme.accent,
+              size: 14,
+            ),
           ),
           const SizedBox(width: 6),
           const Expanded(
@@ -310,6 +384,95 @@ class _CapturaViewState extends State<CapturaView> {
     );
   }
 
+  /// Área de mensajes de error (consola roja).
+  ///
+  /// Muestra únicamente los errores globales que bloquean Calcular/Guardar.
+  /// Si no hay errores, no pinta nada (null). Las advertencias
+  /// informativas van en [_buildWarningArea] (amarillas).
+  Widget? _buildErrorArea(RetroactiveProvider provider) {
+    final errores = provider.validacionesGlobales
+        .where((v) => !v.isValid)
+        .toList();
+
+    if (errores.isEmpty) {
+      return null;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.only(bottom: 1),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEBEE),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFEF9A9A), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final v in errores)
+            _buildValidationRow(v, const Color(0xFFC62828), Icons.error),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildValidationRow(ValidationResult v, Color color, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              v.message,
+              style: TextStyle(fontSize: 12, color: color, height: 1.25),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Área de mensajes de advertencia (amarilla / informativa).
+  ///
+  /// Muestra las advertencias globales (isWarning) que NO bloquean el
+  /// cálculo, p. ej. el tope de 25 UMAs (el excedente no cotiza) o el aviso
+  /// de incrementos negativos. Si no hay advertencias, no pinta nada (null).
+  Widget? _buildWarningArea(RetroactiveProvider provider) {
+    final advertencias = provider.validacionesGlobales
+        .where((v) => v.isWarning && v.message.isNotEmpty)
+        .toList();
+
+    if (advertencias.isEmpty) {
+      return null;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.only(bottom: 1),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFFFE082), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final v in advertencias)
+            _buildValidationRow(
+              v,
+              const Color(0xFFF9A825),
+              Icons.warning_amber_rounded,
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDatosPersonales(RetroactiveProvider provider) {
     return Card(
       elevation: 0,
@@ -320,7 +483,12 @@ class _CapturaViewState extends State<CapturaView> {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
+        padding: const EdgeInsets.fromLTRB(
+          12,
+          AppTheme.spacingXs,
+          12,
+          AppTheme.spacingXs,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -329,16 +497,80 @@ class _CapturaViewState extends State<CapturaView> {
             // Fecha Cálculo + Fecha Nacimiento side by side
             Row(
               children: [
-                Expanded(child: _buildValidatedDateField('Fecha de Cálculo', _fechaCalculoController, (v) {
-                  final parsed = _parseDate(v);
-                  provider.setFechaCalculo(parsed);
-                })),
+                Expanded(
+                  child: _buildValidatedDateField(
+                    'Fecha de Cálculo',
+                    _fechaCalculoController,
+                    (v) {
+                      final parsed = _parseDate(v);
+                      if (parsed != null) {
+                        provider.setFechaCalculo(parsed);
+                      }
+                    },
+                    // Regla D: la fecha de cálculo no puede ser anterior a la
+                    // de nacimiento.
+                    validator: (v) {
+                      final base = InputValidator.validateDate(v);
+                      if (!base.isValid) return base;
+                      final parsed = _parseDate(v);
+                      if (parsed != null &&
+                          parsed.isBefore(provider.fechaNacimiento)) {
+                        return ValidationResult.error(
+                          PensionConstants.errorFechaCalculoMenorNacimiento,
+                        );
+                      }
+                      return base;
+                    },
+                  ),
+                ),
                 const SizedBox(width: 6),
-                Expanded(child: _buildValidatedDateField('Fecha de Nacimiento', _fechaNacimientoController, (v) {
-                  final parsed = _parseDate(v);
-                  provider.setFechaNacimiento(parsed);
-                })),
+                Expanded(
+                  child: _buildValidatedDateField(
+                    'Fecha de Nacimiento',
+                    _fechaNacimientoController,
+                    (v) {
+                      final parsed = _parseDate(v);
+                      if (parsed != null) {
+                        provider.setFechaNacimiento(parsed);
+                      }
+                    },
+                    // Regla D (inverso: el nacimiento no puede ser posterior a
+                    // la fecha de cálculo). La Regla A (aplicabilidad Ley 73)
+                    // NO se valida aquí a propósito: su mensaje se muestra UNA
+                    // sola vez, en el banner superior de errores globales.
+                    validator: (v) {
+                      final base = InputValidator.validateDate(v);
+                      if (!base.isValid) return base;
+                      final parsed = _parseDate(v);
+                      if (parsed != null) {
+                        if (parsed.isAfter(provider.fechaCalculo)) {
+                          return ValidationResult.error(
+                            PensionConstants.errorFechaCalculoMenorNacimiento,
+                          );
+                        }
+                      }
+                      return base;
+                    },
+                  ),
+                ),
               ],
+            ),
+            // Fecha de Alta (IMSS): opcional, confirma la aplicabilidad de la
+            // Ley 73 (el factor es haber cotizado antes del 1 de julio de 1997).
+            // Campo vacío = "no capturado" (válido, se muestra un aviso suave).
+            _buildValidatedDateField(
+              'Fecha de Alta (IMSS)',
+              _fechaAltaController,
+              (v) {
+                if (v.trim().isEmpty) {
+                  provider.setFechaAlta(null);
+                  return;
+                }
+                final parsed = _parseDate(v);
+                if (parsed != null) {
+                  provider.setFechaAlta(parsed);
+                }
+              },
             ),
             const SizedBox(height: 1),
             // Esposa toggle + Hijos + Padres in one row
@@ -352,17 +584,20 @@ class _CapturaViewState extends State<CapturaView> {
                     children: [
                       const Padding(
                         padding: EdgeInsets.only(bottom: 2),
-                        child: Text('¿Esposa?',
-                            style: TextStyle(
-                              fontSize: AppTheme.fontSizeBodySmall,
-                              color: AppTheme.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            )),
+                        child: Text(
+                          '¿Esposa?',
+                          style: TextStyle(
+                            fontSize: AppTheme.fontSizeBodySmall,
+                            color: AppTheme.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                       GestureDetector(
-                        onTap: () => provider.setTieneEsposa(!provider.tieneEsposa),
+                        onTap: () =>
+                            provider.setTieneEsposa(!provider.tieneEsposa),
                         child: Container(
-                          height: 28,
+                          height: AppTheme.fieldHeight,
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
                             color: AppTheme.primary.withValues(alpha: 0.08),
@@ -381,9 +616,13 @@ class _CapturaViewState extends State<CapturaView> {
                               ),
                               const Spacer(),
                               Icon(
-                                provider.tieneEsposa ? Icons.check_circle : Icons.radio_button_unchecked,
+                                provider.tieneEsposa
+                                    ? Icons.check_circle
+                                    : Icons.radio_button_unchecked,
                                 size: 20,
-                                color: provider.tieneEsposa ? const Color(0xFF4CAF50) : AppTheme.textHint,
+                                color: provider.tieneEsposa
+                                    ? const Color(0xFF4CAF50)
+                                    : AppTheme.textHint,
                               ),
                             ],
                           ),
@@ -395,44 +634,58 @@ class _CapturaViewState extends State<CapturaView> {
                 const SizedBox(width: 6),
                 Expanded(
                   flex: 3,
-                  child: _buildValidatedNumberField('Hijos', _numeroHijosController, (v) {
-                    final parsed = int.tryParse(v);
-                    if (parsed != null) provider.setNumeroHijos(parsed);
-                  }, (value) {
-                    if (value.isEmpty) return ValidationResult.valid();
-                    final parsed = int.tryParse(value);
-                    if (parsed == null) {
-                      return ValidationResult.error('Debe ser un número entero');
-                    }
-                    if (parsed < 0) {
-                      return ValidationResult.error('No puede ser negativo');
-                    }
-                    if (parsed > 20) {
-                      return ValidationResult.warning('Valor alto de hijos');
-                    }
-                    return ValidationResult.valid();
-                  }),
+                  child: _buildValidatedNumberField(
+                    'Hijos',
+                    _numeroHijosController,
+                    (v) {
+                      final parsed = int.tryParse(v);
+                      if (parsed != null) provider.setNumeroHijos(parsed);
+                    },
+                    (value) {
+                      if (value.isEmpty) return ValidationResult.valid();
+                      final parsed = int.tryParse(value);
+                      if (parsed == null) {
+                        return ValidationResult.error(
+                          'Debe ser un número entero',
+                        );
+                      }
+                      if (parsed < 0) {
+                        return ValidationResult.error('No puede ser negativo');
+                      }
+                      if (parsed > 20) {
+                        return ValidationResult.warning('Valor alto de hijos');
+                      }
+                      return ValidationResult.valid();
+                    },
+                  ),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
                   flex: 3,
-                  child: _buildValidatedNumberField('Padres', _numeroPadresController, (v) {
-                    final parsed = int.tryParse(v);
-                    if (parsed != null) provider.setNumeroPadres(parsed);
-                  }, (value) {
-                    if (value.isEmpty) return ValidationResult.valid();
-                    final parsed = int.tryParse(value);
-                    if (parsed == null) {
-                      return ValidationResult.error('Debe ser un número entero');
-                    }
-                    if (parsed < 0) {
-                      return ValidationResult.error('No puede ser negativo');
-                    }
-                    if (parsed > 4) {
-                      return ValidationResult.warning('Valor alto de padres');
-                    }
-                    return ValidationResult.valid();
-                  }),
+                  child: _buildValidatedNumberField(
+                    'Padres',
+                    _numeroPadresController,
+                    (v) {
+                      final parsed = int.tryParse(v);
+                      if (parsed != null) provider.setNumeroPadres(parsed);
+                    },
+                    (value) {
+                      if (value.isEmpty) return ValidationResult.valid();
+                      final parsed = int.tryParse(value);
+                      if (parsed == null) {
+                        return ValidationResult.error(
+                          'Debe ser un número entero',
+                        );
+                      }
+                      if (parsed < 0) {
+                        return ValidationResult.error('No puede ser negativo');
+                      }
+                      if (parsed > 4) {
+                        return ValidationResult.warning('Valor alto de padres');
+                      }
+                      return ValidationResult.valid();
+                    },
+                  ),
                 ),
               ],
             ),
@@ -452,7 +705,12 @@ class _CapturaViewState extends State<CapturaView> {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
+        padding: const EdgeInsets.fromLTRB(
+          12,
+          AppTheme.spacingXs,
+          12,
+          AppTheme.spacingXs,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -464,32 +722,45 @@ class _CapturaViewState extends State<CapturaView> {
                 Expanded(
                   // "Semanas cotizadas" = historial IMSS ANTES de Modalidad 40
                   // (fuente primaria); el total CON Mod40 se deriva en el cálculo.
-                  child: _buildValidatedNumberField('Semanas cotizadas IMSS', _semanasCotizadasController, (v) {
-                    final parsed = double.tryParse(v);
-                    if (parsed != null) provider.setSemanasCotizadas(parsed.round());
-                  }, (value) {
-                    if (value.isEmpty) return ValidationResult.valid();
-                    final parsed = double.tryParse(value);
-                    if (parsed == null) {
-                      return ValidationResult.error('Debe ser un número válido');
-                    }
-                    if (parsed < 0) {
-                      return ValidationResult.error('No puede ser negativo');
-                    }
-                    if (parsed > 5000) {
-                      return ValidationResult.warning('Valor muy alto de semanas');
-                    }
-                    if (parsed < PensionConstants.minSemanasLey73) {
-                      return InputValidator.validateMinSemanasLey73(parsed.toInt());
-                    }
-                    return ValidationResult.valid();
-                  }),
+                  child: _buildValidatedNumberField(
+                    'Semanas cotizadas IMSS',
+                    _semanasCotizadasController,
+                    (v) {
+                      final parsed = double.tryParse(v);
+                      if (parsed != null) {
+                        provider.setSemanasCotizadas(parsed.round());
+                      }
+                    },
+                    (value) {
+                      if (value.isEmpty) return ValidationResult.valid();
+                      final parsed = double.tryParse(value);
+                      if (parsed == null) {
+                        return ValidationResult.error(
+                          'Debe ser un número válido',
+                        );
+                      }
+                      if (parsed < 0) {
+                        return ValidationResult.error('No puede ser negativo');
+                      }
+                      if (parsed > 5000) {
+                        return ValidationResult.warning(
+                          'Valor muy alto de semanas',
+                        );
+                      }
+                      return ValidationResult.valid();
+                    },
+                  ),
                 ),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: _buildEdadRetiroCompact(provider, provider.edadRetiro, (v) {
-                    if (v != null) provider.setEdadRetiro(v);
-                  }, AppTheme.primary),
+                  child: _buildEdadRetiroCompact(
+                    provider,
+                    provider.edadRetiro,
+                    (v) {
+                      if (v != null) provider.setEdadRetiro(v);
+                    },
+                    AppTheme.primary,
+                  ),
                 ),
               ],
             ),
@@ -498,37 +769,56 @@ class _CapturaViewState extends State<CapturaView> {
             Row(
               children: [
                 Expanded(
-                  child: _buildValidatedNumberField('UMA Diaria', _umaDiariaController, (v) {
-                    final parsed = double.tryParse(v);
-                    if (parsed != null) provider.setUmaDiaria(parsed);
-                  }, (value) {
-                    if (value.isEmpty) return ValidationResult.valid();
-                    final parsed = double.tryParse(value);
-                    if (parsed == null) {
-                      return ValidationResult.error('Debe ser un número válido');
-                    }
-                    if (parsed <= 0) {
-                      return ValidationResult.error('Debe ser mayor a cero');
-                    }
-                    if (parsed > 1000) {
-                      return ValidationResult.warning('Valor muy alto de UMA');
-                    }
-                    return ValidationResult.valid();
-                  }),
+                  child: _buildValidatedNumberField(
+                    'UMA Diaria',
+                    _umaDiariaController,
+                    (v) {
+                      final parsed = double.tryParse(v);
+                      if (parsed != null) provider.setUmaDiaria(parsed);
+                    },
+                    (value) {
+                      if (value.isEmpty) return ValidationResult.valid();
+                      final parsed = double.tryParse(value);
+                      if (parsed == null) {
+                        return ValidationResult.error(
+                          'Debe ser un número válido',
+                        );
+                      }
+                      if (parsed <= 0) {
+                        return ValidationResult.error('Debe ser mayor a cero');
+                      }
+                      if (parsed > 1000) {
+                        return ValidationResult.warning(
+                          'Valor muy alto de UMA',
+                        );
+                      }
+                      return ValidationResult.valid();
+                    },
+                    neutralStyle: true,
+                  ),
                 ),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: _buildValidatedNumberField('Salario Mínimo Diario', _salarioMinimoDiarioController, (v) {
-                    final parsed = double.tryParse(v);
-                    if (parsed != null) provider.setSalarioMinimoDiario(parsed);
-                  }, InputValidator.validateSalary),
+                  child: _buildValidatedNumberField(
+                    'Salario Mínimo Diario',
+                    _salarioMinimoDiarioController,
+                    (v) {
+                      final parsed = double.tryParse(v);
+                      if (parsed != null) {
+                        provider.setSalarioMinimoDiario(parsed);
+                      }
+                    },
+                    InputValidator.validateSalary,
+                    neutralStyle: true,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 1),
-            _buildReadOnlyField('Salario Promedio 250 Semanas', provider.salarioPromedio250Semanas.toStringAsFixed(4)),
-            const SizedBox(height: 1),
-            _buildDesglosePeriodos(provider),
+            _buildReadOnlyField(
+              'Salario Promedio 250 Semanas',
+              provider.salarioPromedio250Semanas.toStringAsFixed(2),
+            ),
           ],
         ),
       ),
@@ -545,34 +835,149 @@ class _CapturaViewState extends State<CapturaView> {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
+        padding: const EdgeInsets.fromLTRB(
+          12,
+          AppTheme.spacingXs,
+          12,
+          AppTheme.spacingXs,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(Icons.trending_up, 'Modalidad 40'),
-            const SizedBox(height: 1),
-            // Inicio Mod40 (full width)
-            _buildValidatedDateField('Inicio de aportaciones Mod40', _fechaInicioMod40Controller, (v) {
-              final parsed = _parseDate(v);
-              provider.setStartDate(parsed);
-            }),
-            const SizedBox(height: 1),
-            // UMA Multiplier selector (1-25)
-            _buildUmaMultiplierField(provider),
-            const SizedBox(height: 1),
-            // Semanas en Mod40 + Salario Promedio side by side
-            Row(
-              children: [
-                Expanded(
-                  child: _buildReadOnlyField('Semanas en Mod40', provider.semanasEnMod40.toStringAsFixed(4)),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: _buildReadOnlyField('Salario Promedio (con Mod40)', provider.nuevoSalarioPromedio.toStringAsFixed(4)),
-                ),
-              ],
+            // Pregunta clara con dos botones grandes (Sí / No). El toggle
+            // permanece en la misma posición de scroll: la sección se expande
+            // o colapsa debajo, nunca se navega a otra pantalla.
+            _buildModalidad40Toggle(provider),
+            if (!provider.modalidad40OptOut) ...[
+              const SizedBox(height: 1),
+              // UMA Multiplier selector (1-25)
+              _buildUmaMultiplierField(provider),
+              const SizedBox(height: 1),
+              // Desglose de salario promedio y Modalidad 40 (periodos
+              // detallados): va entre el campo "UMAs a pagar" y los resultados
+              // de semanas, dentro de la tarjeta de Modalidad 40.
+              _buildDesglosePeriodos(provider),
+              const SizedBox(height: 1),
+              // Resultados Mod40: etiqueta con ancho natural a la izquierda y
+              // valor pegado al borde derecho. La caja ocupa todo el ancho de
+              // la tarjeta, sin padding izquierdo y con interlineado mínimo
+              // para que las etiquetas se vean completas (sin truncar).
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildReadOnlyField(
+                    'Semanas en Mod40',
+                    provider.semanasEnMod40.toStringAsFixed(0),
+                  ),
+                  const SizedBox(height: 1),
+                  _buildReadOnlyField(
+                    'Semanas Totales',
+                    provider.totalSemanasConMod40.toStringAsFixed(0),
+                  ),
+                  const SizedBox(height: 1),
+                  _buildReadOnlyField(
+                    'Salario Promedio (con Mod40)',
+                    provider.nuevoSalarioPromedio.toStringAsFixed(0),
+                  ),
+                ],
+              ),
+            ] else ...[
+              const SizedBox(height: 1),
+              _buildSinMod40Message(),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Pregunta principal de Modalidad 40 con dos botones grandes (Sí / No).
+  /// Se mantiene SIEMPRE visible en la misma posición de scroll; al elegir
+  /// "No" la sección se colapsa debajo y el cálculo corre por la ruta "Sin M40".
+  Widget _buildModalidad40Toggle(RetroactiveProvider provider) {
+    final optedOut = provider.modalidad40OptOut;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 6, bottom: 6),
+          child: Text(
+            '¿Vas a aportar Modalidad 40?',
+            style: const TextStyle(
+              fontSize: AppTheme.fontSizeInput,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: _buildToggleOption(
+                label: 'Sí',
+                selected: !optedOut,
+                onTap: () => provider.setModalidad40OptOut(false),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildToggleOption(
+                label: 'No',
+                selected: optedOut,
+                onTap: () => provider.setModalidad40OptOut(true),
+              ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  /// Botón grande de selección (Sí / No) con estado visual claro.
+  Widget _buildToggleOption({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary : AppTheme.cardBackground,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AppTheme.primary, width: selected ? 2 : 1),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeCardTitle,
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : AppTheme.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Mensaje breve y tranquilizador cuando el usuario elige "No" a Mod40.
+  Widget _buildSinMod40Message() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundLight,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppTheme.dividerColor),
+      ),
+      child: const Text(
+        'Sin Modalidad 40 tu pensión se calcula con las semanas que cotizaste '
+        'ante el IMSS. No necesitas llenar más datos.',
+        style: TextStyle(
+          fontSize: AppTheme.fontSizeInput,
+          color: AppTheme.textSecondary,
         ),
       ),
     );
@@ -586,7 +991,8 @@ class _CapturaViewState extends State<CapturaView> {
     final double salarioCalculado = multiplier * umaDiaria;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      height: AppTheme.fieldHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: AppTheme.primary.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(6),
@@ -616,33 +1022,28 @@ class _CapturaViewState extends State<CapturaView> {
               ],
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: DropdownButton<double>(
-              value: multiplier,
-              isDense: true,
-              // isExpanded evita el overflow horizontal: el texto seleccionado
-              // se ajusta (con ellipsis) al ancho asignado por el Expanded en
-              // lugar de dimensionarse por su contenido intrínseco.
-              isExpanded: true,
-              underline: const SizedBox(),
-              items: List.generate(25, (i) => i + 1).map((v) {
-                final val = v.toDouble();
-                return DropdownMenuItem<double>(
-                  value: val,
-                  child: Text(
-                    '$v UMAs',
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: AppTheme.fontSizeBody),
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  provider.setUmaMultiplier(value);
-                }
-              },
-            ),
+          // Dropdown con ancho natural (sin isExpanded): el texto seleccionado
+          // se muestra completo, p. ej. "15 UMAs". Label y "= $..." son
+          // Expanded y absorben el espacio sobrante de la fila.
+          DropdownButton<double>(
+            value: multiplier,
+            isDense: true,
+            underline: const SizedBox(),
+            items: List.generate(25, (i) => i + 1).map((v) {
+              final val = v.toDouble();
+              return DropdownMenuItem<double>(
+                value: val,
+                child: Text(
+                  '$v UMAs',
+                  style: const TextStyle(fontSize: AppTheme.fontSizeBody),
+                ),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                provider.setUmaMultiplier(value);
+              }
+            },
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -683,9 +1084,7 @@ class _CapturaViewState extends State<CapturaView> {
       decoration: BoxDecoration(
         color: AppTheme.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppTheme.primary.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
       ),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -695,43 +1094,36 @@ class _CapturaViewState extends State<CapturaView> {
         collapsedShape: const Border(),
         collapsedBackgroundColor: Colors.transparent,
         backgroundColor: Colors.transparent,
-        leading: Icon(
-          Icons.table_chart,
-          size: 20,
-          color: AppTheme.primary,
-        ),
-        title: Text(
-          'Captura de salario promedio y Modalidad 40 (Desglose)',
-          style: TextStyle(
-            fontSize: AppTheme.fontSizeLabel,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.primary,
-          ),
-        ),
-        subtitle: Row(
+        title: Row(
           children: [
-            Icon(
-              periodos.isNotEmpty
-                  ? Icons.check_circle
-                  : Icons.radio_button_unchecked,
-              size: 20,
-              color: periodos.isNotEmpty
-                  ? const Color(0xFF4CAF50)
-                  : AppTheme.textHint,
-            ),
-            const SizedBox(width: 4),
-            // Flexible + ellipsis: en pantallas angostas el texto largo del
-            // subtitulo del ExpansionTile NO debe desbordar su renglon.
             Flexible(
               child: Text(
-                periodos.isNotEmpty
-                    ? '${periodos.length} periodos — toca para ver detalle'
-                    : 'Sin periodos — toca para agregar',
-                maxLines: 1,
+                'Captura de salario promedio y Modalidad 40',
+                // Dos renglones para aprovechar el espacio sin truncar el
+                // titulo; el badge (Desglose) se mantiene a la derecha y el
+                // texto completo es visible incluso en pantallas angostas.
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: AppTheme.fontSizeBodySmall - 1,
-                  color: AppTheme.textHint,
+                  fontSize: AppTheme.fontSizeLabel,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.primary,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                '(Desglose)',
+                style: TextStyle(
+                  fontSize: AppTheme.fontSizeTableData,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -761,23 +1153,30 @@ class _CapturaViewState extends State<CapturaView> {
           // Summary row
           _buildPeriodosSummary(periodos, totalSemanasPromedio),
           const SizedBox(height: 4),
-          // Action buttons row
-          Row(
+          // Action buttons row — Wrap para que nunca se desborde en pantallas
+          // angostas ni con escalado de texto accesible.
+          Wrap(
+            spacing: AppTheme.spacingSm,
+            runSpacing: AppTheme.spacingXs,
             children: [
               // Add period button — compact text button
               TextButton.icon(
                 onPressed: () => provider.addPeriodo(),
                 icon: const Icon(Icons.add, size: 13),
-                label: const Text('Agregar periodo',
-                    style: TextStyle(fontSize: AppTheme.fontSizeBodySmall)),
+                label: const Text(
+                  'Agregar periodo',
+                  style: TextStyle(fontSize: AppTheme.fontSizeBodySmall),
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: AppTheme.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
-              const SizedBox(width: 8),
               // Reload Excel baseline data button
               TextButton.icon(
                 onPressed: () {
@@ -786,11 +1185,16 @@ class _CapturaViewState extends State<CapturaView> {
                   _forceSyncPeriodoControllers(provider);
                 },
                 icon: const Icon(Icons.restore, size: 13),
-                label: const Text('Recargar datos Excel',
-                    style: TextStyle(fontSize: AppTheme.fontSizeBodySmall)),
+                label: const Text(
+                  'Recargar datos Excel',
+                  style: TextStyle(fontSize: AppTheme.fontSizeBodySmall),
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: AppTheme.warningColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -852,7 +1256,9 @@ class _CapturaViewState extends State<CapturaView> {
                           style: TextStyle(
                             fontSize: AppTheme.fontSizeTableData,
                             fontWeight: FontWeight.w500,
-                            color: periodo.esMod40 ? AppTheme.primary : AppTheme.textSecondary,
+                            color: periodo.esMod40
+                                ? AppTheme.primary
+                                : AppTheme.textSecondary,
                           ),
                         ),
                       ),
@@ -861,8 +1267,11 @@ class _CapturaViewState extends State<CapturaView> {
                       const SizedBox(width: 2),
                       GestureDetector(
                         onTap: () => provider.removePeriodo(index),
-                        child: Icon(Icons.remove_circle_outline,
-                            size: 13, color: AppTheme.errorColor.withValues(alpha: 0.7)),
+                        child: Icon(
+                          Icons.remove_circle_outline,
+                          size: 13,
+                          color: AppTheme.errorColor.withValues(alpha: 0.7),
+                        ),
                       ),
                     ],
                   ],
@@ -872,20 +1281,26 @@ class _CapturaViewState extends State<CapturaView> {
               // Salario Diario
               Expanded(
                 child: SizedBox(
-                  height: 32,
+                  height: AppTheme.fieldHeight,
                   child: TextFormField(
                     key: ValueKey('sal_$index'),
                     controller: controllers?.salario,
                     decoration: const InputDecoration(
                       labelText: 'Salario',
                       border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
                       isDense: true,
                     ),
-                    style: const TextStyle(fontSize: AppTheme.fontSizeTableData),
+                    style: const TextStyle(
+                      fontSize: AppTheme.fontSizeTableData,
+                    ),
                     focusNode: controllers?.salarioFocus,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                     ],
@@ -904,20 +1319,26 @@ class _CapturaViewState extends State<CapturaView> {
               // Semanas
               Expanded(
                 child: SizedBox(
-                  height: 32,
+                  height: AppTheme.fieldHeight,
                   child: TextFormField(
                     key: ValueKey('sem_$index'),
                     controller: controllers?.semanas,
                     decoration: const InputDecoration(
                       labelText: 'Semanas',
                       border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
                       isDense: true,
                     ),
-                    style: const TextStyle(fontSize: AppTheme.fontSizeTableData),
+                    style: const TextStyle(
+                      fontSize: AppTheme.fontSizeTableData,
+                    ),
                     focusNode: controllers?.semanasFocus,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                     ],
@@ -937,7 +1358,7 @@ class _CapturaViewState extends State<CapturaView> {
               SizedBox(
                 width: 80,
                 child: Text(
-                  '\$${periodo.resultado.toStringAsFixed(2)}',
+                  '\$${periodo.resultado.toStringAsFixed(0)}',
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     fontSize: AppTheme.fontSizeTableData,
@@ -1002,8 +1423,9 @@ class _CapturaViewState extends State<CapturaView> {
     final inicio = periodo.fechaInicio;
     final fin = periodo.fechaTermino;
     final tieneAmbas = inicio != null && fin != null;
-    final semanasCalculadas =
-        tieneAmbas ? fin.difference(inicio).inDays / 7.0 : 0.0;
+    final semanasCalculadas = tieneAmbas
+        ? fin.difference(inicio).inDays / 7.0
+        : 0.0;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -1031,14 +1453,19 @@ class _CapturaViewState extends State<CapturaView> {
             ),
           ),
           const SizedBox(width: 6),
-          Text(
-            tieneAmbas
-                ? '${semanasCalculadas.toStringAsFixed(2)} sem'
-                : 'Fechas → sem',
-            style: TextStyle(
-              fontSize: AppTheme.fontSizeTableData,
-              fontWeight: FontWeight.w600,
-              color: tieneAmbas ? AppTheme.primary : AppTheme.textHint,
+          Flexible(
+            child: Text(
+              tieneAmbas
+                  ? '${semanasCalculadas.toStringAsFixed(2)} sem'
+                  : 'Fechas → sem',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: AppTheme.fontSizeTableData,
+                fontWeight: FontWeight.w600,
+                color: tieneAmbas ? AppTheme.primary : AppTheme.textHint,
+              ),
             ),
           ),
         ],
@@ -1053,34 +1480,41 @@ class _CapturaViewState extends State<CapturaView> {
     required IconData icon,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: AppTheme.dividerColor),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: AppTheme.primary),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                fecha != null ? _formatDate(fecha) : '$label: —',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: AppTheme.fontSizeTableData,
-                  color: fecha != null
-                      ? AppTheme.textPrimary
-                      : AppTheme.textHint,
+    // Altura canónica: la caja usa AppTheme.fieldHeight igual que el resto de
+    // los campos de la pantalla de captura.
+    return SizedBox(
+      height: AppTheme.fieldHeight,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppTheme.dividerColor),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 12, color: AppTheme.primary),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  fecha != null ? _formatDate(fecha) : '$label: —',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: AppTheme.fontSizeTableData,
+                    color: fecha != null
+                        ? AppTheme.textPrimary
+                        : AppTheme.textHint,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1103,10 +1537,14 @@ class _CapturaViewState extends State<CapturaView> {
 
     final picked = await showDatePicker(
       context: context,
-      initialDate: current ?? (esInicio ? DateTime(now.year - 1, now.month, now.day) : now),
+      initialDate:
+          current ??
+          (esInicio ? DateTime(now.year - 1, now.month, now.day) : now),
       firstDate: firstDate,
       lastDate: lastDate,
-      helpText: esInicio ? 'Selecciona fecha de inicio' : 'Selecciona fecha de fin',
+      helpText: esInicio
+          ? 'Selecciona fecha de inicio'
+          : 'Selecciona fecha de fin',
       cancelText: 'Cancelar',
       confirmText: 'Aceptar',
     );
@@ -1118,7 +1556,9 @@ class _CapturaViewState extends State<CapturaView> {
 
     // If both dates are present, auto-compute weeks (dias / 7).
     if (updated.fechaInicio != null && updated.fechaTermino != null) {
-      final dias = updated.fechaTermino!.difference(updated.fechaInicio!).inDays;
+      final dias = updated.fechaTermino!
+          .difference(updated.fechaInicio!)
+          .inDays;
       if (dias >= 0) {
         updated.semanas = dias / 7.0;
       }
@@ -1128,12 +1568,17 @@ class _CapturaViewState extends State<CapturaView> {
 
   /// Builds the summary row showing total semanas and weighted average.
   Widget _buildPeriodosSummary(
-      List<PeriodoSalarial> periodos, int totalSemanasPromedio) {
-    final totalSemanas =
-        periodos.fold<double>(0, (sum, p) => sum + p.semanas);
-    final sumaResultados =
-        periodos.fold<double>(0, (sum, p) => sum + p.resultado);
-    final promedio = totalSemanasPromedio > 0 ? sumaResultados / totalSemanasPromedio : 0.0;
+    List<PeriodoSalarial> periodos,
+    int totalSemanasPromedio,
+  ) {
+    final totalSemanas = periodos.fold<double>(0, (sum, p) => sum + p.semanas);
+    final sumaResultados = periodos.fold<double>(
+      0,
+      (sum, p) => sum + p.resultado,
+    );
+    final promedio = totalSemanasPromedio > 0
+        ? sumaResultados / totalSemanasPromedio
+        : 0.0;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -1143,11 +1588,15 @@ class _CapturaViewState extends State<CapturaView> {
       ),
       child: Row(
         children: [
-          Icon(Icons.calculate, size: 13, color: AppTheme.primary.withValues(alpha: 0.7)),
+          Icon(
+            Icons.calculate,
+            size: 13,
+            color: AppTheme.primary.withValues(alpha: 0.7),
+          ),
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              'Total: ${totalSemanas.toStringAsFixed(2)} / $totalSemanasPromedio sem  ·  Prom: \$${promedio.toStringAsFixed(4)}',
+              'Total: ${totalSemanas.round()} / $totalSemanasPromedio sem  ·  Prom: \$${promedio.toStringAsFixed(0)}',
               style: TextStyle(
                 fontSize: AppTheme.fontSizeTableData,
                 fontWeight: FontWeight.w500,
@@ -1161,25 +1610,49 @@ class _CapturaViewState extends State<CapturaView> {
   }
 
   Widget _buildSaveButton(RetroactiveProvider provider) {
+    // Regla C: con errores bloqueantes el guardado queda deshabilitado.
+    final bloqueado = provider.hasBlockingErrors;
     return ElevatedButton.icon(
-      onPressed: () => _saveConfiguration(provider),
+      onPressed: bloqueado ? null : () => _saveConfiguration(provider),
       icon: const Icon(Icons.save, size: 14),
-      label: const Text('Guardar',
-          style: TextStyle(
-              fontSize: AppTheme.fontSizeBody,
-              fontWeight: FontWeight.w600)),
+      label: Text(
+        bloqueado ? 'Guardar bloqueado' : 'Guardar',
+        style: const TextStyle(
+          fontSize: AppTheme.fontSizeBody,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       style: ElevatedButton.styleFrom(
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6)),
+        disabledBackgroundColor: Colors.grey.shade400,
+        disabledForegroundColor: Colors.white70,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingLg,
+          vertical: AppTheme.spacingSm,
+        ),
       ),
     );
   }
 
   Future<void> _saveConfiguration(RetroactiveProvider provider) async {
+    // Regla C: con errores bloqueantes NO se persiste nada.
+    if (provider.hasBlockingErrors) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se puede guardar: corrige los errores indicados en la consola',
+          ),
+          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Color(0xFFC62828),
+        ),
+      );
+      return;
+    }
     // La pensión SIEMPRE se proyecta a la edad de retiro: el guardado nunca
     // se bloquea por edad ni por semanas.
     await provider.persistAll();
@@ -1192,6 +1665,15 @@ class _CapturaViewState extends State<CapturaView> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+    // Flujo natural Captura → Pensión: tras guardar, se lleva al usuario a la
+    // pestaña Pensión para que vea su resultado sin pasos extra. El SnackBar
+    // persiste al cambiar de pestaña (ScaffoldMessenger es global a la app).
+    // Cambio defensivo: solo si existe un DefaultTabController ancestro
+    // (DefaultTabController.of lanza si no hay; así no se rompen los tests que
+    // montan CapturaView suelto sin el shell de pestañas).
+    if (context.findAncestorWidgetOfExactType<DefaultTabController>() != null) {
+      DefaultTabController.of(context).animateTo(2);
+    }
   }
 
   Widget _buildSectionHeader(IconData icon, String title) {
@@ -1241,10 +1723,9 @@ class _CapturaViewState extends State<CapturaView> {
     // Helper to get percentage for an age
     String getPercentageText(double age) {
       final edadEntera = rules.edadRoundingRule.roundToInteger(age);
-      final entry = rules.pensionAgePercentages.cast<PensionAgePercentage?>().firstWhere(
-        (p) => p!.age == edadEntera,
-        orElse: () => null,
-      );
+      final entry = rules.pensionAgePercentages
+          .cast<PensionAgePercentage?>()
+          .firstWhere((p) => p!.age == edadEntera, orElse: () => null);
       if (entry != null) {
         return '${(entry.percentage * 100).toInt()}%';
       }
@@ -1253,23 +1734,25 @@ class _CapturaViewState extends State<CapturaView> {
       }
       return '';
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Label above the dropdown (uniform with other fields)
         Padding(
           padding: const EdgeInsets.only(bottom: 2),
-          child: Text('Edad de pension',
-              style: const TextStyle(
-                fontSize: AppTheme.fontSizeBodySmall,
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w500,
-              )),
+          child: Text(
+            'Edad de pension',
+            style: const TextStyle(
+              fontSize: AppTheme.fontSizeBodySmall,
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
-        // Dropdown — compact, matches text field height exactly
+        // Dropdown — compact, usa la altura canónica de los campos
         Container(
-          height: 26,
+          height: AppTheme.fieldHeight,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: AppTheme.primary.withValues(alpha: 0.08),
@@ -1282,25 +1765,26 @@ class _CapturaViewState extends State<CapturaView> {
             isExpanded: true,
             isDense: true,
             underline: const SizedBox(),
-            style: const TextStyle(fontSize: AppTheme.fontSizeInput, color: AppTheme.textPrimary),
-            items: ages
-                .map((e) {
-                  final percentageText = getPercentageText(e);
-                  final ageText = e == e.roundToDouble()
-                      ? '${e.toInt()} años'
-                      : '${e.toStringAsFixed(2)} años';
-                  final displayText = percentageText.isNotEmpty
-                      ? '$ageText ($percentageText)'
-                      : ageText;
-                  return DropdownMenuItem(
-                    value: e,
-                    child: Text(
-                      displayText,
-                      style: const TextStyle(fontSize: AppTheme.fontSizeInput),
-                    ),
-                  );
-                })
-                .toList(),
+            style: const TextStyle(
+              fontSize: AppTheme.fontSizeInput,
+              color: AppTheme.textPrimary,
+            ),
+            items: ages.map((e) {
+              final percentageText = getPercentageText(e);
+              final ageText = e == e.roundToDouble()
+                  ? '${e.toInt()} años'
+                  : '${e.toStringAsFixed(2)} años';
+              final displayText = percentageText.isNotEmpty
+                  ? '$ageText ($percentageText)'
+                  : ageText;
+              return DropdownMenuItem(
+                value: e,
+                child: Text(
+                  displayText,
+                  style: const TextStyle(fontSize: AppTheme.fontSizeInput),
+                ),
+              );
+            }).toList(),
             onChanged: onChanged,
           ),
         ),
@@ -1310,25 +1794,36 @@ class _CapturaViewState extends State<CapturaView> {
 
   Widget _buildReadOnlyField(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      height: AppTheme.fieldHeight,
+      padding: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: AppTheme.dividerColor.withValues(alpha: 0.4)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Etiqueta y valor a ANCHO NATURAL (sin Flexible/Expanded, que
+          // reparten el ancho a la mitad y truncan la etiqueta). Con
+          // spaceBetween la etiqueta queda a la izquierda usando todo el
+          // espacio y el valor pegado al borde derecho, sin desperdiciar.
           Text(
             label,
-            style: const TextStyle(fontSize: AppTheme.fontSizeBodySmall, color: AppTheme.textSecondary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: AppTheme.fontSizeBodySmall,
+              color: AppTheme.textSecondary,
+            ),
           ),
-          const SizedBox(height: 1),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: AppTheme.fontSizeBody,
-              fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
           ),
@@ -1337,13 +1832,15 @@ class _CapturaViewState extends State<CapturaView> {
     );
   }
 
-
   /// Builds a validated date field with real-time validation feedback.
+  /// [validator] opcional permite añadir validaciones cruzadas (p. ej. contra
+  /// la fecha de nacimiento) sobre la validación base de formato/rango.
   Widget _buildValidatedDateField(
     String label,
     TextEditingController controller,
-    ValueChanged<String> onChanged,
-  ) {
+    ValueChanged<String> onChanged, {
+    ValidationFunction? validator,
+  }) {
     return ValidatedDateField(
       label: label,
       controller: controller,
@@ -1354,12 +1851,14 @@ class _CapturaViewState extends State<CapturaView> {
           final formatted = _autoFormatDate(cleaned);
           if (formatted != value) {
             controller.text = formatted;
-            controller.selection = TextSelection.collapsed(offset: formatted.length);
+            controller.selection = TextSelection.collapsed(
+              offset: formatted.length,
+            );
           }
         }
         onChanged(value);
       },
-      validator: InputValidator.validateDate,
+      validator: validator ?? InputValidator.validateDate,
       firstDate: PensionConstants.minDate,
       lastDate: PensionConstants.maxDate,
       padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -1367,14 +1866,14 @@ class _CapturaViewState extends State<CapturaView> {
     );
   }
 
-
   /// Builds a validated number field with real-time validation feedback.
   Widget _buildValidatedNumberField(
     String label,
     TextEditingController controller,
     ValueChanged<String> onChanged,
-    ValidationFunction validator,
-  ) {
+    ValidationFunction validator, {
+    bool neutralStyle = false,
+  }) {
     return ValidatedTextField(
       label: label,
       controller: controller,
@@ -1385,6 +1884,7 @@ class _CapturaViewState extends State<CapturaView> {
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       compact: true,
+      neutralStyle: neutralStyle,
     );
   }
 }

@@ -70,10 +70,7 @@ class RetroactiveProvider extends ChangeNotifier {
   /// calcula el [RetroactiveCalculator] en recalcularFactAsig; NO se resta
   /// semanasEnMod40 en ningún punto del modelo.
 
-  RetroactiveProvider({
-    required this.evaluator,
-    required this.persistence,
-  });
+  RetroactiveProvider({required this.evaluator, required this.persistence});
 
   // ===========================================================================
   // GETTERS — INPUTS
@@ -100,6 +97,33 @@ class RetroactiveProvider extends ChangeNotifier {
   DateTime get startDate => _inputs.startDate;
   DateTime get endDate => _inputs.endDate;
 
+  /// Fecha de pensión derivada = fecha de nacimiento + edad de retiro.
+  ///
+  /// La edad de retiro es un valor decimal sobre la cuadrícula legal
+  /// [60, 60.51, ..., 65]; se convierte a meses con redondeo para que Dart
+  /// haga el rollover correcto de mes/año (p. ej. 62.5 años → 750 meses).
+  DateTime get fechaPension => DateTime(
+    _inputs.fechaNacimiento.year,
+    _inputs.fechaNacimiento.month + (_inputs.edadRetiro * 12).round(),
+    _inputs.fechaNacimiento.day,
+  );
+
+  /// Sincroniza las fechas de Modalidad 40 como SALIDAS derivadas:
+  /// - [endDate]  = fecha de pensión
+  /// - [startDate] = fecha de pensión − (semanas en Mod40 × 7 días)
+  ///
+  /// Con esto "Inicio de aportaciones Mod40" y "Fecha de pensión" son campos
+  /// de salida (read-only) consistentes con la edad de retiro y las semanas
+  /// en Modalidad 40.
+  void _syncFechasMod40() {
+    _inputs.endDate = fechaPension;
+    persistence.saveEndDate(_inputs.endDate);
+    _inputs.startDate = fechaPension.subtract(
+      Duration(days: (_inputs.semanasEnMod40 * 7).round()),
+    );
+    persistence.saveStartDate(_inputs.startDate);
+  }
+
   double get costoModalidad40 => _inputs.costoModalidad40;
   double get retroactiveYears => _inputs.retroactiveYears;
 
@@ -115,13 +139,16 @@ class RetroactiveProvider extends ChangeNotifier {
   // --- Fechas ---
   DateTime get fechaCalculo => _inputs.fechaCalculo;
   DateTime get fechaNacimiento => _inputs.fechaNacimiento;
+  DateTime? get fechaAlta => _inputs.fechaAlta;
 
   // --- Elegibilidad legal (Ley 73) ---
 
   /// Edad actual del usuario (años con fracción decimal), calculada entre
   /// [fechaNacimiento] y [fechaCalculo].
-  double get edadActual =>
-      InputValidator.calcularEdadActual(_inputs.fechaNacimiento, _inputs.fechaCalculo);
+  double get edadActual => InputValidator.calcularEdadActual(
+    _inputs.fechaNacimiento,
+    _inputs.fechaCalculo,
+  );
 
   /// Total de semanas cotizadas ANTES de Modalidad 40 (historial IMSS).
   int get totalSemanasCotizadas => _inputs.semanasCotizadas;
@@ -136,34 +163,293 @@ class RetroactiveProvider extends ChangeNotifier {
   /// Es únicamente informativo: la app es una herramienta de PROYECCIÓN, la
   /// pensión SIEMPRE se proyecta a la edad de retiro sin importar la edad
   /// actual.
-  bool get cumpleEdadRetiro => edadActual >= _inputs.edadRetiro - _edadRetiroEpsilon;
+  bool get cumpleEdadRetiro =>
+      edadActual >= _inputs.edadRetiro - _edadRetiroEpsilon;
 
   /// Años (con fracción decimal) que faltan para alcanzar la edad de retiro
   /// seleccionada (negativo si ya se superó). Se usa en los mensajes de
   /// proyección, p. ej. "Proyección a los 63 años (faltan 5.51 años)".
   double get anosFaltantesEdadRetiro => _inputs.edadRetiro - edadActual;
 
-  /// Advertencias NO bloqueantes para la proyección de la pensión.
+  // ===========================================================================
+  // VALIDACIONES GLOBALES (consola de validación)
+  // ===========================================================================
+
+  /// True cuando existe al menos un ERROR bloqueante en [validacionesGlobales].
   ///
-  /// Como la pensión se proyecta SIEMPRE a la edad de retiro, la edad actual
-  /// nunca genera un requisito faltante. La única advertencia informativa
-  /// (que NO impide calcular) es cuando no se alcanzan las 500 semanas
-  /// mínimas (Arts. 154/162 LSS 1973), mismas que pueden cubrirse vía
-  /// Modalidad 40.
-  List<String> get requisitosPensionFaltantes {
-    final faltantes = <String>[];
-    if (!cumpleMinimoSemanas) {
-      faltantes.add(
-        'Mínimo 500 semanas cotizadas (actual: $totalSemanasCotizadas). '
-        'Te faltan ${PensionConstants.minSemanasLey73 - totalSemanasCotizadas} semanas.',
-      );
+  /// Se usa para bloquear el guardado (Regla C) y para pintar la consola en
+  /// rojo: mientras haya errores NO se permite persistir la configuración.
+  bool get hasBlockingErrors =>
+      validacionesGlobales.any((v) => !v.isValid && !v.isWarning);
+
+  /// Mensaje bloqueante de la Regla A (aplicabilidad de la Ley 73) cuando la
+  /// Ley 73 NO aplica al asegurado; `null` en caso contrario (o si solo falta
+  /// confirmar la fecha de alta, que es un aviso NO bloqueante).
+  ///
+  /// Centraliza la regla en un solo lugar para que la IA Experta y la pestaña
+  /// Pensión usen EXACTAMENTE el mismo criterio que [validacionesGlobales]: si
+  /// el nacimiento o la fecha de alta son posteriores a 1997-07-01, la pensión
+  /// de la Ley 73 no corresponde (regiría la Ley 1997) y NO se debe avanzar.
+  String? get ley73BlockingMessage {
+    // (a) Nacimiento posterior al límite → la Ley 73 no aplica.
+    if (!fechaNacimiento.isBefore(PensionConstants.fechaLimiteLey73)) {
+      return PensionConstants.warningLey73NoAplica;
     }
-    return faltantes;
+    // (b) Dado de alta después del límite → la Ley 73 no aplica.
+    if (_inputs.fechaAlta != null &&
+        !_inputs.fechaAlta!.isBefore(PensionConstants.fechaLimiteLey73)) {
+      return PensionConstants.errorLey73FechaAltaPosterior;
+    }
+    // (c) Sin fecha de alta (o alta anterior a 1997-07-01) → no bloquea.
+    return null;
   }
+
+  /// Validaciones consolidadas de TODO el modelo (consola de validación).
+  ///
+  /// Orden de la consola: primero errores (bloquean; entre ellos el requisito
+  /// LEGAL de mínimo 500 semanas, Art. 154, y la Regla A de aplicabilidad de
+  /// la Ley 73), luego advertencias (informativas, no bloquean; hoy el tope
+  /// de 25 UMAs y el aviso de incrementos negativos) y finalmente los
+  /// requisitos cumplidos (resultados `valid()` sin mensaje).
+  /// Cada check agrega SIEMPRE un resultado, por lo que la consola muestra el
+  /// estado completo.
+  ///
+  /// Reglas incluidas:
+  ///   - Regla D: la fecha de cálculo no puede ser anterior a la de nacimiento
+  ///     (el redondeo Art. 167 ya vive en [fechaPension]).
+  ///   - Regla A: aplicabilidad de la Ley 73 (nacimiento antes de 1997-07-01);
+  ///     si el nacimiento es posterior, BLOQUEA (rojo).
+  ///   - 14 validaciones de entradas (semanas, salarios, UMA, periodos e
+  ///     incrementos).
+  List<ValidationResult> get validacionesGlobales {
+    final errores = <ValidationResult>[];
+    final advertencias = <ValidationResult>[];
+    final ok = <ValidationResult>[];
+
+    void agregar(ValidationResult r) {
+      if (!r.isValid) {
+        errores.add(r);
+      } else if (r.isWarning) {
+        advertencias.add(r);
+      } else {
+        ok.add(r);
+      }
+    }
+
+    final minWeeksIncrement =
+        evaluator.metadata.financialRules.minWeeksForIncrement;
+
+    // 1. Regla D — coherencia de fechas (fecha de cálculo >= nacimiento).
+    if (fechaCalculo.isBefore(fechaNacimiento)) {
+      agregar(
+        ValidationResult.error(
+          '${PensionConstants.errorFechaCalculoMenorNacimiento} '
+          '(nacimiento: ${_fmtFecha(fechaNacimiento)}, '
+          'cálculo: ${_fmtFecha(fechaCalculo)}).',
+        ),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    // 2. Edad plausible (cubre el caso silencioso de calcularEdadActual → 0).
+    final fechasCoherentes = !fechaCalculo.isBefore(fechaNacimiento);
+    if (fechasCoherentes && (edadActual <= 0 || edadActual > 120)) {
+      agregar(ValidationResult.error(PensionConstants.errorEdadNoPlausible));
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    // 3. Regla A — aplicabilidad de la Ley 73. El único factor determinante es
+    // haber sido dado de alta y cotizado antes del 1 de julio de 1997 (no
+    // existe límite de edad máxima ni fecha de nacimiento límite).
+    // (a)/(b) Nacimiento o alta posteriores al límite → BLOQUEANTE (rojo): la
+    // Ley 73 no aplica. El mensaje y el criterio los centraliza
+    // [ley73BlockingMessage] para que la IA Experta y la pestaña Pensión usen
+    // la misma regla y no se avance con una pensión inválida.
+    final mensajeLey73 = ley73BlockingMessage;
+    if (mensajeLey73 != null) {
+      agregar(ValidationResult.error(mensajeLey73));
+    } else if (_inputs.fechaAlta == null) {
+      // (c) Nacido antes de 1997 pero sin fecha de alta capturada → aviso
+      // INFORMATIVO (no bloquea): pedimos la fecha de alta para confirmar.
+      agregar(
+        ValidationResult.warning(PensionConstants.warningLey73SinFechaAlta),
+      );
+    } else {
+      // (d) Fecha de alta anterior a 1997-07-01 → la Ley 73 SÍ aplica.
+      agregar(ValidationResult.valid());
+    }
+
+    // 4. Mínimo de 500 semanas (Art. 154 LSS 1973). Es requisito LEGAL de la
+    // Ley 73: sin 500 semanas no hay derecho a pensión, por lo que BLOQUEA
+    // el cálculo (rojo). Las semanas faltantes pueden cubrirse vía Modalidad 40.
+    if (!cumpleMinimoSemanas) {
+      agregar(
+        ValidationResult.error(
+          'Mínimo 500 semanas cotizadas (actual: $totalSemanasCotizadas). '
+          'Te faltan ${PensionConstants.minSemanasLey73 - totalSemanasCotizadas} semanas.',
+        ),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    // 5. Salario diario promedio > 0.
+    if (salarioDiarioPromedio <= 0) {
+      agregar(
+        ValidationResult.error(
+          'El salario diario promedio debe ser mayor a 0.',
+        ),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    // 6. Salario promedio por debajo del salario mínimo.
+    if (salarioDiarioPromedio > 0 &&
+        salarioMinimoDiario > 0 &&
+        salarioDiarioPromedio < salarioMinimoDiario) {
+      agregar(
+        ValidationResult.error(
+          'El salario promedio (${salarioDiarioPromedio.toStringAsFixed(2)}) es '
+          'menor al salario mínimo diario '
+          '(${salarioMinimoDiario.toStringAsFixed(2)}); verifica el dato.',
+        ),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    // 7. Tope de 25 UMAs (Ley 73). Es un tope LEGAL de cotización: el
+    // excedente no cotiza, pero NO impide la pensión, por lo que es
+    // INFORMATIVO (warning, no bloquea) — el cálculo aplica el tope solo.
+    final topeUmas = umaMultiplier * umaDiaria;
+    if (umaDiaria > 0 && salarioDiarioPromedio > topeUmas) {
+      agregar(
+        ValidationResult.warning(
+          'El salario promedio (${salarioDiarioPromedio.toStringAsFixed(2)}) '
+          'supera el tope de ${topeUmas.toStringAsFixed(2)} '
+          '(${umaMultiplier.toStringAsFixed(0)} UMAs); el excedente no cotiza.',
+        ),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    // 8. UMA diaria > 0.
+    if (umaDiaria <= 0) {
+      agregar(ValidationResult.error('La UMA diaria debe ser mayor a 0.'));
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    // 9. Salario mínimo diario > 0.
+    if (salarioMinimoDiario <= 0) {
+      agregar(
+        ValidationResult.error('El salario mínimo diario debe ser mayor a 0.'),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    // 10. Año de pensión en rango.
+    if (pensionYear < PensionConstants.minAnoPension ||
+        pensionYear > PensionConstants.maxAnoPension) {
+      agregar(
+        ValidationResult.error(
+          'El año de pensión ($pensionYear) está fuera del rango '
+          '(${PensionConstants.minAnoPension}-${PensionConstants.maxAnoPension}).',
+        ),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    // 11. Semanas en Modalidad 40.
+    if (semanasEnMod40 < 0) {
+      agregar(
+        ValidationResult.error(
+          'Las semanas en Modalidad 40 no pueden ser negativas.',
+        ),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+    if (semanasEnMod40 > PensionConstants.maxSemanas) {
+      agregar(
+        ValidationResult.error(
+          'Las semanas en Modalidad 40 (${semanasEnMod40.toStringAsFixed(0)}) '
+          'superan el máximo de ${PensionConstants.maxSemanas}.',
+        ),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    // 12-13. Periodos del desglose.
+    if (periodos.isEmpty) {
+      agregar(ValidationResult.valid());
+      agregar(ValidationResult.valid());
+    } else {
+      if (periodos.any((p) => p.semanas <= 0)) {
+        agregar(
+          ValidationResult.error(
+            'Existe un periodo con semanas menores o iguales a 0.',
+          ),
+        );
+      } else {
+        agregar(ValidationResult.valid());
+      }
+      if (periodos.any((p) => p.salarioDiario <= 0)) {
+        agregar(
+          ValidationResult.error(
+            'Existe un periodo con salario diario menor o igual a 0.',
+          ),
+        );
+      } else {
+        agregar(ValidationResult.valid());
+      }
+    }
+
+    // 14. Semanas suficientes para incrementos positivos. Es INFORMATIVO
+    // (warning, no bloquea), coherente con el check 4: con menos de
+    // $minWeeksIncrement semanas el incremento puede resultar negativo, pero
+    // la proyección se mantiene activa y solo se alerta en amarillo. Solo se
+    // muestra cuando el mínimo legal de la Ley 73 (>= 500 semanas) ya se
+    // cumple; si no, el check 4 (rojo) ya cubre el aviso y evita duplicarlo.
+    if (totalSemanasCotizadas >= PensionConstants.minSemanasLey73 &&
+        totalSemanasCotizadas < minWeeksIncrement) {
+      agregar(
+        ValidationResult.warning(
+          'Con $totalSemanasCotizadas semanas (< $minWeeksIncrement) el '
+          'incremento por semanas adicionales puede resultar negativo.',
+        ),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
+    return [...errores, ...advertencias, ...ok];
+  }
+
+  String _fmtFecha(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 
   // --- Semanas (desglose) ---
   double get semanasAntesMod40 => _inputs.semanasAntesMod40;
   double get semanasEnMod40 => _inputs.semanasEnMod40;
+
+  /// true cuando el usuario NO hará aportaciones voluntarias de Modalidad 40.
+  /// false (default): Modalidad 40 activa.
+  bool get modalidad40OptOut => _inputs.modalidad40OptOut;
+
+  /// Total de semanas cotizadas CON Modalidad 40
+  /// (= historial IMSS antes de Mod40 + semanas en Mod40).
+  int get totalSemanasConMod40 =>
+      (_inputs.semanasCotizadas + _inputs.semanasEnMod40).round();
 
   /// Nuevo salario promedio calculado desde el desglose de periodos.
   ///
@@ -189,7 +475,8 @@ class RetroactiveProvider extends ChangeNotifier {
   // GETTERS — DERIVED
   // ===========================================================================
 
-  FactAsigCalculation? get factAsigCalculation => _calculator.factAsigCalculation;
+  FactAsigCalculation? get factAsigCalculation =>
+      _calculator.factAsigCalculation;
   PensionMod40Calculation? get pensionMod40Calculation =>
       _calculator.pensionMod40Calculation;
   CostoMod40Calculation? get costoMod40Calculation =>
@@ -250,9 +537,10 @@ class RetroactiveProvider extends ChangeNotifier {
       );
 
       // Load persisted values with metadata defaults
-      _inputs.salarioPromedio250Semanas = persistence.loadSalarioPromedio250Semanas(
-        defaultValue: defaults.salarioPromedio250Semanas,
-      );
+      _inputs.salarioPromedio250Semanas = persistence
+          .loadSalarioPromedio250Semanas(
+            defaultValue: defaults.salarioPromedio250Semanas,
+          );
       _inputs.totalSemanasSinMod40 = persistence.loadTotalSemanasSinMod40(
         defaultValue: defaults.totalSemanasSinMod40,
       );
@@ -261,15 +549,14 @@ class RetroactiveProvider extends ChangeNotifier {
       );
       // Normalize any persisted off-grid age (e.g. legacy 60.5) onto the
       // legal grid [60, 60.51, ..., 65] so the dropdown never renders blank.
-      final snappedAge =
-          rules.pensionAgeDropdown.nearestAge(_inputs.edadRetiro);
+      final snappedAge = rules.pensionAgeDropdown.nearestAge(
+        _inputs.edadRetiro,
+      );
       if (snappedAge != _inputs.edadRetiro) {
         _inputs.edadRetiro = snappedAge;
         persistence.saveEdadRetiro(snappedAge);
       }
-      _inputs.umaMultiplier = persistence.loadUmaMultiplier(
-        defaultValue: 25.0,
-      );
+      _inputs.umaMultiplier = persistence.loadUmaMultiplier(defaultValue: 25.0);
       _inputs.salarioRegistrado = persistence.loadSalarioRegistrado(
         defaultValue: defaults.salarioRegistrado,
       );
@@ -302,6 +589,9 @@ class RetroactiveProvider extends ChangeNotifier {
       _inputs.semanasEnMod40 = persistence.loadSemanasEnMod40(
         defaultValue: defaults.semanasEnMod40,
       );
+      _inputs.modalidad40OptOut = persistence.loadModalidad40OptOut(
+        defaultValue: false,
+      );
 
       // RetroactiveYears: default = semanasEnMod40 converted to years (e.g. 130 sem = 2.5 años)
       _inputs.retroactiveYears = persistence.loadRetroactiveYears(
@@ -320,8 +610,12 @@ class RetroactiveProvider extends ChangeNotifier {
         persistence.saveSemanasAntesMod40(_inputs.semanasAntesMod40);
       }
 
-      ErrorHandler.logDebug('Semanas antes Mod40 loaded: ${_inputs.semanasAntesMod40} (default was: ${defaults.semanasAntesMod40})');
-      ErrorHandler.logDebug('Salario Promedio 250 Semanas loaded: ${_inputs.salarioPromedio250Semanas} (default was: ${defaults.salarioPromedio250Semanas})');
+      ErrorHandler.logDebug(
+        'Semanas antes Mod40 loaded: ${_inputs.semanasAntesMod40} (default was: ${defaults.semanasAntesMod40})',
+      );
+      ErrorHandler.logDebug(
+        'Salario Promedio 250 Semanas loaded: ${_inputs.salarioPromedio250Semanas} (default was: ${defaults.salarioPromedio250Semanas})',
+      );
 
       // Load fechas
       _inputs.fechaCalculo = persistence.loadFechaCalculo(
@@ -329,6 +623,9 @@ class RetroactiveProvider extends ChangeNotifier {
       );
       _inputs.fechaNacimiento = persistence.loadFechaNacimiento(
         defaultValue: defaults.fechaNacimiento,
+      );
+      _inputs.fechaAlta = persistence.loadFechaAlta(
+        defaultValue: defaults.fechaAlta,
       );
 
       // Load periodos from persistence
@@ -356,22 +653,46 @@ class RetroactiveProvider extends ChangeNotifier {
         _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
         persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
         // Recalculate _salarioPromedio250Semanas from NON-Mod40 periods only
-        final totalSemanasSinMod40 = _inputs.periodos.fold<double>(0, (sum, p) => sum + (!p.esMod40 ? p.semanas : 0));
-        final totalResultadosSinMod40 = _inputs.periodos.fold<double>(0, (sum, p) => sum + (!p.esMod40 ? p.resultado : 0));
-        _inputs.salarioPromedio250Semanas = totalSemanasSinMod40 > 0 ? totalResultadosSinMod40 / totalSemanasSinMod40 : 0;
-        persistence.saveSalarioPromedio250Semanas(_inputs.salarioPromedio250Semanas);
-        ErrorHandler.logDebug('Salario Promedio 250 Semanas calculated from seeded periodos: ${_inputs.salarioPromedio250Semanas} (totalSemanasSinMod40: $totalSemanasSinMod40, totalResultadosSinMod40: $totalResultadosSinMod40)');
+        final totalSemanasSinMod40 = _inputs.periodos.fold<double>(
+          0,
+          (sum, p) => sum + (!p.esMod40 ? p.semanas : 0),
+        );
+        final totalResultadosSinMod40 = _inputs.periodos.fold<double>(
+          0,
+          (sum, p) => sum + (!p.esMod40 ? p.resultado : 0),
+        );
+        _inputs.salarioPromedio250Semanas = totalSemanasSinMod40 > 0
+            ? totalResultadosSinMod40 / totalSemanasSinMod40
+            : 0;
+        persistence.saveSalarioPromedio250Semanas(
+          _inputs.salarioPromedio250Semanas,
+        );
+        ErrorHandler.logDebug(
+          'Salario Promedio 250 Semanas calculated from seeded periodos: ${_inputs.salarioPromedio250Semanas} (totalSemanasSinMod40: $totalSemanasSinMod40, totalResultadosSinMod40: $totalResultadosSinMod40)',
+        );
         _inputs.salarioPromAutoCalculado = true;
       } else {
         // Recalculate _salarioDiarioPromedio from saved periods (Excel E19).
         _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
         persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
         // Recalculate _salarioPromedio250Semanas from NON-Mod40 periods only
-        final totalSemanasSinMod40 = _inputs.periodos.fold<double>(0, (sum, p) => sum + (!p.esMod40 ? p.semanas : 0));
-        final totalResultadosSinMod40 = _inputs.periodos.fold<double>(0, (sum, p) => sum + (!p.esMod40 ? p.resultado : 0));
-        _inputs.salarioPromedio250Semanas = totalSemanasSinMod40 > 0 ? totalResultadosSinMod40 / totalSemanasSinMod40 : 0;
-        persistence.saveSalarioPromedio250Semanas(_inputs.salarioPromedio250Semanas);
-        ErrorHandler.logDebug('Salario Promedio 250 Semanas calculated from saved periodos: ${_inputs.salarioPromedio250Semanas} (totalSemanasSinMod40: $totalSemanasSinMod40, totalResultadosSinMod40: $totalResultadosSinMod40)');
+        final totalSemanasSinMod40 = _inputs.periodos.fold<double>(
+          0,
+          (sum, p) => sum + (!p.esMod40 ? p.semanas : 0),
+        );
+        final totalResultadosSinMod40 = _inputs.periodos.fold<double>(
+          0,
+          (sum, p) => sum + (!p.esMod40 ? p.resultado : 0),
+        );
+        _inputs.salarioPromedio250Semanas = totalSemanasSinMod40 > 0
+            ? totalResultadosSinMod40 / totalSemanasSinMod40
+            : 0;
+        persistence.saveSalarioPromedio250Semanas(
+          _inputs.salarioPromedio250Semanas,
+        );
+        ErrorHandler.logDebug(
+          'Salario Promedio 250 Semanas calculated from saved periodos: ${_inputs.salarioPromedio250Semanas} (totalSemanasSinMod40: $totalSemanasSinMod40, totalResultadosSinMod40: $totalResultadosSinMod40)',
+        );
         // Periods were loaded from persistence (user's saved data).
         // Set auto-calculated to false so that _recalculatePromedioFromPeriodos
         // does NOT overwrite the user's manually-edited period values when
@@ -383,8 +704,10 @@ class RetroactiveProvider extends ChangeNotifier {
       // IMPORTANT: semanasAntesMod40 is a user-captured input (Excel DATOS GEN).
       // Never derive it from SAL. PROM periodos.
       // Only keep semanasEnMod40 synchronized from Mod40-tagged periods.
-      final semanasEnMod40 =
-          _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
+      final semanasEnMod40 = _inputs.periodos.fold<double>(
+        0,
+        (sum, p) => sum + (p.esMod40 ? p.semanas : 0),
+      );
       _inputs.semanasEnMod40 = semanasEnMod40;
       persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
       // `semanasCotizadas` es el historial IMSS ANTES de Modalidad 40 (fuente
@@ -410,11 +733,9 @@ class RetroactiveProvider extends ChangeNotifier {
         persistence.saveTotalSemanasSinMod40(antes.toInt());
       }
 
-      // Auto-calculate endDate from startDate + semanasEnMod40
-      if (_inputs.semanasEnMod40 > 0) {
-        _inputs.endDate = _inputs.startDate.add(Duration(days: (_inputs.semanasEnMod40 * 7).round()));
-        persistence.saveEndDate(_inputs.endDate);
-      }
+      // Fechas Mod40 como salidas derivadas: endDate = fecha de pensión,
+      // startDate = fecha de pensión − (semanas en Mod40 × 7 días).
+      _syncFechasMod40();
 
       // Recalculate all (in dependency order)
       _calculator.recalcularTodo();
@@ -574,10 +895,14 @@ class RetroactiveProvider extends ChangeNotifier {
     if (anyChanged) {
       persistence.savePeriodos(_inputs.periodos);
       // Recalculate Mod40 weeks only; semanasAntesMod40 stays user-controlled.
-      final semanasEnMod40 =
-          _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
+      final semanasEnMod40 = _inputs.periodos.fold<double>(
+        0,
+        (sum, p) => sum + (p.esMod40 ? p.semanas : 0),
+      );
       _inputs.semanasEnMod40 = semanasEnMod40;
       persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
+      // Fechas Mod40 como salidas derivadas (endDate = fecha de pensión).
+      _syncFechasMod40();
       _reconcileTotalSemanas();
       _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
       persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
@@ -610,20 +935,20 @@ class RetroactiveProvider extends ChangeNotifier {
     final nuevos = <PeriodoSalarial>[
       for (final p in _inputs.periodos)
         if (p.esMod40) p,
-      PeriodoSalarial(
-        salarioDiario: v,
-        semanas: 250,
-        esMod40: false,
-      ),
+      PeriodoSalarial(salarioDiario: v, semanas: 250, esMod40: false),
     ];
     _inputs.periodos = nuevos;
     persistence.savePeriodos(nuevos);
 
     // Recalcular semanas Mod40 desde los periodos conservados.
-    final semanasEnMod40 =
-        _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
+    final semanasEnMod40 = _inputs.periodos.fold<double>(
+      0,
+      (sum, p) => sum + (p.esMod40 ? p.semanas : 0),
+    );
     _inputs.semanasEnMod40 = semanasEnMod40;
     persistence.saveSemanasEnMod40(semanasEnMod40);
+    // Fechas Mod40 como salidas derivadas (endDate = fecha de pensión).
+    _syncFechasMod40();
     // El total capturado por el usuario (semanasCotizadas, p. ej. 1961) es la
     // fuente primaria: NO se sobrescribe con "antes + en". Tampoco se fuerza
     // "antes = 250" ni el modo desglose explícito, para que un
@@ -653,10 +978,14 @@ class RetroactiveProvider extends ChangeNotifier {
     // User manually set periods → disable auto-projection
     _inputs.salarioPromAutoCalculado = false;
     // Recalculate Mod40 weeks only; semanasAntesMod40 stays user-controlled.
-    final semanasEnMod40 =
-        _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
+    final semanasEnMod40 = _inputs.periodos.fold<double>(
+      0,
+      (sum, p) => sum + (p.esMod40 ? p.semanas : 0),
+    );
     _inputs.semanasEnMod40 = semanasEnMod40;
     persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
+    // Fechas Mod40 como salidas derivadas (endDate = fecha de pensión).
+    _syncFechasMod40();
     // Reconciliar total vs. desglose (invariante total = antes + en) sin
     // sobrescribir el total capturado por el usuario.
     _reconcileTotalSemanas();
@@ -664,10 +993,20 @@ class RetroactiveProvider extends ChangeNotifier {
     _inputs.salarioDiarioPromedio = _calculateSalarioPromedioFromPeriodos();
     persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
     // Recalculate Salario Promedio 250 Semanas from NON-Mod40 periods only
-    final totalSemanasSinMod40 = _inputs.periodos.fold<double>(0, (sum, p) => sum + (!p.esMod40 ? p.semanas : 0));
-    final totalResultadosSinMod40 = _inputs.periodos.fold<double>(0, (sum, p) => sum + (!p.esMod40 ? p.resultado : 0));
-    _inputs.salarioPromedio250Semanas = totalSemanasSinMod40 > 0 ? totalResultadosSinMod40 / totalSemanasSinMod40 : _inputs.salarioPromedio250Semanas;
-    persistence.saveSalarioPromedio250Semanas(_inputs.salarioPromedio250Semanas);
+    final totalSemanasSinMod40 = _inputs.periodos.fold<double>(
+      0,
+      (sum, p) => sum + (!p.esMod40 ? p.semanas : 0),
+    );
+    final totalResultadosSinMod40 = _inputs.periodos.fold<double>(
+      0,
+      (sum, p) => sum + (!p.esMod40 ? p.resultado : 0),
+    );
+    _inputs.salarioPromedio250Semanas = totalSemanasSinMod40 > 0
+        ? totalResultadosSinMod40 / totalSemanasSinMod40
+        : _inputs.salarioPromedio250Semanas;
+    persistence.saveSalarioPromedio250Semanas(
+      _inputs.salarioPromedio250Semanas,
+    );
 
     _calculator.recalcularFactAsig();
     _calculator.recalcularFactAsigSinMod40();
@@ -690,10 +1029,14 @@ class RetroactiveProvider extends ChangeNotifier {
     // won't overwrite the user's custom period values later.
     _inputs.salarioPromAutoCalculado = false;
     // Recalculate Mod40 weeks only; semanasAntesMod40 stays user-controlled.
-    final semanasEnMod40 =
-        _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
+    final semanasEnMod40 = _inputs.periodos.fold<double>(
+      0,
+      (sum, p) => sum + (p.esMod40 ? p.semanas : 0),
+    );
     _inputs.semanasEnMod40 = semanasEnMod40;
     persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
+    // Fechas Mod40 como salidas derivadas (endDate = fecha de pensión).
+    _syncFechasMod40();
     ErrorHandler.logDebug('Semanas Mod40 actualizadas:');
     ErrorHandler.logDebug('  - Valor calculado: $semanasEnMod40');
     ErrorHandler.logDebug('  - Valor asignado: ${_inputs.semanasEnMod40}');
@@ -705,15 +1048,29 @@ class RetroactiveProvider extends ChangeNotifier {
     persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
     // Calculate Salario Promedio 250 Semanas from NON-Mod40 periods only (per user request: Desglose Sal. Prom without M40)
     if (_inputs.periodos.isNotEmpty) {
-      final totalSemanasSinMod40 = _inputs.periodos.fold<double>(0, (sum, p) => sum + (!p.esMod40 ? p.semanas : 0));
-      final totalResultadosSinMod40 = _inputs.periodos.fold<double>(0, (sum, p) => sum + (!p.esMod40 ? p.resultado : 0));
-      _inputs.salarioPromedio250Semanas = totalSemanasSinMod40 > 0 ? totalResultadosSinMod40 / totalSemanasSinMod40 : 0;
-      persistence.saveSalarioPromedio250Semanas(_inputs.salarioPromedio250Semanas);
+      final totalSemanasSinMod40 = _inputs.periodos.fold<double>(
+        0,
+        (sum, p) => sum + (!p.esMod40 ? p.semanas : 0),
+      );
+      final totalResultadosSinMod40 = _inputs.periodos.fold<double>(
+        0,
+        (sum, p) => sum + (!p.esMod40 ? p.resultado : 0),
+      );
+      _inputs.salarioPromedio250Semanas = totalSemanasSinMod40 > 0
+          ? totalResultadosSinMod40 / totalSemanasSinMod40
+          : 0;
+      persistence.saveSalarioPromedio250Semanas(
+        _inputs.salarioPromedio250Semanas,
+      );
     }
 
     ErrorHandler.logDebug('  - Semanas en Mod40: $semanasEnMod40');
-    ErrorHandler.logDebug('  - Salario Promedio 250 Semanas: ${_inputs.salarioPromedio250Semanas}');
-    ErrorHandler.logDebug('  - Salario Diario Promedio: ${_inputs.salarioDiarioPromedio}');
+    ErrorHandler.logDebug(
+      '  - Salario Promedio 250 Semanas: ${_inputs.salarioPromedio250Semanas}',
+    );
+    ErrorHandler.logDebug(
+      '  - Salario Diario Promedio: ${_inputs.salarioDiarioPromedio}',
+    );
 
     _calculator.recalcularFactAsig();
     _calculator.recalcularFactAsigSinMod40();
@@ -728,11 +1085,9 @@ class RetroactiveProvider extends ChangeNotifier {
   /// [_recalculatePromedioFromPeriodos] does NOT overwrite the user's custom
   /// period values later (e.g. when [setSalarioPromedio250Semanas] is called).
   void addPeriodo() {
-    _inputs.periodos.add(PeriodoSalarial(
-      salarioDiario: 0.0,
-      semanas: 0.0,
-      esMod40: false,
-    ));
+    _inputs.periodos.add(
+      PeriodoSalarial(salarioDiario: 0.0, semanas: 0.0, esMod40: false),
+    );
     persistence.savePeriodos(_inputs.periodos);
     // User manually added a period → disable auto-projection
     _inputs.salarioPromAutoCalculado = false;
@@ -752,10 +1107,14 @@ class RetroactiveProvider extends ChangeNotifier {
     // User manually removed a period → disable auto-projection
     _inputs.salarioPromAutoCalculado = false;
     // Recalculate Mod40 weeks only; semanasAntesMod40 stays user-controlled.
-    final semanasEnMod40 =
-        _inputs.periodos.fold<double>(0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
+    final semanasEnMod40 = _inputs.periodos.fold<double>(
+      0,
+      (sum, p) => sum + (p.esMod40 ? p.semanas : 0),
+    );
     _inputs.semanasEnMod40 = semanasEnMod40;
     persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
+    // Fechas Mod40 como salidas derivadas (endDate = fecha de pensión).
+    _syncFechasMod40();
     // Reconciliar total vs. desglose (invariante total = antes + en) sin
     // sobrescribir el total capturado por el usuario.
     _reconcileTotalSemanas();
@@ -801,9 +1160,12 @@ class RetroactiveProvider extends ChangeNotifier {
     if (snapped == _inputs.edadRetiro) return;
     _inputs.edadRetiro = snapped;
     persistence.saveEdadRetiro(snapped);
+    // Fechas Mod40 como salidas derivadas (endDate = fecha de pensión).
+    _syncFechasMod40();
 
     // Recalculate pensionYear from fechaNacimiento + edadRetiro
-    _inputs.pensionYear = _inputs.fechaNacimiento.year + _inputs.edadRetiro.floor();
+    _inputs.pensionYear =
+        _inputs.fechaNacimiento.year + _inputs.edadRetiro.floor();
     persistence.savePensionYear(_inputs.pensionYear);
 
     // Always project UMA and Salario Mínimo when edad changes, regardless
@@ -880,7 +1242,9 @@ class RetroactiveProvider extends ChangeNotifier {
     persistence.saveStartDate(v);
     // Auto-calculate endDate from new startDate + semanasEnMod40
     if (_inputs.semanasEnMod40 > 0) {
-      _inputs.endDate = _inputs.startDate.add(Duration(days: (_inputs.semanasEnMod40 * 7).round()));
+      _inputs.endDate = _inputs.startDate.add(
+        Duration(days: (_inputs.semanasEnMod40 * 7).round()),
+      );
       persistence.saveEndDate(_inputs.endDate);
     }
     _calculator.recalcularCostoMod40();
@@ -936,8 +1300,11 @@ class RetroactiveProvider extends ChangeNotifier {
     persistence.saveFechaNacimiento(v);
 
     // Recalculate pensionYear from fechaNacimiento + edadRetiro
-    _inputs.pensionYear = _inputs.fechaNacimiento.year + _inputs.edadRetiro.floor();
+    _inputs.pensionYear =
+        _inputs.fechaNacimiento.year + _inputs.edadRetiro.floor();
     persistence.savePensionYear(_inputs.pensionYear);
+    // Fechas Mod40 como salidas derivadas (endDate = fecha de pensión).
+    _syncFechasMod40();
 
     // Always project UMA and Salario Mínimo when fechaNacimiento changes,
     // regardless of _umaSmAutoCalculated (same reasoning as setEdadRetiro).
@@ -956,6 +1323,15 @@ class RetroactiveProvider extends ChangeNotifier {
     _calculator.recalcularRetroactivo();
     _calculator.recalcularInversion();
     _calculator.recalcularFinanciamiento();
+    notifyListeners();
+  }
+
+  /// Setter simple: la fecha de alta solo afecta la validación de elegibilidad
+  /// (Ley 73), no los cálculos, por lo que no necesita recalcular nada.
+  void setFechaAlta(DateTime? v) {
+    if (v == _inputs.fechaAlta) return;
+    _inputs.fechaAlta = v;
+    persistence.saveFechaAlta(v);
     notifyListeners();
   }
 
@@ -1004,7 +1380,60 @@ class RetroactiveProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Activa/desactiva la preferencia "sin Modalidad 40".
+  ///
+  /// Al elegir "No" (optOut = true) se neutraliza el dato de Modalidad 40:
+  /// se eliminan los renglones esMod40 del desglose y el escalar queda en 0,
+  /// de modo que la validación nunca vea un "renglón vacío" y el cálculo corra
+  /// por la ruta "Sin M40". El UMA multiplier y las fechas se conservan para
+  /// restaurar la experiencia al volver a "Sí".
+  ///
+  /// Al volver a "Sí" (optOut = false) se restaura el cálculo CON Modalidad 40
+  /// sobre los datos previos conservados (UMA multiplier, fechas, desglose
+  /// pre-M40); el usuario reingresa sus semanas de M40 si desea.
+  void setModalidad40OptOut(bool optOut) {
+    if (_inputs.modalidad40OptOut == optOut) return;
+    _inputs.modalidad40OptOut = optOut;
+    persistence.saveModalidad40OptOut(optOut);
+    if (optOut) {
+      _neutralizeMod40Data();
+    } else {
+      _reconcileTotalSemanas();
+      _recalculatePromedioFromPeriodos();
+      _calculator.recalcularTodo();
+    }
+    notifyListeners();
+  }
+
+  /// Elimina todo rastro de Modalidad 40 del estado activo:
+  /// - Quita los renglones esMod40 del desglose (no crea un renglón vacío).
+  /// - Pone el escalar `semanasEnMod40` en 0.
+  /// - Recalcula por la ruta "Sin M40".
+  ///
+  /// Idempotente: si ya no hay renglones esMod40 ni semanas, no recalcula.
+  void _neutralizeMod40Data() {
+    final hasMod40Rows = _inputs.periodos.any((p) => p.esMod40);
+    if (!hasMod40Rows && _inputs.semanasEnMod40 == 0) return;
+
+    if (_inputs.periodos.isNotEmpty) {
+      _inputs.periodos = _inputs.periodos.where((p) => !p.esMod40).toList();
+      persistence.savePeriodos(_inputs.periodos);
+    }
+    _inputs.semanasEnMod40 = 0;
+    persistence.saveSemanasEnMod40(0);
+    _reconcileTotalSemanas();
+    _recalculatePromedioFromPeriodos();
+    _calculator.recalcularTodo();
+  }
+
   void setSemanasEnMod40(double v) {
+    // Opt-out activo: Modalidad 40 desactivada. En lugar de crear (o mantener)
+    // un renglón esMod40 —que con 0 semanas dispara la validación de "renglón
+    // vacío"— se neutraliza el dato y el cálculo corre por la ruta "Sin M40".
+    if (_inputs.modalidad40OptOut) {
+      _neutralizeMod40Data();
+      return;
+    }
     // El desglose es la fuente de verdad: el PRIMER registro esMod40
     // ("Mod40 → Semanas") contiene las semanas de Modalidad 40 y el escalar
     // semanasEnMod40 se deriva de la suma de las semanas de los periodos
@@ -1015,7 +1444,8 @@ class RetroactiveProvider extends ChangeNotifier {
     if (_inputs.periodos.isNotEmpty) {
       final firstMod40Index = _inputs.periodos.indexWhere((p) => p.esMod40);
       final mod40Count = _inputs.periodos.where((p) => p.esMod40).length;
-      final alreadyInDesglose = firstMod40Index != -1 &&
+      final alreadyInDesglose =
+          firstMod40Index != -1 &&
           mod40Count == 1 &&
           (_inputs.periodos[firstMod40Index].semanas - v).abs() < 0.0001;
 
@@ -1026,7 +1456,9 @@ class RetroactiveProvider extends ChangeNotifier {
           // semanas que respondió el usuario y el salario de referencia.
           final salario = salarioRegistrado > 0
               ? salarioRegistrado
-              : (salarioPromedio250Semanas > 0 ? salarioPromedio250Semanas : 0.0);
+              : (salarioPromedio250Semanas > 0
+                    ? salarioPromedio250Semanas
+                    : 0.0);
           _inputs.periodos = [
             PeriodoSalarial(salarioDiario: salario, semanas: v, esMod40: true),
             ..._inputs.periodos,
@@ -1041,13 +1473,15 @@ class RetroactiveProvider extends ChangeNotifier {
             if (!p.esMod40) {
               rebuilt.add(p);
             } else if (i == firstMod40Index) {
-              rebuilt.add(PeriodoSalarial(
-                fechaInicio: p.fechaInicio,
-                fechaTermino: p.fechaTermino,
-                salarioDiario: p.salarioDiario,
-                semanas: v,
-                esMod40: true,
-              ));
+              rebuilt.add(
+                PeriodoSalarial(
+                  fechaInicio: p.fechaInicio,
+                  fechaTermino: p.fechaTermino,
+                  salarioDiario: p.salarioDiario,
+                  semanas: v,
+                  esMod40: true,
+                ),
+              );
             }
             // Los periodos Mod40 adicionales se colapsan (no se agregan).
           }
@@ -1059,7 +1493,9 @@ class RetroactiveProvider extends ChangeNotifier {
       // Derivar el escalar desde el desglose (fuente de verdad): siempre se
       // sincroniza con la suma de las semanas de los periodos esMod40.
       v = _inputs.periodos.fold<double>(
-          0, (sum, p) => sum + (p.esMod40 ? p.semanas : 0));
+        0,
+        (sum, p) => sum + (p.esMod40 ? p.semanas : 0),
+      );
       _inputs.semanasEnMod40 = v;
       persistence.saveSemanasEnMod40(v);
     } else {
@@ -1078,11 +1514,8 @@ class RetroactiveProvider extends ChangeNotifier {
     // (= antes + en) lo calcula el RetroactiveCalculator en recalcularFactAsig.
     // Solo se re-alinea el alias del desglose (invariante de los tres campos).
     _reconcileTotalSemanas();
-    // Auto-calculate endDate from startDate + semanasEnMod40
-    if (v > 0) {
-      _inputs.endDate = _inputs.startDate.add(Duration(days: (v * 7).round()));
-      persistence.saveEndDate(_inputs.endDate);
-    }
+    // Fechas Mod40 como salidas derivadas (endDate = fecha de pensión).
+    _syncFechasMod40();
     // Recalculate Salario Promedio (con Mod40) when the weight distribution changes
     // WITHOUT overwriting the user's desglose de periodos.
     _recalculatePromedioFromPeriodos();
@@ -1113,7 +1546,10 @@ class RetroactiveProvider extends ChangeNotifier {
     if (!evaluator.isInitialized) return;
     final rules = evaluator.metadata.financialRules;
     _inputs.umaDiaria = evaluator.getProjectedUma(_inputs.pensionYear, rules);
-    _inputs.salarioMinimoDiario = evaluator.getProjectedMinWage(_inputs.pensionYear, rules);
+    _inputs.salarioMinimoDiario = evaluator.getProjectedMinWage(
+      _inputs.pensionYear,
+      rules,
+    );
     persistence.saveUmaDiaria(_inputs.umaDiaria);
     persistence.saveSalarioMinimoDiario(_inputs.salarioMinimoDiario);
     // Re-enable auto-projection so future changes keep working
@@ -1147,7 +1583,9 @@ class RetroactiveProvider extends ChangeNotifier {
           esMod40: true,
         );
         anyChanged = true;
-        ErrorHandler.logDebug('Periodo Mod40 actualizado con salario: ${_inputs.salarioRegistrado}');
+        ErrorHandler.logDebug(
+          'Periodo Mod40 actualizado con salario: ${_inputs.salarioRegistrado}',
+        );
       }
     }
     if (anyChanged) {
@@ -1172,8 +1610,11 @@ class RetroactiveProvider extends ChangeNotifier {
     if (!evaluator.isInitialized) {
       return _inputs.salarioPromedio250Semanas;
     }
-    final totalSemanasPromedio =
-        evaluator.metadata.financialRules.totalSemanasPromedio.toDouble();
+    final totalSemanasPromedio = evaluator
+        .metadata
+        .financialRules
+        .totalSemanasPromedio
+        .toDouble();
     return _periodosEngine.promedioDesdePeriodos(
       _inputs.periodos,
       totalSemanasPromedio: totalSemanasPromedio,
@@ -1229,7 +1670,9 @@ class RetroactiveProvider extends ChangeNotifier {
         persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
 
         // Recalculate Semanas en Mod40 (always)
-        _inputs.semanasEnMod40 = _periodosEngine.semanasEnMod40(_inputs.periodos);
+        _inputs.semanasEnMod40 = _periodosEngine.semanasEnMod40(
+          _inputs.periodos,
+        );
         persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
       }
       // Manual mode (periods exist but the user set the promedio manually):
@@ -1288,6 +1731,7 @@ class RetroactiveProvider extends ChangeNotifier {
   Future<void> persistAll() async {
     persistence.saveFechaCalculo(_inputs.fechaCalculo);
     persistence.saveFechaNacimiento(_inputs.fechaNacimiento);
+    persistence.saveFechaAlta(_inputs.fechaAlta);
     persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
     persistence.saveUmaDiaria(_inputs.umaDiaria);
     persistence.saveSalarioMinimoDiario(_inputs.salarioMinimoDiario);
@@ -1296,7 +1740,9 @@ class RetroactiveProvider extends ChangeNotifier {
     persistence.saveTieneEsposa(_inputs.tieneEsposa);
     persistence.saveNumeroHijos(_inputs.numeroHijos);
     persistence.saveNumeroPadres(_inputs.numeroPadres);
-    persistence.saveSalarioPromedio250Semanas(_inputs.salarioPromedio250Semanas);
+    persistence.saveSalarioPromedio250Semanas(
+      _inputs.salarioPromedio250Semanas,
+    );
     persistence.saveTotalSemanasSinMod40(_inputs.totalSemanasSinMod40);
     persistence.saveEdadRetiro(_inputs.edadRetiro);
     persistence.saveUmaMultiplier(_inputs.umaMultiplier);
@@ -1307,6 +1753,7 @@ class RetroactiveProvider extends ChangeNotifier {
     persistence.saveRetroactiveYears(_inputs.retroactiveYears);
     persistence.saveSemanasAntesMod40(_inputs.semanasAntesMod40);
     persistence.saveSemanasEnMod40(_inputs.semanasEnMod40);
+    persistence.saveModalidad40OptOut(_inputs.modalidad40OptOut);
     persistence.savePeriodos(_inputs.periodos);
   }
 

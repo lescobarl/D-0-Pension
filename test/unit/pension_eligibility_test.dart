@@ -14,12 +14,13 @@ import 'package:d_0_pension/services/retroactive_provider.dart';
 ///
 /// IMPORTANTE: esta app es una herramienta de PROYECCIÓN. La pensión se
 /// proyecta SIEMPRE a la edad de retiro seleccionada, por lo que la edad
-/// actual NUNCA bloquea el cálculo. El único aviso (informativo, no
-/// bloqueante) es cuando no se alcanzan las 500 semanas mínimas, mismas que
-/// pueden cubrirse vía Modalidad 40.
+/// actual NUNCA bloquea el cálculo. El mínimo legal de 500 semanas (Art. 154
+/// LSS 1973) SÍ bloquea el cálculo (error rojo), pues sin él no hay derecho a
+/// pensión; las semanas faltantes pueden cubrirse vía Modalidad 40.
 ///
 /// Incluye el caso real del usuario (59.51 años): la proyección permanece
-/// activa y solo se muestra la advertencia por semanas si corresponde.
+/// activa y, si faltan semanas al mínimo legal, se muestra el error por
+/// semanas.
 ///
 /// Run with: flutter test test/unit/pension_eligibility_test.dart
 void main() {
@@ -30,10 +31,12 @@ void main() {
       expect(PensionConstants.minSemanasLey73, 500);
     });
 
-    test('Edad mínima de 60 años para Cesantía en Edad Avanzada (Art. 154)',
-        () {
-      expect(PensionConstants.minEdadPensionLey73, 60);
-    });
+    test(
+      'Edad mínima de 60 años para Cesantía en Edad Avanzada (Art. 154)',
+      () {
+        expect(PensionConstants.minEdadPensionLey73, 60);
+      },
+    );
 
     test('Edad de 65 años para Vejez al 100% (Art. 162)', () {
       expect(PensionConstants.edadVejezLey73, 65);
@@ -55,8 +58,11 @@ void main() {
         DateTime(2025, 11, 18),
       );
       expect(edad, closeTo(59.51, 0.02));
-      expect(edad < 60.0, true,
-          reason: 'El usuario con 59.51 años debe quedar por debajo de 60');
+      expect(
+        edad < 60.0,
+        true,
+        reason: 'El usuario con 59.51 años debe quedar por debajo de 60',
+      );
     });
 
     test('fechaCalculo anterior a nacimiento retorna 0', () {
@@ -65,27 +71,6 @@ void main() {
         DateTime(1999, 1, 1),
       );
       expect(edad, 0);
-    });
-  });
-
-  group('validateMinSemanasLey73', () {
-    test('Menos de 500 semanas genera warning', () {
-      final r = InputValidator.validateMinSemanasLey73(499);
-      expect(r.isWarning, true);
-      expect(r.isValid, true); // warning permite captura, pero alerta
-      expect(r.message, contains('500'));
-    });
-
-    test('Exactamente 500 semanas es válido', () {
-      final r = InputValidator.validateMinSemanasLey73(500);
-      expect(r.isValid, true);
-      expect(r.isWarning, false);
-    });
-
-    test('Más de 500 semanas es válido', () {
-      final r = InputValidator.validateMinSemanasLey73(800);
-      expect(r.isValid, true);
-      expect(r.isWarning, false);
     });
   });
 
@@ -109,8 +94,8 @@ void main() {
     /// Mod40) y `_recalculatePromedioFromPeriodos` re-deriva `semanasEnMod40`
     /// desde esos periodos. Se limpia la lista con `setPeriodos([])` para que
     /// el total cotizado sea exactamente `semanasAntesMod40`.
-    test('400 semanas + 59.51 años: la proyección sigue activa (solo advierte '
-        'por semanas)', () async {
+    test('400 semanas + 59.51 años: falta el mínimo legal de 500 semanas '
+        '(error bloqueante)', () async {
       provider.setFechaNacimiento(DateTime(1966, 5, 15));
       provider.setFechaCalculo(DateTime(2025, 11, 18));
       await provider.setEdadRetiro(60);
@@ -121,9 +106,17 @@ void main() {
       expect(provider.totalSemanasCotizadas, 400);
       expect(provider.cumpleMinimoSemanas, false);
       expect(provider.cumpleEdadRetiro, false);
-      // La edad NO bloquea: la única advertencia es por semanas < 500.
-      expect(provider.requisitosPensionFaltantes.length, 1);
-      expect(provider.requisitosPensionFaltantes.first, contains('500'));
+      // La edad NO bloquea la proyección, pero el mínimo legal de 500 semanas
+      // (check 4, Art. 154 LSS 1973) SÍ bloquea: es un error rojo, no una
+      // advertencia.
+      expect(provider.hasBlockingErrors, true);
+      final errores = provider.validacionesGlobales
+          .where((v) => !v.isValid)
+          .toList();
+      expect(
+        errores.where((e) => e.message.contains('500')).length,
+        greaterThanOrEqualTo(1),
+      );
       expect(provider.anosFaltantesEdadRetiro, closeTo(0.49, 0.02));
     });
 
@@ -139,23 +132,38 @@ void main() {
       expect(provider.cumpleMinimoSemanas, true);
       expect(provider.cumpleEdadRetiro, false);
       // La edad no es un requisito faltante: la pensión se proyecta a los 60.
-      expect(provider.requisitosPensionFaltantes, isEmpty);
+      // Con 500 semanas no hay advertencia por semanas (checks 4 y 15 válidos).
+      expect(provider.hasBlockingErrors, false);
+      expect(
+        provider.validacionesGlobales.where(
+          (v) => v.isWarning && v.message.contains('500'),
+        ),
+        isEmpty,
+      );
       expect(provider.anosFaltantesEdadRetiro, closeTo(0.49, 0.02));
     });
 
-    test('60 años cumplidos + 500 semanas: ya alcanzó la edad de retiro',
-        () async {
-      provider.setFechaNacimiento(DateTime(1965, 5, 15));
-      provider.setFechaCalculo(DateTime(2025, 5, 15));
-      await provider.setEdadRetiro(60);
-      provider.setPeriodos([]);
-      provider.setSemanasAntesMod40(500);
+    test(
+      '60 años cumplidos + 500 semanas: ya alcanzó la edad de retiro',
+      () async {
+        provider.setFechaNacimiento(DateTime(1965, 5, 15));
+        provider.setFechaCalculo(DateTime(2025, 5, 15));
+        await provider.setEdadRetiro(60);
+        provider.setPeriodos([]);
+        provider.setSemanasAntesMod40(500);
 
-      expect(provider.totalSemanasCotizadas, 500);
-      expect(provider.cumpleMinimoSemanas, true);
-      expect(provider.cumpleEdadRetiro, true);
-      expect(provider.requisitosPensionFaltantes, isEmpty);
-      expect(provider.anosFaltantesEdadRetiro, closeTo(0.0, 0.05));
-    });
+        expect(provider.totalSemanasCotizadas, 500);
+        expect(provider.cumpleMinimoSemanas, true);
+        expect(provider.cumpleEdadRetiro, true);
+        expect(provider.hasBlockingErrors, false);
+        expect(
+          provider.validacionesGlobales.where(
+            (v) => v.isWarning && v.message.contains('500'),
+          ),
+          isEmpty,
+        );
+        expect(provider.anosFaltantesEdadRetiro, closeTo(0.0, 0.05));
+      },
+    );
   });
 }

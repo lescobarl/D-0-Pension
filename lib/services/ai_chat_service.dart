@@ -9,8 +9,7 @@ import '../core/ai/guided_input.dart';
 import 'retroactive_provider.dart';
 
 /// OpenRouter base URL for chat completions.
-const String _kOpenRouterUrl =
-    'https://openrouter.ai/api/v1/chat/completions';
+const String _kOpenRouterUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
 /// Default model to use via OpenRouter.
 const String _kDefaultModel = 'google/gemini-2.5-flash-lite';
@@ -44,23 +43,23 @@ class ChatMessage {
   }) : timestamp = timestamp ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'role': role,
-        'text': text,
-        'timestamp': timestamp.toIso8601String(),
-        if (suggestions != null) 'suggestions': suggestions,
-        if (suggestionField != null) 'suggestionField': suggestionField,
-      };
+    'role': role,
+    'text': text,
+    'timestamp': timestamp.toIso8601String(),
+    if (suggestions != null) 'suggestions': suggestions,
+    if (suggestionField != null) 'suggestionField': suggestionField,
+  };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-        role: json['role'] as String? ?? 'user',
-        text: json['text'] as String? ?? '',
-        timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ??
-            DateTime.now(),
-        suggestions: (json['suggestions'] as List<dynamic>?)
-            ?.map((e) => e.toString())
-            .toList(),
-        suggestionField: json['suggestionField'] as String?,
-      );
+    role: json['role'] as String? ?? 'user',
+    text: json['text'] as String? ?? '',
+    timestamp:
+        DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),
+    suggestions: (json['suggestions'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .toList(),
+    suggestionField: json['suggestionField'] as String?,
+  );
 }
 
 /// Result from parsing an AI response.
@@ -116,10 +115,7 @@ class AiExplain extends AiResponseResult {
   final String message;
   final List<String> differences;
 
-  const AiExplain({
-    required this.message,
-    required this.differences,
-  });
+  const AiExplain({required this.message, required this.differences});
 }
 
 class AiError extends AiResponseResult {
@@ -165,9 +161,9 @@ class AiChatService extends ChangeNotifier {
     required RetroactiveProvider provider,
     required String apiKey,
     http.Client? client,
-  })  : _provider = provider,
-        _apiKey = apiKey,
-        _client = client ?? http.Client();
+  }) : _provider = provider,
+       _apiKey = apiKey,
+       _client = client ?? http.Client();
 
   @override
   void dispose() {
@@ -189,6 +185,16 @@ class AiChatService extends ChangeNotifier {
   /// aplica al campo guiado actual en lugar de caer en la IA y mostrar el
   /// confuso "No pude aplicar ningún campo".
   String? get currentGuideField => _currentGuideField;
+
+  /// `true` cuando ya no falta ningún dato del conjunto capturable (la guía
+  /// determinista de [GuidedInput] no tiene más preguntas pendientes).
+  ///
+  /// Es la señal de "captura terminada" que usa el flujo natural
+  /// IA Experta → Captura: la vista la consulta tras cada mensaje y, en el
+  /// flanco de incompleto → completo, lleva al usuario a revisar y guardar
+  /// en la pestaña Captura.
+  bool get isCaptureComplete =>
+      GuidedInput.nextGuide(_provider, _guidedFields) == null;
 
   int get sessionMessageCount => _sessionMessageCount;
   int get dailySessionCount => _dailySessionCount;
@@ -251,8 +257,9 @@ class AiChatService extends ChangeNotifier {
     try {
       final historyJson = prefs.getStringList('ai_chat_history') ?? [];
       _messages = historyJson
-          .map((s) =>
-              ChatMessage.fromJson(jsonDecode(s) as Map<String, dynamic>))
+          .map(
+            (s) => ChatMessage.fromJson(jsonDecode(s) as Map<String, dynamic>),
+          )
           .toList();
     } catch (_) {
       // Corrupt persisted history should never block the assistant.
@@ -268,10 +275,9 @@ class AiChatService extends ChangeNotifier {
 
     // Save only last N messages
     final maxMessages = FairUsePolicy.maxSavedChats * 6;
-    final toSave =
-        _messages.length > maxMessages
-            ? _messages.sublist(_messages.length - maxMessages)
-            : _messages;
+    final toSave = _messages.length > maxMessages
+        ? _messages.sublist(_messages.length - maxMessages)
+        : _messages;
     await prefs.setStringList(
       'ai_chat_history',
       toSave.map((m) => jsonEncode(m.toJson())).toList(),
@@ -330,16 +336,19 @@ class AiChatService extends ChangeNotifier {
         suggestions = guide.suggestions;
       } else {
         _currentGuideField = null;
-        reply = '¡Listo! He guardado tu información. Puedes validarla en la '
+        reply =
+            '¡Listo! He guardado tu información. Puedes validarla en la '
             'pestaña Captura o revisar tus resultados en la pestaña Pensión.';
         suggestions = const <String>[];
       }
-      _messages.add(ChatMessage(
-        role: 'assistant',
-        text: reply,
-        suggestions: suggestions,
-        suggestionField: guide?.field,
-      ));
+      _messages.add(
+        ChatMessage(
+          role: 'assistant',
+          text: reply,
+          suggestions: suggestions,
+          suggestionField: guide?.field,
+        ),
+      );
       notifyListeners();
       return AiChat(reply);
     }
@@ -447,7 +456,8 @@ class AiChatService extends ChangeNotifier {
           suggestions = guide.suggestions;
           suggestionField = guide.field;
         } else if (_containsVagueMissingQuestion(displayMessage)) {
-          displayMessage = '¡Listo! He guardado tu información. Puedes '
+          displayMessage =
+              '¡Listo! He guardado tu información. Puedes '
               'validarla en la pestaña Captura o revisar tus resultados en la '
               'pestaña Pensión.';
         }
@@ -512,10 +522,25 @@ class AiChatService extends ChangeNotifier {
     final String reply;
     final List<String> suggestions;
     String? suggestionField;
-    if (answer == null) {
-      // No se pudo interpretar → se vuelve a preguntar el mismo dato.
+    if (answer == null || !answer.ok) {
+      // No se pudo interpretar, o la respuesta es legalmente inválida (p. ej.
+      // fecha de alta posterior al 1 de julio de 1997) → se vuelve a preguntar
+      // el mismo dato SIN avanzar al siguiente campo ni mostrar "¡Listo!". El
+      // bloqueo usa el mismo criterio que la pestaña Pensión
+      // (PensionConstants.fechaLimiteLey73).
       final guide = GuidedInput.questionFor(_provider, field);
-      reply = 'No entendí tu respuesta. ${guide.question}';
+      final String reason;
+      if (answer == null) {
+        reason = 'No entendí tu respuesta.';
+      } else {
+        final message = answer.message;
+        reason = (message == null || message.isEmpty)
+            ? 'No se pudo guardar el dato.'
+            : message;
+      }
+      reply = (answer == null)
+          ? '$reason ${guide.question}'
+          : '$reason\n\n${guide.question}';
       suggestions = guide.suggestions;
       suggestionField = field;
       _messages.add(
@@ -541,8 +566,9 @@ class AiChatService extends ChangeNotifier {
       suggestionField = answer.nextField;
     } else {
       // Confirmación formateada del dato capturado (p. ej. la fecha de
-      // nacimiento se muestra como DD/MM/AAAA para que se vea correcta).
-      final String confirmacion = _confirmacionCampo(field, answer.setFields);
+      // nacimiento se muestra como AAAA-MM-DD (ISO) para que se vea correcta).
+      final String confirmacion =
+          answer.message ?? _confirmacionCampo(field, answer.setFields);
       final next = GuidedInput.nextGuide(_provider, _guidedFields);
       if (next != null) {
         _guidedFields.add(next.field);
@@ -556,11 +582,11 @@ class AiChatService extends ChangeNotifier {
         _currentGuideField = null;
         reply = confirmacion.isEmpty
             ? '¡Listo! He guardado tu información. Puedes validarla en la '
-                'pestaña Captura o revisar tus resultados en la pestaña '
-                'Pensión.'
+                  'pestaña Captura o revisar tus resultados en la pestaña '
+                  'Pensión.'
             : '$confirmacion\n\n¡Listo! He guardado tu información. Puedes '
-                'validarla en la pestaña Captura o revisar tus resultados en '
-                'la pestaña Pensión.';
+                  'validarla en la pestaña Captura o revisar tus resultados en '
+                  'la pestaña Pensión.';
         suggestions = const <String>[];
       }
     }
@@ -602,6 +628,9 @@ class AiChatService extends ChangeNotifier {
         case 'fechaNacimiento':
           values[field] = _provider.fechaNacimiento;
           break;
+        case 'fechaAlta':
+          values[field] = _provider.fechaAlta;
+          break;
         case 'edadRetiro':
           values[field] = _provider.edadRetiro;
           break;
@@ -622,6 +651,9 @@ class AiChatService extends ChangeNotifier {
           break;
         case 'semanasEnMod40':
           values[field] = _provider.semanasEnMod40;
+          break;
+        case 'modalidad40OptOut':
+          values[field] = _provider.modalidad40OptOut;
           break;
         case 'startDate':
           values[field] = _provider.startDate;
@@ -694,7 +726,8 @@ class AiChatService extends ChangeNotifier {
 
     if (response.statusCode != 200) {
       throw Exception(
-          'HTTP ${response.statusCode}: ${utf8.decode(response.bodyBytes)}');
+        'HTTP ${response.statusCode}: ${utf8.decode(response.bodyBytes)}',
+      );
     }
 
     // Decode as UTF-8 explicitly (OpenRouter responses are UTF-8).
@@ -718,9 +751,7 @@ class AiChatService extends ChangeNotifier {
   /// Test seam: exposes the OpenRouter HTTP call so tests can exercise the
   /// exact request/response path (including web) with a mocked [http.Client].
   @visibleForTesting
-  Future<String> callOpenRouterApiForTest(
-    List<Map<String, String>> messages,
-  ) =>
+  Future<String> callOpenRouterApiForTest(List<Map<String, String>> messages) =>
       _callOpenRouterApi(messages);
 
   // ──────────────────────────────────────────────
@@ -739,13 +770,14 @@ class AiChatService extends ChangeNotifier {
         switch (type) {
           case 'fill_fields':
             final values = data['values'] as Map<String, dynamic>? ?? {};
-            final message = data['message'] as String? ??
+            final message =
+                data['message'] as String? ??
                 'He actualizado los datos en la calculadora.';
             final missingFields =
                 (data['missing_fields'] as List<dynamic>?)
-                        ?.map((e) => e.toString())
-                        .toList() ??
-                    [];
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                [];
             return AiFillFields(
               values: values,
               message: message,
@@ -755,17 +787,19 @@ class AiChatService extends ChangeNotifier {
 
           case 'question':
             return AiQuestion(
-              message: data['message'] as String? ??
-                  '¿Qué más necesitas saber?',
+              message:
+                  data['message'] as String? ?? '¿Qué más necesitas saber?',
               expectedField: data['expected_field'] as String?,
             );
 
           case 'compare':
             final externalValues =
                 data['external_values'] as Map<String, dynamic>? ?? {};
-            final message = data['message'] as String? ??
+            final message =
+                data['message'] as String? ??
                 'He comparado los valores. Revisa las diferencias.';
-            final differences = (data['differences'] as List<dynamic>?)
+            final differences =
+                (data['differences'] as List<dynamic>?)
                     ?.map((e) => e.toString())
                     .toList() ??
                 [];
@@ -776,13 +810,14 @@ class AiChatService extends ChangeNotifier {
             );
 
           case 'explain':
-            final explainMessage = data['message'] as String? ??
+            final explainMessage =
+                data['message'] as String? ??
                 'Aquí te explico las diferencias encontradas.';
             final explainDifferences =
                 (data['differences'] as List<dynamic>?)
-                        ?.map((e) => e.toString())
-                        .toList() ??
-                    [];
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                [];
             return AiExplain(
               message: explainMessage,
               differences: explainDifferences,
@@ -790,11 +825,11 @@ class AiChatService extends ChangeNotifier {
 
           default:
             // JSON without recognized 'type' → treat as chat.
-            return AiChat(_cleanText(
-              data['message'] as String? ??
-                  data['text'] as String? ??
-                  text,
-            ));
+            return AiChat(
+              _cleanText(
+                data['message'] as String? ?? data['text'] as String? ?? text,
+              ),
+            );
         }
       } catch (_) {
         // JSON extraction succeeded but parsing failed → fall through to chat.
@@ -941,7 +976,7 @@ class AiChatService extends ChangeNotifier {
 
   /// Devuelve una confirmación formateada del dato capturado en el flujo
   /// guiado, o una cadena vacía si no aplica. En particular, la fecha de
-  /// nacimiento se muestra como DD/MM/AAAA para que se vea correctamente
+  /// nacimiento se muestra como AAAA-MM-DD (ISO) para que se vea correctamente
   /// (el usuario la escribe en formato compacto, p. ej. 30011969).
   String _confirmacionCampo(String field, List<String> setFields) {
     if (field == 'fechaNacimiento' && setFields.contains('fechaNacimiento')) {
@@ -949,7 +984,15 @@ class AiChatService extends ChangeNotifier {
       final dd = d.day.toString().padLeft(2, '0');
       final mm = d.month.toString().padLeft(2, '0');
       final aaaa = d.year.toString().padLeft(4, '0');
-      return 'Perfecto, tu fecha de nacimiento es $dd/$mm/$aaaa.';
+      return 'Perfecto, tu fecha de nacimiento es $aaaa-$mm-$dd.';
+    }
+    if (field == 'fechaAlta' && setFields.contains('fechaAlta')) {
+      final d = _provider.fechaAlta;
+      if (d == null) return '';
+      final dd = d.day.toString().padLeft(2, '0');
+      final mm = d.month.toString().padLeft(2, '0');
+      final aaaa = d.year.toString().padLeft(4, '0');
+      return 'Perfecto, tu fecha de alta en el IMSS es $aaaa-$mm-$dd.';
     }
     return '';
   }
@@ -967,16 +1010,10 @@ class AiChatService extends ChangeNotifier {
     final messages = <Map<String, String>>[];
 
     // System prompt as a dedicated system message
-    messages.add({
-      'role': 'system',
-      'content': ChatPrompt.systemPrompt,
-    });
+    messages.add({'role': 'system', 'content': ChatPrompt.systemPrompt});
 
     // App state context as a system message (invisible to user but guides AI)
-    messages.add({
-      'role': 'system',
-      'content': _buildAppStateContext(),
-    });
+    messages.add({'role': 'system', 'content': _buildAppStateContext()});
 
     // Add all conversation messages
     for (final msg in _messages) {
@@ -993,26 +1030,28 @@ class AiChatService extends ChangeNotifier {
   String _buildAppStateContext() {
     final buf = StringBuffer();
     buf.writeln(
-        '[CONTEXTO ACTUAL DE LA CALCULADORA - Valores actualmente cargados:]');
+      '[CONTEXTO ACTUAL DE LA CALCULADORA - Valores actualmente cargados:]',
+    );
 
     buf.writeln(
-        'Salario promedio 250 sem. (anterior): ${_provider.salarioPromedio250Semanas}');
+      'Salario promedio 250 sem. (anterior): ${_provider.salarioPromedio250Semanas}',
+    );
     buf.writeln(
-        'Nuevo salario promedio 250 sem. (con M40): ${_provider.nuevoSalarioPromedio}');
+      'Nuevo salario promedio 250 sem. (con M40): ${_provider.nuevoSalarioPromedio}',
+    );
     buf.writeln('UMA diaria: ${_provider.umaDiaria}');
-    buf.writeln(
-        'Salario mínimo diario: ${_provider.salarioMinimoDiario}');
+    buf.writeln('Salario mínimo diario: ${_provider.salarioMinimoDiario}');
     buf.writeln('Año de pensión: ${_provider.pensionYear}');
     buf.writeln('Semanas cotizadas: ${_provider.semanasCotizadas}');
     buf.writeln('Tiene esposa: ${_provider.tieneEsposa}');
     buf.writeln('Número de hijos: ${_provider.numeroHijos}');
     buf.writeln('Número de padres: ${_provider.numeroPadres}');
+    buf.writeln('Edad de retiro (con Mod40): ${_provider.edadRetiro}');
+    buf.writeln('Salario registrado: ${_provider.salarioRegistrado}');
+    buf.writeln('Años retroactivos: ${_provider.retroactiveYears}');
     buf.writeln(
-        'Edad de retiro (con Mod40): ${_provider.edadRetiro}');
-    buf.writeln(
-        'Salario registrado: ${_provider.salarioRegistrado}');
-    buf.writeln(
-        'Años retroactivos: ${_provider.retroactiveYears}');
+      'Modalidad 40 opt-out (sin M40): ${_provider.modalidad40OptOut}',
+    );
 
     final fact = _provider.factAsigCalculation;
     final pension = _provider.pensionMod40Calculation;
@@ -1023,49 +1062,63 @@ class AiChatService extends ChangeNotifier {
 
     if (fact != null) {
       buf.writeln(
-          '[RESULTADO] Pensión mensual (Fact+Asig): ${fact.totalPensionMensual}');
+        '[RESULTADO] Pensión mensual (Fact+Asig): ${fact.totalPensionMensual}',
+      );
       buf.writeln(
-          '[RESULTADO] Pensión anual (Fact+Asig): ${fact.totalPensionAnual}');
+        '[RESULTADO] Pensión anual (Fact+Asig): ${fact.totalPensionAnual}',
+      );
       buf.writeln(
-          '[RESULTADO] Cuantía básica anual: ${fact.totalCuantiaBasicaAnual}');
+        '[RESULTADO] Cuantía básica anual: ${fact.totalCuantiaBasicaAnual}',
+      );
       buf.writeln(
-          '[RESULTADO] Incrementos anuales total: ${fact.totalIncrementosAnuales}');
+        '[RESULTADO] Incrementos anuales total: ${fact.totalIncrementosAnuales}',
+      );
       buf.writeln(
-          '[RESULTADO] Asignaciones familiares total: ${fact.cuantiaTotalAsignaciones}');
+        '[RESULTADO] Asignaciones familiares total: ${fact.cuantiaTotalAsignaciones}',
+      );
       buf.writeln(
-          '[RESULTADO] Ayuda asistencial total: ${fact.totalAyudaAsistencial}');
+        '[RESULTADO] Ayuda asistencial total: ${fact.totalAyudaAsistencial}',
+      );
     }
     if (pension != null) {
       buf.writeln(
-          '[RESULTADO] Pensión mensual (Mod40): ${pension.pensionMensual}');
+        '[RESULTADO] Pensión mensual (Mod40): ${pension.pensionMensual}',
+      );
       buf.writeln(
-          '[RESULTADO] Pensión mínima garantizada (Mod40): ${pension.pensionMinimaGarantizada}');
+        '[RESULTADO] Pensión mínima garantizada (Mod40): ${pension.pensionMinimaGarantizada}',
+      );
     }
     if (costo != null) {
-      buf.writeln(
-          '[RESULTADO] Costo total Modalidad 40: ${costo.costoTotal}');
+      buf.writeln('[RESULTADO] Costo total Modalidad 40: ${costo.costoTotal}');
     }
     if (inversion != null) {
       buf.writeln(
-          '[RESULTADO] Ganancia total (Inversión): ${inversion.gananciaTotal}');
+        '[RESULTADO] Ganancia total (Inversión): ${inversion.gananciaTotal}',
+      );
       buf.writeln(
-          '[RESULTADO] Tasa de rendimiento: ${inversion.tasaRendimiento}');
+        '[RESULTADO] Tasa de rendimiento: ${inversion.tasaRendimiento}',
+      );
     }
     if (financiamiento != null) {
       buf.writeln(
-          '[RESULTADO] Financiamiento - monto del crédito: ${financiamiento.montoCredito}');
+        '[RESULTADO] Financiamiento - monto del crédito: ${financiamiento.montoCredito}',
+      );
       buf.writeln(
-          '[RESULTADO] Financiamiento - costo financiamiento: ${financiamiento.costoFinanciamiento}');
+        '[RESULTADO] Financiamiento - costo financiamiento: ${financiamiento.costoFinanciamiento}',
+      );
     }
     if (retroactivo != null) {
       buf.writeln(
-          '[RESULTADO] Pago retroactivo - costo total: ${retroactivo.costoTotal}');
+        '[RESULTADO] Pago retroactivo - costo total: ${retroactivo.costoTotal}',
+      );
       buf.writeln(
-          '[RESULTADO] Pago retroactivo - inversión total: ${retroactivo.inversionTotal}');
+        '[RESULTADO] Pago retroactivo - inversión total: ${retroactivo.inversionTotal}',
+      );
     }
 
     buf.writeln(
-        '[INSTRUCCIÓN] Usa esta información de contexto para responder al usuario. Si el usuario pega un cálculo externo, usa el modo "compare" para comparar contra estos valores. Si el usuario responde "sí" a tu pregunta de explicar diferencias, usa el modo "explain" para dar una explicación detallada.');
+      '[INSTRUCCIÓN] Usa esta información de contexto para responder al usuario. Si el usuario pega un cálculo externo, usa el modo "compare" para comparar contra estos valores. Si el usuario responde "sí" a tu pregunta de explicar diferencias, usa el modo "explain" para dar una explicación detallada.',
+    );
 
     return buf.toString();
   }

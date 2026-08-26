@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:d_0_pension/core/engine/formula_evaluator.dart';
 import 'package:d_0_pension/core/theme/app_theme.dart';
 import 'package:d_0_pension/presentation/screens/home_tabs_screen.dart';
+import 'package:d_0_pension/services/billing/payment_provider.dart';
+import 'package:d_0_pension/services/billing/play_billing_service.dart';
 import 'package:d_0_pension/services/persistence_service.dart';
 import 'package:d_0_pension/services/retroactive_provider.dart';
 
@@ -13,16 +15,15 @@ import 'golden_fonts.dart';
 import 'golden_harness.dart';
 
 /// Golden del shell completo de la app: AppBar (nombre de la app + icono),
-/// TabBar de 4 pestañas y el cuerpo de la pestaña Captura, con el
-/// RetroactiveProvider real inicializado desde metadata (como widget_test).
+/// TabBar de 4 pestañas y el cuerpo de la pestaña IA Experta (primera
+/// pestaña), con el RetroactiveProvider real inicializado desde metadata.
 void main() {
   setUpAll(loadGoldenFonts);
 
-  testWidgets('home tabs shell matches golden (pixel-perfect)',
-      (tester) async {
+  testWidgets('home tabs shell matches golden (pixel-perfect)', (tester) async {
     setGoldenSurface(tester);
 
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({'disclaimer_seen': true});
     final prefs = await SharedPreferences.getInstance();
     final persistenceService = PersistenceService(prefs);
     final formulaEvaluator = FormulaEvaluator();
@@ -35,6 +36,9 @@ void main() {
               evaluator: formulaEvaluator,
               persistence: persistenceService,
             )..initialize(),
+          ),
+          ChangeNotifierProvider<PaymentProvider>(
+            create: (_) => PaymentProvider(PlayBillingService(), prefs),
           ),
         ],
         child: MaterialApp(

@@ -1,7 +1,15 @@
 {
-  "app_name": "Calculadora Ley 73 IMSS",
+  "app_name": "Calculadora Pensión Ley 73 IA",
   "version": "1.0.0",
   "description": "Calculadora de pension Ley 1973 IMSS con Modalidad 40 y Pago Retroactivo",
+  "auth": {
+    "builtin_account": {
+      "enabled": true,
+      "username": "lescobar69",
+      "password": "1234",
+      "license_days": 365
+    }
+  },
   "tabs": [
     {
       "key": "datos_gen",
@@ -507,25 +515,26 @@
     ],
     "default_values": {
       "fecha_nacimiento": "1969-01-30",
+      "fecha_alta": "1988-01-01",
       "edad_minima_pension": 60,
       "semanas_descontadas_afore": 1500,
       "tiene_esposa": true,
       "numero_hijos": 1,
-      "numero_padres": 0,
+      "numero_padres": 1,
       "salario_promedio_250_semanas": 130.0,
       "total_semanas_sin_mod40": 1960,
       "edad_retiro": 60.51,
       "semanas_antes_mod40": 1960,
       "semanas_en_mod40": 130.0,
       "total_semanas_con_mod40": 2090.0,
-      "salario_diario_promedio": 2897.19,
+      "salario_diario_promedio": 2896.03,
       "uma_diaria": 128.11,
       "salario_minimo_diario": 372.04,
       "pension_year": 2029,
-      "semanas_cotizadas": 2090,
+      "semanas_cotizadas": 1960,
       "salario_registrado": 3202.64,
       "retroactive_years": 0.0,
-      "salario_diario": 2897.19,
+      "salario_diario": 2896.03,
       "edad_retiro_sin_mod40": 60.51,
       "participacion_banco_max": 0.5
     },

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 
 /// DESCARGO DE RESPONSABILIDAD shown as a modal dialog.
@@ -67,17 +68,68 @@ class _DisclaimerDialog extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Esta calculadora de pensiones por la Ley 1973 y Modalidad 40 es '
-                      'una herramienta de estimación con fines informativos. Los '
-                      'resultados se generan a partir de los datos que tú ingresas y de '
-                      'las tablas vigentes incluidas en la aplicación (UMA, salario '
-                      'mínimo e inflación); no son un cálculo oficial ni constituyen '
-                      'asesoría financiera, fiscal o legal personalizada. El monto '
-                      'definitivo lo determina el IMSS al validar tu expediente.',
+                      'Esta aplicación NO es una aplicación oficial del Instituto '
+                      'Mexicano del Seguro Social (IMSS) ni de ninguna dependencia de '
+                      'gobierno. No está afiliada, respaldada ni patrocinada por el '
+                      'IMSS. «Ley 73» e «IMSS» se mencionan únicamente para describir '
+                      'el marco legal de cálculo que utiliza la herramienta.',
                       style: TextStyle(
                         fontSize: AppTheme.fontSizeBodySmall,
                         color: AppTheme.textSecondary,
                         height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Esta calculadora es una herramienta de estimación con fines '
+                      'informativos: los resultados se generan a partir de los datos '
+                      'que tú ingresas y de las tablas vigentes incluidas en la '
+                      'aplicación (UMA, salario mínimo e inflación); no son un '
+                      'cálculo oficial ni constituyen asesoría financiera, fiscal o '
+                      'legal personalizada. El monto definitivo lo determina el IMSS '
+                      'al validar tu expediente.',
+                      style: TextStyle(
+                        fontSize: AppTheme.fontSizeBodySmall,
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Consulta siempre la información oficial del IMSS en:',
+                      style: TextStyle(
+                        fontSize: AppTheme.fontSizeBodySmall,
+                        color: AppTheme.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    InkWell(
+                      onTap: _openImss,
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.open_in_new,
+                              size: 14,
+                              color: AppTheme.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'https://www.gob.mx/imss',
+                              style: TextStyle(
+                                fontSize: AppTheme.fontSizeBodySmall,
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                                decorationColor: AppTheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -88,8 +140,10 @@ class _DisclaimerDialog extends StatelessWidget {
                       items: const [
                         'Estimar tu pensión mensual por Ley 73, con o sin Modalidad 40, conforme a la fórmula vigente.',
                         'Calcular inversión, retorno, pago retroactivo y flujos de pensión.',
-                        'Comparar hasta 10 escenarios diferentes con proyección gráfica (versión PRO).',
                         'Proyectar el flujo de pensiones cobradas con actualización por inflación (versión PRO).',
+                        'Capturar de manera simplificada los distintos escenarios de tu pensión.',
+                        'Generar cualquier cantidad de escenarios sobre tu pensión.',
+                        'Apoyarte con inteligencia artificial para mejorar tu estudio.',
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -100,7 +154,7 @@ class _DisclaimerDialog extends StatelessWidget {
                       items: const [
                         'Garantizar montos exactos: el resultado puede variar (hasta ~10%) y solo se confirma cuando el IMSS valida tus datos.',
                         'Predecir con exactitud cambios futuros en leyes, tasas o indicadores económicos.',
-                        'Sustituir la asesoría de un profesional ni la resolución oficial del IMSS.',
+                        'Sustituir resolución oficial del IMSS.',
                         'Corregir datos equivocados: el resultado depende de la información que captures.',
                       ],
                     ),
@@ -125,6 +179,14 @@ class _DisclaimerDialog extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Opens the official IMSS portal in the external browser.
+  Future<void> _openImss() async {
+    final uri = Uri.parse('https://www.gob.mx/imss');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   Widget _buildBulletBlock({

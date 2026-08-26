@@ -59,7 +59,15 @@ class RetroactiveInputs {
   DateTime fechaCalculo = DateTime.now();
   DateTime fechaNacimiento = DateTime.now();
 
+  /// Fecha en que el trabajador se dio de alta en el IMSS (empezó a cotizar).
+  /// Opcional: se usa para confirmar la aplicabilidad de la Ley 73.
+  DateTime? fechaAlta;
+
   // --- Semanas (desglose) ---
   double semanasAntesMod40 = 0;
   double semanasEnMod40 = 0;
+
+  // true: el usuario NO hará aportaciones voluntarias de Modalidad 40.
+  // false: Modalidad 40 activa (comportamiento actual).
+  bool modalidad40OptOut = false;
 }

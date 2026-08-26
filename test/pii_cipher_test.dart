@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:d_0_pension/core/models/periodo_salarial.dart';
 import 'package:d_0_pension/core/utils/pii_cipher.dart';
-import 'package:d_0_pension/services/billing/login_provider.dart';
 import 'package:d_0_pension/services/persistence_service.dart';
 
 void main() {
@@ -157,8 +156,11 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final stored = prefs.get('periodos_salariales');
       expect(stored, isA<String>());
-      expect((stored as String).startsWith('['), isFalse,
-          reason: 'el JSON plano no debe quedar en claro');
+      expect(
+        (stored as String).startsWith('['),
+        isFalse,
+        reason: 'el JSON plano no debe quedar en claro',
+      );
 
       final loaded = service.loadPeriodos();
       expect(loaded.length, 2);
@@ -168,43 +170,45 @@ void main() {
       expect(loaded[1].esMod40, isFalse);
     });
 
-    test('v12 legacy plaintext migrates to obfuscated without data loss',
-        () async {
-      SharedPreferences.setMockInitialValues({
-        'data_version': 12,
-        'salario_diario': 2500.0,
-        'fecha_nacimiento_year': 1970,
-        'fecha_nacimiento_month': 3,
-        'fecha_nacimiento_day': 9,
-        'tiene_esposa': true,
-        'numero_hijos': 2,
-        'periodos_salariales':
-            '[{"fechaInicio":null,"fechaTermino":null,'
-            '"salarioDiario":1800.0,"semanas":52,"esMod40":false}]',
-      });
+    test(
+      'stale saved data is invalidated on version bump (auto-reset)',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'data_version': 12,
+          'salario_diario': 2500.0,
+          'fecha_nacimiento_year': 1970,
+          'fecha_nacimiento_month': 3,
+          'fecha_nacimiento_day': 9,
+          'tiene_esposa': true,
+          'numero_hijos': 2,
+          'semanas_cotizadas': 2090,
+          'periodos_salariales':
+              '[{"fechaInicio":null,"fechaTermino":null,'
+              '"salarioDiario":1800.0,"semanas":52,"esMod40":false}]',
+        });
 
-      final service = await newService();
-      final prefs = await SharedPreferences.getInstance();
+        final service = await newService();
+        final prefs = await SharedPreferences.getInstance();
 
-      // Version bumped and PII re-written obfuscated.
-      expect(prefs.getInt('data_version'), 13);
-      expect(prefs.get('salario_diario'), isA<String>());
-      expect(prefs.get('salario_diario'), isNot(2500.0));
-      expect(prefs.get('fecha_nacimiento_year'), isA<String>());
-      expect(prefs.get('periodos_salariales').toString().startsWith('['), isFalse);
+        // Versión bump a la versión actual: overrides obsoletos invalidados.
+        expect(prefs.getInt('data_version'), PersistenceService.dataVersion);
+        expect(prefs.containsKey('salario_diario'), isFalse);
+        expect(prefs.containsKey('fecha_nacimiento_year'), isFalse);
+        expect(prefs.containsKey('semanas_cotizadas'), isFalse);
+        expect(prefs.containsKey('periodos_salariales'), isFalse);
 
-      // No data loss after migration.
-      expect(service.loadSalarioDiario(defaultValue: 0), 2500.0);
-      expect(
-        service.loadFechaNacimiento(defaultValue: DateTime(2000)),
-        DateTime(1970, 3, 9),
-      );
-      expect(service.loadTieneEsposa(defaultValue: false), isTrue);
-      expect(service.loadNumeroHijos(defaultValue: 0), 2);
-      final loaded = service.loadPeriodos();
-      expect(loaded.length, 1);
-      expect(loaded[0].salarioDiario, 1800.0);
-    });
+        // Los valores guardados ya NO ganan: los defaults toman efecto.
+        expect(service.loadSalarioDiario(defaultValue: 0), 0);
+        expect(
+          service.loadFechaNacimiento(defaultValue: DateTime(2000)),
+          DateTime(2000),
+        );
+        expect(service.loadTieneEsposa(defaultValue: false), isFalse);
+        expect(service.loadNumeroHijos(defaultValue: 0), 0);
+        expect(service.loadSemanasCotizadas(defaultValue: 1960), 1960);
+        expect(service.loadPeriodos(), isEmpty);
+      },
+    );
 
     test('hasAnyData detects partial data (no single-key sentinel)', () async {
       // Sin datos persistidos: false.
@@ -213,17 +217,20 @@ void main() {
 
       // Un solo campo numérico basta para detectar datos parciales.
       SharedPreferences.setMockInitialValues({
-        'data_version': 13,
+        'data_version': PersistenceService.dataVersion,
         'numero_hijos': PiiCipher.encodeInt(2),
       });
       final prefs = await SharedPreferences.getInstance();
       final partial = PersistenceService(prefs);
-      expect(partial.hasAnyData(), isTrue,
-          reason: 'con datos parciales (solo numero_hijos) debe detectarse');
+      expect(
+        partial.hasAnyData(),
+        isTrue,
+        reason: 'con datos parciales (solo numero_hijos) debe detectarse',
+      );
 
       // Un solo campo booleano también cuenta.
       SharedPreferences.setMockInitialValues({
-        'data_version': 13,
+        'data_version': PersistenceService.dataVersion,
         'tiene_esposa': PiiCipher.encodeBool(true),
       });
       final prefs2 = await SharedPreferences.getInstance();
@@ -231,65 +238,28 @@ void main() {
       expect(partial2.hasAnyData(), isTrue);
     });
 
-    test('corrupt obfuscated value self-heals: removed and default returned',
-        () async {
-      SharedPreferences.setMockInitialValues({
-        'data_version': 13,
-        'salario_diario': '!!not-a-valid-obfuscated-value!!',
-        'tiene_esposa': '!!!corrupt-bool!!!',
-      });
-      final service = await newService();
-      final prefs = await SharedPreferences.getInstance();
+    test(
+      'corrupt obfuscated value self-heals: removed and default returned',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'data_version': PersistenceService.dataVersion,
+          'salario_diario': '!!not-a-valid-obfuscated-value!!',
+          'tiene_esposa': '!!!corrupt-bool!!!',
+        });
+        final service = await newService();
+        final prefs = await SharedPreferences.getInstance();
 
-      // La lectura devuelve el default y auto-sanitiza el valor corrupto.
-      expect(service.loadSalarioDiario(defaultValue: 100.0), 100.0);
-      expect(prefs.containsKey('salario_diario'), isFalse,
-          reason: 'el valor corrupto debe eliminarse al auto-sanitizar');
+        // La lectura devuelve el default y auto-sanitiza el valor corrupto.
+        expect(service.loadSalarioDiario(defaultValue: 100.0), 100.0);
+        expect(
+          prefs.containsKey('salario_diario'),
+          isFalse,
+          reason: 'el valor corrupto debe eliminarse al auto-sanitizar',
+        );
 
-      expect(service.loadTieneEsposa(defaultValue: true), isTrue);
-      expect(prefs.containsKey('tiene_esposa'), isFalse);
-    });
-  });
-
-  group('LoginProvider (email PII at rest)', () {
-    setUp(() {
-      SharedPreferences.setMockInitialValues({});
-    });
-
-    test('email is stored obfuscated and restored on initialize()', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final provider = LoginProvider(prefs);
-      final ok = await provider.signIn(
-        email: 'usuario.ejemplo@correo.com',
-        password: 'secreto123',
-      );
-      expect(ok, isTrue);
-
-      // No se guarda el email en claro.
-      final stored = prefs.get('user_email');
-      expect(stored, isA<String>());
-      expect(stored, isNot('usuario.ejemplo@correo.com'));
-      expect((stored as String).contains('@'), isFalse,
-          reason: 'el email no debe quedar legible en el almacenamiento');
-
-      // Un provider nuevo (p. ej. reinicio de app) restaura la sesión.
-      final restored = LoginProvider(prefs);
-      restored.initialize();
-      expect(restored.isLoggedIn, isTrue);
-      expect(restored.userEmail, 'usuario.ejemplo@correo.com');
-    });
-
-    test('legacy plaintext email is still readable after initialize()', () async {
-      // Simula datos guardados por una versión anterior (email en claro).
-      SharedPreferences.setMockInitialValues({
-        'user_logged_in': true,
-        'user_email': 'antiguo@correo.com',
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final restored = LoginProvider(prefs);
-      restored.initialize();
-      expect(restored.isLoggedIn, isTrue);
-      expect(restored.userEmail, 'antiguo@correo.com');
-    });
+        expect(service.loadTieneEsposa(defaultValue: true), isTrue);
+        expect(prefs.containsKey('tiene_esposa'), isFalse);
+      },
+    );
   });
 }

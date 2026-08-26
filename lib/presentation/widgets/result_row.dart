@@ -26,7 +26,7 @@ class ResultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -44,22 +44,29 @@ class ResultRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: valueColor != null
-                  ? valueColor!.withValues(alpha: 0.08)
-                  : (isBold ? AppTheme.primary.withValues(alpha: 0.08) : null),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                fontSize: AppTheme.fontSizeResultValue,
-                fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-                color: valueColor ?? (isBold ? AppTheme.primary : AppTheme.textPrimary),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: valueColor != null
+                    ? valueColor!.withValues(alpha: 0.08)
+                    : (isBold
+                          ? AppTheme.primary.withValues(alpha: 0.08)
+                          : null),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  fontSize: AppTheme.fontSizeResultValue,
+                  fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+                  color:
+                      valueColor ??
+                      (isBold ? AppTheme.primary : AppTheme.textPrimary),
+                ),
               ),
             ),
           ),

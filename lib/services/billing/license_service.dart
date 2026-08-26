@@ -1,3 +1,5 @@
+import 'package:clock/clock.dart';
+
 /// Service to check license expiry status.
 ///
 /// Adapted from machote's LicenseService, simplified to work with
@@ -12,14 +14,14 @@ class LicenseService {
   /// - If [licenseExpiry] is in the future, the license is still valid.
   static bool isLicenseExpired(DateTime? licenseExpiry) {
     if (licenseExpiry == null) return false; // perpetual license
-    return DateTime.now().isAfter(licenseExpiry);
+    return clock.now().isAfter(licenseExpiry);
   }
 
   /// Returns the number of days remaining until expiry.
   /// Returns null if perpetual (no expiry).
   static int? daysRemaining(DateTime? licenseExpiry) {
     if (licenseExpiry == null) return null; // perpetual
-    final diff = licenseExpiry.difference(DateTime.now());
+    final diff = licenseExpiry.difference(clock.now());
     return diff.inDays > 0 ? diff.inDays : 0;
   }
 

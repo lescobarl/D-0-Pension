@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Red necesaria para la verificación de licencias y el asistente IA. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="d_0_pension"
+        android:label="Calculadora Pensión Ley 73 IA"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

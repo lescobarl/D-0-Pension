@@ -32,6 +32,10 @@ void main() {
                   title: 'Pensión con Mod 40',
                   annualAmount: 1050486.2034887276,
                   monthlyAmount: 87540.51695739396,
+                  inlineFields: [
+                    ['Salario Promedio (con Mod40)', r'$2,914.93'],
+                    ['Semanas Totales (IMSS+M40)', '2,094'],
+                  ],
                 ),
               ],
             ),
@@ -46,8 +50,9 @@ void main() {
     );
   });
 
-  testWidgets('result/info rows and legal note match golden (pixel-perfect)',
-      (tester) async {
+  testWidgets('result/info rows and legal note match golden (pixel-perfect)', (
+    tester,
+  ) async {
     setGoldenSurface(tester);
     await tester.pumpWidget(
       MaterialApp(
@@ -83,7 +88,8 @@ void main() {
                 ),
                 SizedBox(height: 12),
                 LegalNoteCard(
-                  note: 'Cifras de referencia validadas contra la '
+                  note:
+                      'Cifras de referencia validadas contra la '
                       'calculadora Excel Ley 73 del IMSS.',
                 ),
               ],
