@@ -1,9 +1,8 @@
 # Términos y Condiciones — Calculadora Pensión Ley 73 IA
 
-> **Borrador** · App: Calculadora Pensión Ley 73 IA
+> App: Calculadora Pensión Ley 73 IA
 > Paquete: `com.pensiones.ley73` · Versión: 1.0.0
-> Fecha del borrador: 2026-08-08
-> ⚠️ Sustituir `[CORREO_DE_SOPORTE]` por el correo de soporte real antes de publicar.
+> Última actualización: 2026-08-26
 
 ---
 
@@ -52,7 +51,7 @@ Condiciones:
 
 - El asistente de IA es un servicio de apoyo; sus respuestas pueden contener errores u omisiones.
 - **Verifica siempre los resultados** con las fuentes oficiales del IMSS antes de tomar decisiones.
-- El uso del chat envía tu mensaje a un proveedor externo (OpenRouter) para generar la respuesta. Consulta la [Política de Privacidad](POLITICA_DE_PRIVACIDAD.md).
+- El uso del chat envía tu mensaje a un proveedor externo (OpenRouter) para generar la respuesta. Consulta la [Política de Privacidad](../POLITICA_DE_PRIVACIDAD.md).
 
 ## 7. Propiedad intelectual
 
@@ -79,4 +78,4 @@ Estos Términos se rigen por las leyes de los **Estados Unidos Mexicanos**. Para
 
 ## 12. Contacto
 
-Para dudas, aclaraciones o solicitudes de soporte: `[CORREO_DE_SOPORTE]`.
+Para dudas, aclaraciones o solicitudes de soporte: vortix.labs@gmail.com.

@@ -55,7 +55,7 @@
 
 ### FASE 0 — Decisiones y contenido (prerequisitos)
 - [x] 0.1 Decidir **nombre oficial** de la app. ✅ **"Calculadora Pensión Ley 73 IA"** (28 caracteres, ✅ dentro del límite de 30 de Play; decisión A1 actualizada del usuario). Nombre aplicado en app, web, iOS, manifest y documentos (ver [`FICHA_DE_TIENDA.md`](../../docs/FICHA_DE_TIENDA.md)). ⏳ Resta confirmar el nombre final en Play Console.
-- [x] 0.2 **Política de Privacidad** redactada. ✅ Borrador en [`POLITICA_DE_PRIVACIDAD.md`](../../docs/POLITICA_DE_PRIVACIDAD.md). ⏳ Resta publicarla en una URL y llenar `[CORREO_DE_SOPORTE]`.
+- [x] 0.2 **Política de Privacidad** redactada. ✅ Finalizada en [`POLITICA_DE_PRIVACIDAD.md`](../../POLITICA_DE_PRIVACIDAD.md) con correo de soporte `vortix.labs@gmail.com`. ⏳ Resta publicarla en una URL pública y pegarla en Play Console.
 - [x] 0.3 **Términos y Condiciones** redactados. ✅ Borrador en [`TERMINOS_Y_CONDICIONES.md`](../../docs/TERMINOS_Y_CONDICIONES.md). ⏳ Resta publicar y llenar contacto.
 - [ ] 0.4 Definir **datos de contacto/soporte** (correo de desarrollador verificado).
 - [x] 0.5 **Video de onboarding** integrado. ✅ `assets/videos/onboarding_intro.mp4` funcional en [`onboarding_screen.dart`](../../lib/presentation/screens/onboarding_screen.dart) (ver 1.6).

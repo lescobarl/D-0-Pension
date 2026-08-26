@@ -1,6 +1,6 @@
 # Ficha de la Tienda (Play Store) — Calculadora Pensión Ley 73 IA
 
-> **Borrador** · Fecha: 2026-08-08 · País/Idioma: México / Español (es-MX) · Categoría sugerida: **Finanzas**
+> Ficha · Actualización: 2026-08-26 · País/Idioma: México / Español (es-MX) · Categoría sugerida: **Finanzas**
 
 ---
 
@@ -73,7 +73,7 @@ Esta aplicación NO es una aplicación oficial del Instituto Mexicano del Seguro
 
 Los resultados son estimaciones referenciales que pueden diferir del cálculo oficial del IMSS. No constituyen asesoría legal, financiera ni actuarial. Verifica siempre la información con las fuentes oficiales antes de tomar decisiones.
 
-Para soporte o preguntas, escríbenos a: [CORREO_DE_SOPORTE]
+Para soporte o preguntas, escríbenos a: vortix.labs@gmail.com
 ```
 
 ---
@@ -90,7 +90,7 @@ Para soporte o preguntas, escríbenos a: [CORREO_DE_SOPORTE]
 | Anuncios | No |
 | Enlace de Política de Privacidad | URL donde se publique `POLITICA_DE_PRIVACIDAD.md` |
 | Sitio web | (opcional) |
-| Correo de contacto | `[CORREO_DE_SOPORTE]` |
+| Correo de contacto | `vortix.labs@gmail.com` |
 | Region/País | México (puedes expandir a LATAM después) |
 
 ## 5. Material visual
