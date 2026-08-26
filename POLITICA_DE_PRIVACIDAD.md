@@ -1,9 +1,8 @@
 # Política de Privacidad — Calculadora Pensión Ley 73 IA
 
-> **Borrador** · App: Calculadora Pensión Ley 73 IA
+> App: Calculadora Pensión Ley 73 IA
 > Paquete: `com.pensiones.ley73` · Versión: 1.0.0
-> Fecha del borrador: 2026-08-08
-> ⚠️ Sustituir `[CORREO_DE_SOPORTE]` por el correo de soporte real antes de publicar.
+> Última actualización: 2026-08-26
 
 ---
 
@@ -16,7 +15,7 @@ La App es una herramienta de estimación/cálculo de pensión conforme a la **Le
 ## 2. Responsable del tratamiento
 
 - **Titular/Desarrollador:** Luis Adan Escobar Lopez.
-- **Contacto de soporte:** `[CORREO_DE_SOPORTE]`.
+- **Contacto de soporte:** vortix.labs@gmail.com.
 - **Jurisdicción:** México.
 
 ## 3. Información que recopilamos
@@ -76,7 +75,7 @@ No compartimos tu información con ningún otro tercero.
 
 - **En la App:** puedes borrar toda la información guardada usando la opción de **"Borrar datos" / restablecer** dentro de la App, o **borrando los datos de la App** desde los ajustes de tu teléfono (Ajustes → Aplicaciones → Calculadora Pensión Ley 73 IA → Almacenamiento → Borrar datos).
 - **Al desinstalar** la App se eliminan los datos locales guardados en el dispositivo.
-- **Solicitud de borrado:** si deseas que eliminemos cualquier dato que consideres relacionado con tu cuenta, escríbenos a `[CORREO_DE_SOPORTE]` y atenderemos tu solicitud en un plazo máximo de 30 días.
+- **Solicitud de borrado:** si deseas que eliminemos cualquier dato que consideres relacionado con tu cuenta, escríbenos a vortix.labs@gmail.com y atenderemos tu solicitud en un plazo máximo de 30 días.
 - **Google Play:** los datos de tus compras los gestiona Google conforme a su propia política; para borrarlos consulta tu cuenta de Google.
 
 ## 9. Datos de menores
@@ -89,4 +88,4 @@ Podemos actualizar esta Política de Privacidad. Los cambios se publicarán en e
 
 ## 11. Contacto
 
-Para cualquier duda sobre esta Política de Privacidad o sobre el tratamiento de tus datos, contáctanos en: `[CORREO_DE_SOPORTE]`.
+Para cualquier duda sobre esta Política de Privacidad o sobre el tratamiento de tus datos, contáctanos en: vortix.labs@gmail.com.
