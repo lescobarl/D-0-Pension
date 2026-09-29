@@ -63,6 +63,11 @@ class RetroactiveInputs {
   /// Opcional: se usa para confirmar la aplicabilidad de la Ley 73.
   DateTime? fechaAlta;
 
+  /// Fecha en que el trabajador dejó de cotizar (baja del IMSS).
+  /// Opcional: se usa para calcular la vigencia/conservación de derechos
+  /// (Art. 150 LSS 1973). `null` = no capturada (la regla no se evalúa).
+  DateTime? fechaUltimaCotizacion;
+
   // --- Semanas (desglose) ---
   double semanasAntesMod40 = 0;
   double semanasEnMod40 = 0;

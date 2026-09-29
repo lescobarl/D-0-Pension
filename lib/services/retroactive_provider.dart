@@ -140,6 +140,31 @@ class RetroactiveProvider extends ChangeNotifier {
   DateTime get fechaCalculo => _inputs.fechaCalculo;
   DateTime get fechaNacimiento => _inputs.fechaNacimiento;
   DateTime? get fechaAlta => _inputs.fechaAlta;
+  DateTime? get fechaUltimaCotizacion => _inputs.fechaUltimaCotizacion;
+
+  /// Fecha límite de conservación de derechos (Art. 150 LSS 1973):
+  /// = fecha de última cotización (baja) + la cuarta parte del tiempo
+  /// cotizado (mínimo 12 meses). `null` si no se capturó la fecha de baja.
+  DateTime? get fechaLimiteConservacionDerechos {
+    final baja = _inputs.fechaUltimaCotizacion;
+    if (baja == null) return null;
+    final aniosCotizados =
+        totalSemanasCotizadas / PensionConstants.semanasPorAnio;
+    final conservacion =
+        aniosCotizados * PensionConstants.fraccionConservacionDerechos;
+    final pisoAnios = PensionConstants.minMesesConservacionDerechos / 12.0;
+    final ventanaAnios = conservacion > pisoAnios ? conservacion : pisoAnios;
+    return baja.add(Duration(days: (ventanaAnios * 365.2425).round()));
+  }
+
+  /// true si la fecha de cálculo ya superó la fecha límite de conservación
+  /// de derechos (Art. 150 LSS 1973): el asegurado perdería el derecho a la
+  /// pensión si no reincorpora la cotización antes de esa fecha.
+  bool get vigenciaDerechosExcedida {
+    final limite = fechaLimiteConservacionDerechos;
+    if (limite == null) return false;
+    return fechaCalculo.isAfter(limite);
+  }
 
   // --- Elegibilidad legal (Ley 73) ---
 
@@ -430,6 +455,27 @@ class RetroactiveProvider extends ChangeNotifier {
       agregar(ValidationResult.valid());
     }
 
+    // 15. Vigencia / conservación de derechos (Art. 150 LSS 1973). Es
+    // INFORMATIVO (warning, no bloquea): la conservación de derechos se
+    // mantiene por la cuarta parte del tiempo cotizado (mínimo 12 meses)
+    // contado desde la fecha de baja. Si la fecha de cálculo ya superó esa
+    // fecha límite, el asegurado pierde el derecho a la pensión (debe
+    // reincorporarse antes de ese límite). Solo se evalúa cuando el usuario
+    // capturó su fecha de última cotización/baja.
+    final limiteConservacion = fechaLimiteConservacionDerechos;
+    if (limiteConservacion != null && vigenciaDerechosExcedida) {
+      agregar(
+        ValidationResult.warning(
+          '${PensionConstants.warningVigenciaDerechosExcedida} '
+          '(baja: ${_fmtFecha(_inputs.fechaUltimaCotizacion!)}, '
+          'límite: ${_fmtFecha(limiteConservacion)}, '
+          'cálculo: ${_fmtFecha(fechaCalculo)}).',
+        ),
+      );
+    } else {
+      agregar(ValidationResult.valid());
+    }
+
     return [...errores, ...advertencias, ...ok];
   }
 
@@ -626,6 +672,9 @@ class RetroactiveProvider extends ChangeNotifier {
       );
       _inputs.fechaAlta = persistence.loadFechaAlta(
         defaultValue: defaults.fechaAlta,
+      );
+      _inputs.fechaUltimaCotizacion = persistence.loadFechaUltimaCotizacion(
+        defaultValue: null,
       );
 
       // Load periodos from persistence
@@ -1335,6 +1384,16 @@ class RetroactiveProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Setter simple: la fecha de última cotización (baja) solo afecta la
+  /// validación de vigencia de derechos (Art. 150 LSS 1973), no los cálculos,
+  /// por lo que no necesita recalcular nada.
+  void setFechaUltimaCotizacion(DateTime? v) {
+    if (v == _inputs.fechaUltimaCotizacion) return;
+    _inputs.fechaUltimaCotizacion = v;
+    persistence.saveFechaUltimaCotizacion(v);
+    notifyListeners();
+  }
+
   // --- Semanas (desglose) setters ---
   /// Reconciliar los campos de semanas ANTES de Mod40 (invariante:
   /// `semanasAntesMod40` == `totalSemanasSinMod40` == `semanasCotizadas`).
@@ -1732,6 +1791,7 @@ class RetroactiveProvider extends ChangeNotifier {
     persistence.saveFechaCalculo(_inputs.fechaCalculo);
     persistence.saveFechaNacimiento(_inputs.fechaNacimiento);
     persistence.saveFechaAlta(_inputs.fechaAlta);
+    persistence.saveFechaUltimaCotizacion(_inputs.fechaUltimaCotizacion);
     persistence.saveSalarioDiarioPromedio(_inputs.salarioDiarioPromedio);
     persistence.saveUmaDiaria(_inputs.umaDiaria);
     persistence.saveSalarioMinimoDiario(_inputs.salarioMinimoDiario);

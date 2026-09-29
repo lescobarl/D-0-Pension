@@ -80,6 +80,9 @@ class PersistenceService {
   static const _keyFechaAltaYear = 'fecha_alta_year';
   static const _keyFechaAltaMonth = 'fecha_alta_month';
   static const _keyFechaAltaDay = 'fecha_alta_day';
+  static const _keyFechaUltimaCotizacionYear = 'fecha_ultima_cotizacion_year';
+  static const _keyFechaUltimaCotizacionMonth = 'fecha_ultima_cotizacion_month';
+  static const _keyFechaUltimaCotizacionDay = 'fecha_ultima_cotizacion_day';
   static const _keyEdadMinimaPension = 'edad_minima_pension';
   static const _keySemanasDescontadasAfore = 'semanas_descontadas_afore';
   static const _keySalarioPromedio250Semanas = 'salario_promedio_250_semanas';
@@ -109,6 +112,9 @@ class PersistenceService {
     _keyFechaAltaYear,
     _keyFechaAltaMonth,
     _keyFechaAltaDay,
+    _keyFechaUltimaCotizacionYear,
+    _keyFechaUltimaCotizacionMonth,
+    _keyFechaUltimaCotizacionDay,
     _keySalarioPromedio250Semanas,
     _keyNumeroHijos,
     _keyNumeroPadres,
@@ -610,6 +616,44 @@ class PersistenceService {
     final year = _safeGetEncryptedInt(_keyFechaAltaYear, 0);
     final month = _safeGetEncryptedInt(_keyFechaAltaMonth, 0);
     final day = _safeGetEncryptedInt(_keyFechaAltaDay, 0);
+    if (year == 0 || month == 0 || day == 0) return defaultValue;
+    return DateTime(year, month, day);
+  }
+
+  /// Save fecha de última cotización (baja del IMSS), obfuscated at rest (PII).
+  /// Campo opcional: pasar `null` borra el valor guardado.
+  Future<void> saveFechaUltimaCotizacion(DateTime? value) async {
+    if (value == null) {
+      await _prefs.remove(_keyFechaUltimaCotizacionYear);
+      await _prefs.remove(_keyFechaUltimaCotizacionMonth);
+      await _prefs.remove(_keyFechaUltimaCotizacionDay);
+      return;
+    }
+    await _prefs.setString(
+      _keyFechaUltimaCotizacionYear,
+      PiiCipher.encodeInt(value.year),
+    );
+    await _prefs.setString(
+      _keyFechaUltimaCotizacionMonth,
+      PiiCipher.encodeInt(value.month),
+    );
+    await _prefs.setString(
+      _keyFechaUltimaCotizacionDay,
+      PiiCipher.encodeInt(value.day),
+    );
+  }
+
+  /// Load fecha de última cotización (baja del IMSS). Returns [defaultValue]
+  /// if not saved (optional field).
+  DateTime? loadFechaUltimaCotizacion({DateTime? defaultValue}) {
+    if (!_prefs.containsKey(_keyFechaUltimaCotizacionYear) ||
+        !_prefs.containsKey(_keyFechaUltimaCotizacionMonth) ||
+        !_prefs.containsKey(_keyFechaUltimaCotizacionDay)) {
+      return defaultValue;
+    }
+    final year = _safeGetEncryptedInt(_keyFechaUltimaCotizacionYear, 0);
+    final month = _safeGetEncryptedInt(_keyFechaUltimaCotizacionMonth, 0);
+    final day = _safeGetEncryptedInt(_keyFechaUltimaCotizacionDay, 0);
     if (year == 0 || month == 0 || day == 0) return defaultValue;
     return DateTime(year, month, day);
   }

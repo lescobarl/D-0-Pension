@@ -871,6 +871,7 @@
     "pension_mod40": "El 100% de la pension se otorga a los 65 anos (Vejez). Antes de esa edad se considera Cesantia en Edad Avanzada con porcentajes reducidos.",
     "costo_mod40": "Los costos de Modalidad 40 varian segun el ano y el salario registrado. La tasa de costo sobre salario registrado se actualiza anualmente.",
     "inversion": "El analisis de inversion compara el flujo de pension con y sin Modalidad 40 hasta los 80 anos de edad.",
-    "financiamiento": "El financiamiento del pago retroactivo puede realizarse mediante banca regulada o segundo fondeador. Las tasas y plazos son referenciales."
+    "financiamiento": "El financiamiento del pago retroactivo puede realizarse mediante banca regulada o segundo fondeador. Las tasas y plazos son referenciales.",
+    "vigencia_derechos": "Vigencia de derechos (Art. 150 LSS 1973): el asegurado que deja de cotizar conserva sus derechos por la cuarta parte del tiempo cotizado (minimo 12 meses), contado desde la fecha de baja (ultima cotizacion). Si la fecha de calculo de la pension supera esa fecha limite, el derecho a la pension se pierde y es necesario reincorporar la cotizacion antes del limite. La app lo informa como advertencia no bloqueante para la proyeccion."
   }
 }

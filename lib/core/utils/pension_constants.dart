@@ -32,6 +32,19 @@ class PensionConstants {
   /// con anterioridad al 1 de julio de 1997 (régimen anterior a la Ley 1997).
   static final DateTime fechaLimiteLey73 = DateTime(1997, 7, 1);
 
+  // ── Vigencia / conservación de derechos (Art. 150 LSS 1973) ──
+
+  /// Fracción del tiempo cotizado durante la cual se conservan los derechos
+  /// después de la baja: la cuarta parte (Art. 150 LSS 1973).
+  static const double fraccionConservacionDerechos = 0.25;
+
+  /// Piso mínimo de conservación de derechos: 12 meses. Si la cuarta parte
+  /// del tiempo cotizado fuera menor, se amplía a este mínimo (Art. 150).
+  static const int minMesesConservacionDerechos = 12;
+
+  /// Semanas por año, para convertir semanas cotizadas a años.
+  static const double semanasPorAnio = 52.0;
+
   // Default values
   static const double defaultUmaDiaria = 133.87;
   static const double defaultSalarioRegistrado = 3346.75; // 25 * 133.87
@@ -77,6 +90,12 @@ class PensionConstants {
       'Para confirmar que aplica la Ley 1973, necesitamos tu fecha de alta '
       'en el IMSS (cuándo empezaste a cotizar). Si no la recuerdas, puedes '
       'dejarla vacía y capturarla más adelante en la pestaña Captura.';
+  static const String warningVigenciaDerechosExcedida =
+      'La fecha de cálculo excede la vigencia de derechos (Art. 150 LSS 1973): '
+      'el asegurado que deja de cotizar conserva sus derechos por la cuarta '
+      'parte del tiempo cotizado (mínimo 12 meses) contado desde la fecha de '
+      'baja. Al superarse ese límite, el derecho a la pensión se pierde; '
+      'reincorpora la cotización antes de la fecha límite para conservarlo.';
   static const String errorFechaCalculoMenorNacimiento =
       'La fecha de cálculo no puede ser anterior a la fecha de nacimiento.';
   static const String errorEdadNoPlausible =
