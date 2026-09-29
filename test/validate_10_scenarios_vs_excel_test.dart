@@ -39,16 +39,6 @@ void main() {
     await evaluator.initialize();
   });
 
-  /// Round edad retiro using threshold 0.501 (matching Excel formula)
-  int _roundEdadRetiro(double edad) {
-    final decimal = edad - edad.floor();
-    if (decimal < 0.501) {
-      return edad.floor();
-    } else {
-      return edad.ceil();
-    }
-  }
-
   /// Helper: approxEqual with tolerance 0.02 absolute OR 0.1% relative
   bool approxEqual(double a, double b, {double absTol = 0.02, double relTol = 0.001}) {
     if (a == b) return true;

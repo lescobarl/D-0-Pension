@@ -1,0 +1,58 @@
+name: Update Golden Baselines
+
+# Regenera los golden baselines en la MISMA plataforma que los valida en CI
+# (ubuntu-latest). El rasterizado de texto difiere entre SO (FreeType en Linux
+# vs DirectWrite en Windows), por lo que las imágenes deben generarse en el
+# entorno que luego las verifica. Descargue el artefacto 'goldens' y commitee
+# los PNGs en test/goldens/ (scripts/update_goldens_ci.ps1 automatiza esto).
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Rama desde la cual regenerar los goldens'
+        required: false
+        default: 'feature/estado-inicial'
+
+jobs:
+  update-goldens:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.ref || 'feature/estado-inicial' }}
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        # Alineado con el SDK local validado (Dart 3.13.4 = pubspec ^3.13.0)
+        # y con el job 'test' de flutter-ci.yml.
+        flutter-version: '3.47.5'
+        channel: 'stable'
+
+    - name: Install dependencies
+      run: flutter pub get
+
+    - name: Regenerate golden baselines (Linux/FreeType)
+      run: |
+        flutter test \
+          test/theme_golden_test.dart \
+          test/pension_card_golden_test.dart \
+          test/home_tabs_golden_test.dart \
+          --update-goldens
+
+    - name: Upload golden baselines
+      uses: actions/upload-artifact@v4
+      with:
+        name: goldens
+        path: test/goldens/
+        if-no-files-found: error
+
+    - name: Upload failure diffs (diagnóstico)
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: golden-failures
+        path: test/failures/
+        if-no-files-found: ignore

@@ -62,6 +62,7 @@ app.*.map.json
 # Backup snapshots (no git -> tar.gz / folder backups kept locally)
 /respaldo_*/
 /respaldo_*.tar.gz
+/backups/
 
 # Generated validation outputs
 /cross_validate_scenarios_output.json
@@ -122,3 +123,6 @@ app.*.map.json
 /test/*.py
 /test/*.txt
 /test/find_excel_pension.py
+
+# Golden test failure artifacts (generated when a pixel test fails locally)
+/test/failures/

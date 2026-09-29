@@ -22,14 +22,16 @@ class ValidationIndicator extends StatelessWidget {
     Color color;
     String defaultTooltip;
 
-    if (validation.isValid) {
+    if (validation.isWarning) {
+      // Los warnings tienen isValid=true, así que deben revisarse ANTES que el
+      // caso "válido" para no pintarse como check verde.
+      icon = Icons.warning_amber_rounded;
+      color = const Color(0xFFF9A825); // Yellow for warning
+      defaultTooltip = 'Warning: ${validation.message}';
+    } else if (validation.isValid) {
       icon = Icons.check_circle;
       color = const Color(0xFF4CAF50); // Green for success
       defaultTooltip = 'Valid input';
-    } else if (validation.isWarning) {
-      icon = Icons.warning;
-      color = const Color(0xFFFF9800); // Orange for warning
-      defaultTooltip = 'Warning: ${validation.message}';
     } else {
       icon = Icons.error;
       color = const Color(0xFFF44336); // Red for error
@@ -38,11 +40,7 @@ class ValidationIndicator extends StatelessWidget {
 
     return Tooltip(
       message: tooltipMessage ?? defaultTooltip,
-      child: Icon(
-        icon,
-        color: color,
-        size: size,
-      ),
+      child: Icon(icon, color: color, size: size),
     );
   }
 }
@@ -56,6 +54,7 @@ class ValidatedTextField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final TextInputType keyboardType;
   final bool enabled;
+  final bool neutralStyle;
   final ValidationFunction validator;
   final EdgeInsetsGeometry? padding;
   final bool compact;
@@ -69,6 +68,7 @@ class ValidatedTextField extends StatefulWidget {
     this.onSubmitted,
     this.keyboardType = TextInputType.text,
     this.enabled = true,
+    this.neutralStyle = false,
     required this.validator,
     this.padding,
     this.compact = false,
@@ -86,7 +86,9 @@ class _ValidatedTextFieldState extends State<ValidatedTextField> {
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller ?? TextEditingController(text: widget.initialValue ?? '');
+    _controller =
+        widget.controller ??
+        TextEditingController(text: widget.initialValue ?? '');
     if (widget.initialValue != null && widget.initialValue!.isNotEmpty) {
       _validate(widget.initialValue!);
     }
@@ -125,7 +127,7 @@ class _ValidatedTextFieldState extends State<ValidatedTextField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: widget.padding ?? const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
@@ -145,55 +147,62 @@ class _ValidatedTextFieldState extends State<ValidatedTextField> {
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _controller,
-                  onChanged: (value) {
-                    _validate(value);
-                    widget.onChanged?.call(value);
-                  },
-                  onSubmitted: widget.onSubmitted,
-                  keyboardType: widget.keyboardType,
-                  enabled: widget.enabled,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.dividerColor),
+                child: SizedBox(
+                  // Altura canónica: fija la caja a AppTheme.fieldHeight de
+                  // forma determinista (no depende del padding interno).
+                  height: AppTheme.fieldHeight,
+                  child: TextField(
+                    controller: _controller,
+                    onChanged: (value) {
+                      _validate(value);
+                      widget.onChanged?.call(value);
+                    },
+                    onSubmitted: widget.onSubmitted,
+                    keyboardType: widget.keyboardType,
+                    enabled: widget.enabled,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppTheme.dividerColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppTheme.dividerColor),
+                      ),
+                      filled: true,
+                      fillColor: widget.neutralStyle || !widget.enabled
+                          ? theme.colorScheme.surfaceContainerHighest
+                          : AppTheme.primary.withValues(alpha: 0.08),
+                      // isDense + padding vertical reducido mantienen la caja
+                      // delgada; la altura exacta la garantiza el SizedBox.
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 2,
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.dividerColor),
-                    ),
-                    filled: true,
-                    fillColor: widget.enabled
-                        ? AppTheme.primary.withValues(alpha: 0.08)
-                        : theme.colorScheme.surfaceContainerHighest,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: -4,
-                    ),
+                    onTap: () => setState(() => _isFocused = true),
+                    onTapOutside: (_) => setState(() => _isFocused = false),
                   ),
-                  onTap: () => setState(() => _isFocused = true),
-                  onTapOutside: (_) => setState(() => _isFocused = false),
                 ),
               ),
-              if (!_isFocused && _controller.text.isNotEmpty)
+              if (!widget.neutralStyle &&
+                  !_isFocused &&
+                  _controller.text.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: ValidationIndicator(
-                    validation: _validation,
-                    size: 20,
-                  ),
+                  child: ValidationIndicator(validation: _validation, size: 20),
                 ),
             ],
           ),
-          if (_validation.message.isNotEmpty && !_validation.isValid)
+          if (_validation.message.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4, left: 4),
               child: Text(
                 _validation.message,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: _validation.isWarning
-                      ? const Color(0xFFFF9800)
+                      ? const Color(0xFFF9A825)
                       : const Color(0xFFF44336),
                 ),
               ),
@@ -247,7 +256,9 @@ class _ValidatedDateFieldState extends State<ValidatedDateField> {
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller ?? TextEditingController(text: widget.initialValue ?? '');
+    _controller =
+        widget.controller ??
+        TextEditingController(text: widget.initialValue ?? '');
     if (widget.initialValue != null && widget.initialValue!.isNotEmpty) {
       _validate(widget.initialValue!);
     }
@@ -284,7 +295,7 @@ class _ValidatedDateFieldState extends State<ValidatedDateField> {
     final initialDate = widget.initialDate ?? DateTime.now();
     final firstDate = widget.firstDate ?? DateTime(1900);
     final lastDate = widget.lastDate ?? DateTime(2100);
-    
+
     final picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -294,9 +305,10 @@ class _ValidatedDateFieldState extends State<ValidatedDateField> {
       cancelText: 'Cancelar',
       confirmText: 'Aceptar',
     );
-    
+
     if (picked != null) {
-      final formatted = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      final formatted =
+          '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
       _controller.text = formatted;
       _validate(formatted);
       widget.onChanged?.call(formatted);
@@ -306,7 +318,7 @@ class _ValidatedDateFieldState extends State<ValidatedDateField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: widget.padding ?? const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
@@ -326,58 +338,74 @@ class _ValidatedDateFieldState extends State<ValidatedDateField> {
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _controller,
-                  onChanged: (value) {
-                    _validate(value);
-                    widget.onChanged?.call(value);
-                  },
-                  onSubmitted: widget.onSubmitted,
-                  enabled: widget.enabled,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.dividerColor),
+                child: SizedBox(
+                  // Altura canónica: fija la caja a AppTheme.fieldHeight de
+                  // forma determinista (no depende del padding interno).
+                  height: AppTheme.fieldHeight,
+                  child: TextField(
+                    controller: _controller,
+                    onChanged: (value) {
+                      _validate(value);
+                      widget.onChanged?.call(value);
+                    },
+                    onSubmitted: widget.onSubmitted,
+                    enabled: widget.enabled,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppTheme.dividerColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppTheme.dividerColor),
+                      ),
+                      filled: true,
+                      fillColor: widget.enabled
+                          ? AppTheme.primary.withValues(alpha: 0.08)
+                          : theme.colorScheme.surfaceContainerHighest,
+                      // isDense + padding vertical reducido mantienen la caja
+                      // delgada; la altura exacta la garantiza el SizedBox.
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 2,
+                      ),
+                      // Se usa "suffix" (no "suffixIcon") porque suffixIcon fuerza
+                      // una altura minima de 48px (kMinInteractiveDimension) y la
+                      // caja de la fecha quedaria mas alta que las demas.
+                      suffix: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _showDatePicker(context),
+                        child: Semantics(
+                          label: 'Seleccionar fecha',
+                          button: true,
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4),
+                            child: Icon(Icons.calendar_month, size: 16),
+                          ),
+                        ),
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.dividerColor),
-                    ),
-                    filled: true,
-                    fillColor: widget.enabled
-                        ? AppTheme.primary.withValues(alpha: 0.08)
-                        : theme.colorScheme.surfaceContainerHighest,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: -4,
-                    ),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.calendar_month, size: 16),
-                      onPressed: () => _showDatePicker(context),
-                    ),
+                    onTap: () => setState(() => _isFocused = true),
+                    onTapOutside: (_) => setState(() => _isFocused = false),
                   ),
-                  onTap: () => setState(() => _isFocused = true),
-                  onTapOutside: (_) => setState(() => _isFocused = false),
                 ),
               ),
               if (!_isFocused && _controller.text.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: ValidationIndicator(
-                    validation: _validation,
-                    size: 20,
-                  ),
+                  child: ValidationIndicator(validation: _validation, size: 20),
                 ),
             ],
           ),
-          if (_validation.message.isNotEmpty && !_validation.isValid)
+          if (_validation.message.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4, left: 4),
               child: Text(
                 _validation.message,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: _validation.isWarning
-                      ? const Color(0xFFFF9800)
+                      ? const Color(0xFFF9A825)
                       : const Color(0xFFF44336),
                 ),
               ),

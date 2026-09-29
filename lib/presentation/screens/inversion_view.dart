@@ -58,20 +58,34 @@ class _InversionViewState extends State<InversionView> {
                 _buildHeader(),
                 const SizedBox(height: AppTheme.spacingXs),
 
-                // 1. COSTO MOD 40
-                _buildCostoMod40Section(provider, costoCalc),
-                const SizedBox(height: AppTheme.spacingXs),
+                if (provider.modalidad40OptOut) ...[
+                  // Sin Modalidad 40: las secciones de costo/retroactivo/
+                  // financiamiento comparan aportaciones voluntarias de M40,
+                  // por lo que no aplican cuando el usuario eligió no hacerlas.
+                  _buildSinMod40Message(),
+                  const SizedBox(height: AppTheme.spacingXs),
+                ] else ...[
+                  // 1. COSTO MOD 40
+                  _buildCostoMod40Section(provider, costoCalc),
+                  const SizedBox(height: AppTheme.spacingXs),
 
-                // 2. PAGO RETROACTIVO + MEJORA DE PENSIÓN (single collapsible block)
-                _buildPagoRetroactivoYMejoraSection(provider, retroCalc, invCalc),
-                const SizedBox(height: AppTheme.spacingXs),
+                  // 2. PAGO RETROACTIVO + MEJORA DE PENSIÓN (collapsible block)
+                  _buildPagoRetroactivoYMejoraSection(
+                    provider,
+                    retroCalc,
+                    invCalc,
+                  ),
+                  const SizedBox(height: AppTheme.spacingXs),
 
-                // 3. FINANCIAMIENTO
-                _buildFinanciamientoSection(provider, finCalc),
-                const SizedBox(height: AppTheme.spacingXs),
+                  // 3. FINANCIAMIENTO
+                  _buildFinanciamientoSection(provider, finCalc),
+                  const SizedBox(height: AppTheme.spacingXs),
+                ],
 
                 // Legal notes
-                LegalNoteCard(note: provider.evaluator.metadata.legalNotes.inversion),
+                LegalNoteCard(
+                  note: provider.evaluator.metadata.legalNotes.inversion,
+                ),
               ],
             ),
           ),
@@ -95,7 +109,11 @@ class _InversionViewState extends State<InversionView> {
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Icon(Icons.trending_up, color: AppTheme.accent, size: 18),
+            child: const Icon(
+              Icons.trending_up,
+              color: AppTheme.accent,
+              size: 18,
+            ),
           ),
           const SizedBox(width: AppTheme.spacingSm),
           const Expanded(
@@ -125,18 +143,62 @@ class _InversionViewState extends State<InversionView> {
     );
   }
 
+  /// Mensaje amigable cuando el usuario eligió NO hacer aportaciones
+  /// voluntarias de Modalidad 40. Las secciones de costo, pago retroactivo
+  /// y financiamiento comparan contra la Modalidad 40, por lo que no aplican.
+  Widget _buildSinMod40Message() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundLight,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: Border.all(color: AppTheme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Modalidad 40',
+            style: TextStyle(
+              fontSize: AppTheme.fontSizeCardTitle,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Elegiste no hacer aportaciones voluntarias de Modalidad 40. '
+            'Esta sección compara el costo de la Modalidad 40 frente a '
+            'invertir ese dinero, así que no aplica en tu caso. Tu pensión '
+            'ya está calculada en la pestaña "Pensión".',
+            style: TextStyle(
+              fontSize: AppTheme.fontSizeInput,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ============================================================
   // 1. COSTO MOD 40
   // ============================================================
 
-  Widget _buildCostoMod40Section(RetroactiveProvider provider, CostoMod40Calculation? calc) {
+  Widget _buildCostoMod40Section(
+    RetroactiveProvider provider,
+    CostoMod40Calculation? calc,
+  ) {
     return Card(
       child: ExpansionTile(
-        title: const Text('Costo Mod. 40',
-            style: TextStyle(
-                fontSize: AppTheme.fontSizeCardTitle,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.primary)),
+        title: const Text(
+          'Costo Mod. 40',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeCardTitle,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.primary,
+          ),
+        ),
         initiallyExpanded: true,
         children: [
           Padding(
@@ -163,8 +225,13 @@ class _InversionViewState extends State<InversionView> {
   Widget _buildSalarioRegistradoInput(RetroactiveProvider provider) {
     return Row(
       children: [
-        const Text('Salario Registrado: ',
-            style: TextStyle(fontSize: AppTheme.fontSizeBody, color: AppTheme.textSecondary)),
+        const Text(
+          'Salario Registrado: ',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeBody,
+            color: AppTheme.textSecondary,
+          ),
+        ),
         const SizedBox(width: 8),
         SizedBox(
           width: 160,
@@ -193,13 +260,16 @@ class _InversionViewState extends State<InversionView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Detalle Año por Año',
-            style: TextStyle(
-                fontSize: AppTheme.fontSizeBody,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
-                const SizedBox(height: 2),
-                SingleChildScrollView(
+        const Text(
+          'Detalle Año por Año',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeBody,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
             columnSpacing: 12,
@@ -207,18 +277,80 @@ class _InversionViewState extends State<InversionView> {
             dataRowMaxHeight: 26,
             headingRowHeight: 24,
             columns: const [
-              DataColumn(label: Text('Año', style: TextStyle(fontSize: AppTheme.fontSizeTableHeader, fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Tasa', style: TextStyle(fontSize: AppTheme.fontSizeTableHeader, fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Cuotas', style: TextStyle(fontSize: AppTheme.fontSizeTableHeader, fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Costo Anual', style: TextStyle(fontSize: AppTheme.fontSizeTableHeader, fontWeight: FontWeight.bold))),
+              DataColumn(
+                label: Text(
+                  'Año',
+                  style: TextStyle(
+                    fontSize: AppTheme.fontSizeTableHeader,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Tasa',
+                  style: TextStyle(
+                    fontSize: AppTheme.fontSizeTableHeader,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Cuotas',
+                  style: TextStyle(
+                    fontSize: AppTheme.fontSizeTableHeader,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Costo Anual',
+                  style: TextStyle(
+                    fontSize: AppTheme.fontSizeTableHeader,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
             rows: calc.yearlyCosts.map((y) {
-              return DataRow(cells: [
-                DataCell(Text('${y.yearStart}', style: const TextStyle(fontSize: AppTheme.fontSizeTableData))),
-                DataCell(Text('${(y.tasa * 100).toStringAsFixed(2)}%', style: const TextStyle(fontSize: AppTheme.fontSizeTableData))),
-                DataCell(Text(y.diasPagados.toString(), style: const TextStyle(fontSize: AppTheme.fontSizeTableData))),
-                DataCell(Text(FormatUtils.formatCurrency(y.cuotaAnual), style: const TextStyle(fontSize: AppTheme.fontSizeTableData))),
-              ]);
+              return DataRow(
+                cells: [
+                  DataCell(
+                    Text(
+                      '${y.yearStart}',
+                      style: const TextStyle(
+                        fontSize: AppTheme.fontSizeTableData,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      '${(y.tasa * 100).toStringAsFixed(2)}%',
+                      style: const TextStyle(
+                        fontSize: AppTheme.fontSizeTableData,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      y.diasPagados.toString(),
+                      style: const TextStyle(
+                        fontSize: AppTheme.fontSizeTableData,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      FormatUtils.formatCurrencyInt(y.cuotaAnual),
+                      style: const TextStyle(
+                        fontSize: AppTheme.fontSizeTableData,
+                      ),
+                    ),
+                  ),
+                ],
+              );
             }).toList(),
           ),
         ),
@@ -230,14 +362,22 @@ class _InversionViewState extends State<InversionView> {
     return Column(
       children: [
         const Divider(height: 4),
-        ResultRow(label: 'Inversión Neta',
-            value: FormatUtils.formatCurrency(calc.inversionNeta), isBold: true),
-        ResultRow(label: 'Recuperación AFORE',
-            value: FormatUtils.formatCurrency(calc.recuperacionAfore)),
+        ResultRow(
+          label: 'Inversión Neta',
+          value: FormatUtils.formatCurrencyInt(calc.inversionNeta),
+          isBold: true,
+        ),
+        ResultRow(
+          label: 'Recuperación AFORE',
+          value: FormatUtils.formatCurrencyInt(calc.recuperacionAfore),
+        ),
         const Divider(height: 4),
-        ResultRow(label: 'Inversión Total',
-            value: FormatUtils.formatCurrency(calc.inversionTotal), isBold: true,
-            valueColor: AppTheme.primary),
+        ResultRow(
+          label: 'Inversión Total',
+          value: FormatUtils.formatCurrencyInt(calc.inversionTotal),
+          isBold: true,
+          valueColor: AppTheme.primary,
+        ),
       ],
     );
   }
@@ -246,12 +386,23 @@ class _InversionViewState extends State<InversionView> {
   // 2. PAGO RETROACTIVO
   // ============================================================
 
-  Widget _buildPagoRetroactivoYMejoraSection(RetroactiveProvider provider,
-      RetroactiveCalculation? retroCalc, InversionCalculation? invCalc) {
-    final pensionConMod40 = provider.pensionMod40Calculation?.pensionMensual ?? 0;
-    final pensionSinMod40 = provider.inversionCalculation?.pensionMensualSinMod40 ??
+  Widget _buildPagoRetroactivoYMejoraSection(
+    RetroactiveProvider provider,
+    RetroactiveCalculation? retroCalc,
+    InversionCalculation? invCalc,
+  ) {
+    final pensionConMod40 =
+        provider.pensionMod40Calculation?.pensionMensual ?? 0;
+    final pensionSinMod40 =
+        provider.inversionCalculation?.pensionMensualSinMod40 ??
         provider.factAsigSinMod40Calculation?.totalPensionMensual ??
-        provider.evaluator.metadata.financialRules.pensionActual?.pensionMensualActualizada ?? 0;
+        provider
+            .evaluator
+            .metadata
+            .financialRules
+            .pensionActual
+            ?.pensionMensualActualizada ??
+        0;
 
     return Card(
       child: ExpansionTile(
@@ -262,8 +413,13 @@ class _InversionViewState extends State<InversionView> {
             color: AppTheme.primary,
             borderRadius: BorderRadius.circular(4),
           ),
-          child: const Text('Pago Retroactivo y Mejora de Pensión',
-              style: TextStyle(fontSize: AppTheme.fontSizeBodySmall, color: Colors.white)),
+          child: const Text(
+            'Pago Retroactivo y Mejora de Pensión',
+            style: TextStyle(
+              fontSize: AppTheme.fontSizeBodySmall,
+              color: Colors.white,
+            ),
+          ),
         ),
         tilePadding: EdgeInsets.zero,
         initiallyExpanded: false,
@@ -274,11 +430,14 @@ class _InversionViewState extends State<InversionView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // --- PAGO RETROACTIVO ---
-                const Text('Pago Retroactivo',
-                    style: TextStyle(
-                        fontSize: AppTheme.fontSizeBody,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary)),
+                const Text(
+                  'Pago Retroactivo',
+                  style: TextStyle(
+                    fontSize: AppTheme.fontSizeBody,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
                 const Divider(height: 4),
                 _buildRetroactiveSlider(provider),
                 if (retroCalc != null) ...[
@@ -287,11 +446,14 @@ class _InversionViewState extends State<InversionView> {
                 ],
                 const Divider(height: 8),
                 // --- MEJORA DE PENSIÓN ---
-                const Text('Mejora de Pensión',
-                    style: TextStyle(
-                        fontSize: AppTheme.fontSizeBody,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary)),
+                const Text(
+                  'Mejora de Pensión',
+                  style: TextStyle(
+                    fontSize: AppTheme.fontSizeBody,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
                 const Divider(height: 4),
                 _buildMejoraComparativa(pensionSinMod40, pensionConMod40),
                 if (invCalc != null) ...[
@@ -320,8 +482,13 @@ class _InversionViewState extends State<InversionView> {
       children: [
         Row(
           children: [
-            const Text('Años Retroactivos: ',
-                style: TextStyle(fontSize: AppTheme.fontSizeBody, color: AppTheme.textSecondary)),
+            const Text(
+              'Años Retroactivos: ',
+              style: TextStyle(
+                fontSize: AppTheme.fontSizeBody,
+                color: AppTheme.textSecondary,
+              ),
+            ),
             const SizedBox(width: 8),
             SizedBox(
               width: 80,
@@ -333,7 +500,10 @@ class _InversionViewState extends State<InversionView> {
                 style: const TextStyle(fontSize: AppTheme.fontSizeInput),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
                   isDense: true,
                 ),
                 onSubmitted: (v) {
@@ -362,18 +532,29 @@ class _InversionViewState extends State<InversionView> {
     return Column(
       children: [
         const Divider(height: 4),
-        ResultRow(label: 'Costo Modalidad 40',
-            value: FormatUtils.formatCurrency(calc.costoModalidad40)),
-        ResultRow(label: 'Actualizaciones',
-            value: FormatUtils.formatCurrency(calc.actualizaciones)),
-        ResultRow(label: 'Recargos',
-            value: FormatUtils.formatCurrency(calc.recargos)),
-        ResultRow(label: 'Recuperación AFORE',
-            value: FormatUtils.formatCurrency(calc.recuperacionAfore)),
+        ResultRow(
+          label: 'Costo Modalidad 40',
+          value: FormatUtils.formatCurrencyInt(calc.costoModalidad40),
+        ),
+        ResultRow(
+          label: 'Actualizaciones',
+          value: FormatUtils.formatCurrencyInt(calc.actualizaciones),
+        ),
+        ResultRow(
+          label: 'Recargos',
+          value: FormatUtils.formatCurrencyInt(calc.recargos),
+        ),
+        ResultRow(
+          label: 'Recuperación AFORE',
+          value: FormatUtils.formatCurrencyInt(calc.recuperacionAfore),
+        ),
         const Divider(height: 4),
-        ResultRow(label: 'Costo Total',
-            value: FormatUtils.formatCurrency(calc.costoTotal), isBold: true,
-            valueColor: AppTheme.primary),
+        ResultRow(
+          label: 'Costo Total',
+          value: FormatUtils.formatCurrencyInt(calc.costoTotal),
+          isBold: true,
+          valueColor: AppTheme.primary,
+        ),
       ],
     );
   }
@@ -394,17 +575,23 @@ class _InversionViewState extends State<InversionView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Sin Modalidad 40',
-                      style: TextStyle(
-                          fontSize: AppTheme.fontSizeBody,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textSecondary)),
+                  const Text(
+                    'Sin Modalidad 40',
+                    style: TextStyle(
+                      fontSize: AppTheme.fontSizeBody,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(FormatUtils.formatCurrency(sinMod40),
-                      style: const TextStyle(
-                          fontSize: AppTheme.fontSizeTotalMedium,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textSecondary)),
+                  Text(
+                    FormatUtils.formatCurrencyInt(sinMod40),
+                    style: const TextStyle(
+                      fontSize: AppTheme.fontSizeTotalMedium,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -413,17 +600,23 @@ class _InversionViewState extends State<InversionView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Con Modalidad 40',
-                      style: TextStyle(
-                          fontSize: AppTheme.fontSizeBody,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.primary)),
+                  const Text(
+                    'Con Modalidad 40',
+                    style: TextStyle(
+                      fontSize: AppTheme.fontSizeBody,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primary,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(FormatUtils.formatCurrency(conMod40),
-                      style: const TextStyle(
-                          fontSize: AppTheme.fontSizeTotalMedium,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primary)),
+                  Text(
+                    FormatUtils.formatCurrencyInt(conMod40),
+                    style: const TextStyle(
+                      fontSize: AppTheme.fontSizeTotalMedium,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primary,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -440,15 +633,20 @@ class _InversionViewState extends State<InversionView> {
           ),
           child: Row(
             children: [
-              Icon(diferencia > 0 ? Icons.trending_up : Icons.trending_down,
-                  color: diferencia > 0 ? AppTheme.primary : Colors.red, size: 18),
+              Icon(
+                diferencia > 0 ? Icons.trending_up : Icons.trending_down,
+                color: diferencia > 0 ? AppTheme.primary : Colors.red,
+                size: 18,
+              ),
               const SizedBox(width: 6),
-              Text('Diferencia: ${FormatUtils.formatCurrency(diferencia)} (${
-                  porcentaje.toStringAsFixed(2)}%)',
-                  style: const TextStyle(
-                      fontSize: AppTheme.fontSizeBody,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary)),
+              Text(
+                'Diferencia: ${FormatUtils.formatCurrencyInt(diferencia)} (${porcentaje.toStringAsFixed(2)}%)',
+                style: const TextStyle(
+                  fontSize: AppTheme.fontSizeBody,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primary,
+                ),
+              ),
             ],
           ),
         ),
@@ -461,23 +659,32 @@ class _InversionViewState extends State<InversionView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(height: 4),
-        const Text('Análisis de Inversión',
-            style: TextStyle(
-                fontSize: AppTheme.fontSizeBody,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
+        const Text(
+          'Análisis de Inversión',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeBody,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
         const SizedBox(height: 2),
         ResultRow(
           label: 'Flujos de pensión hasta los 80 años',
           value:
-              'Sin Mod. 40: ${FormatUtils.formatCurrency(calc.flujoHasta80SinMod40)}  |  Con Mod. 40: ${FormatUtils.formatCurrency(calc.flujoHasta80ConMod40)}',
+              'Sin Mod. 40: ${FormatUtils.formatCurrencyInt(calc.flujoHasta80SinMod40)}  |  Con Mod. 40: ${FormatUtils.formatCurrencyInt(calc.flujoHasta80ConMod40)}',
         ),
-        ResultRow(label: 'Inversión Neta',
-            value: FormatUtils.formatCurrency(calc.inversionNeta)),
-        ResultRow(label: 'Recuperación AFORE',
-            value: FormatUtils.formatCurrency(calc.recuperacionAfore)),
-        ResultRow(label: 'Tasa de Rendimiento',
-            value: FormatUtils.formatPercent(calc.tasaRendimiento)),
+        ResultRow(
+          label: 'Inversión Neta',
+          value: FormatUtils.formatCurrencyInt(calc.inversionNeta),
+        ),
+        ResultRow(
+          label: 'Recuperación AFORE',
+          value: FormatUtils.formatCurrencyInt(calc.recuperacionAfore),
+        ),
+        ResultRow(
+          label: 'Tasa de Rendimiento',
+          value: FormatUtils.formatPercent(calc.tasaRendimiento),
+        ),
       ],
     );
   }
@@ -487,20 +694,28 @@ class _InversionViewState extends State<InversionView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(height: 4),
-        ResultRow(label: 'Ganancia Total',
-            value: FormatUtils.formatCurrency(calc.gananciaTotal), isBold: true,
-            valueColor: AppTheme.primary),
-        ResultRow(label: 'Ganancia Mensual',
-            value: FormatUtils.formatCurrency(calc.mejoraPension)),
-        ResultRow(label: 'Periodo Recuperación',
-            value: '${calc.periodoRecuperacionMeses.toStringAsFixed(2)} meses'),
+        ResultRow(
+          label: 'Ganancia Total',
+          value: FormatUtils.formatCurrencyInt(calc.gananciaTotal),
+          isBold: true,
+          valueColor: AppTheme.primary,
+        ),
+        ResultRow(
+          label: 'Ganancia Mensual',
+          value: FormatUtils.formatCurrencyInt(calc.mejoraPension),
+        ),
+        ResultRow(
+          label: 'Periodo Recuperación',
+          value: '${calc.periodoRecuperacionMeses.toStringAsFixed(2)} meses',
+        ),
       ],
     );
   }
 
   Widget _buildTermometro(InversionCalculation calc) {
     // Verdict color: green for good investments, orange for risky ones.
-    final bool esBuena = calc.veredicto == 'Excelente Inversión' ||
+    final bool esBuena =
+        calc.veredicto == 'Excelente Inversión' ||
         calc.veredicto == 'Buena Inversión' ||
         calc.veredicto == 'Inversión Aceptable';
     final Color verdictColor = esBuena ? Colors.green : Colors.orange;
@@ -508,11 +723,14 @@ class _InversionViewState extends State<InversionView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(height: 4),
-        const Text('Rendimiento de Inversión',
-            style: TextStyle(
-                fontSize: AppTheme.fontSizeBody,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
+        const Text(
+          'Rendimiento de Inversión',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeBody,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
         const SizedBox(height: AppTheme.spacingXs),
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -524,10 +742,13 @@ class _InversionViewState extends State<InversionView> {
           ),
         ),
         const SizedBox(height: 2),
-        Text('${(calc.tasaRendimiento * 100).toStringAsFixed(2)}% de rendimiento',
-            style: const TextStyle(
-                fontSize: AppTheme.fontSizeBodySmall,
-                color: AppTheme.textSecondary)),
+        Text(
+          '${(calc.tasaRendimiento * 100).toStringAsFixed(2)}% de rendimiento',
+          style: const TextStyle(
+            fontSize: AppTheme.fontSizeBodySmall,
+            color: AppTheme.textSecondary,
+          ),
+        ),
         const SizedBox(height: AppTheme.spacingXs),
         Container(
           width: double.infinity,
@@ -549,15 +770,21 @@ class _InversionViewState extends State<InversionView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(calc.veredicto,
-                        style: TextStyle(
-                            fontSize: AppTheme.fontSizeCardTitle,
-                            fontWeight: FontWeight.bold,
-                            color: verdictColor)),
-                    Text('Periodo de recuperación: ${calc.periodoRecuperacionMeses.toStringAsFixed(2)} meses',
-                        style: const TextStyle(
-                            fontSize: AppTheme.fontSizeBodySmall,
-                            color: AppTheme.textSecondary)),
+                    Text(
+                      calc.veredicto,
+                      style: TextStyle(
+                        fontSize: AppTheme.fontSizeCardTitle,
+                        fontWeight: FontWeight.bold,
+                        color: verdictColor,
+                      ),
+                    ),
+                    Text(
+                      'Periodo de recuperación: ${calc.periodoRecuperacionMeses.toStringAsFixed(2)} meses',
+                      style: const TextStyle(
+                        fontSize: AppTheme.fontSizeBodySmall,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -572,14 +799,20 @@ class _InversionViewState extends State<InversionView> {
   // 4. FINANCIAMIENTO
   // ============================================================
 
-  Widget _buildFinanciamientoSection(RetroactiveProvider provider, FinanciamientoCalculation? calc) {
+  Widget _buildFinanciamientoSection(
+    RetroactiveProvider provider,
+    FinanciamientoCalculation? calc,
+  ) {
     return Card(
       child: ExpansionTile(
-        title: const Text('Financiamiento',
-            style: TextStyle(
-                fontSize: AppTheme.fontSizeCardTitle,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.primary)),
+        title: const Text(
+          'Financiamiento',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeCardTitle,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.primary,
+          ),
+        ),
         subtitle: Container(
           width: 260,
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -587,8 +820,13 @@ class _InversionViewState extends State<InversionView> {
             color: AppTheme.primary,
             borderRadius: BorderRadius.circular(4),
           ),
-          child: const Text('Crédito, participaciones y plan de pagos',
-              style: TextStyle(fontSize: AppTheme.fontSizeBodySmall, color: Colors.white)),
+          child: const Text(
+            'Crédito, participaciones y plan de pagos',
+            style: TextStyle(
+              fontSize: AppTheme.fontSizeBodySmall,
+              color: Colors.white,
+            ),
+          ),
         ),
         initiallyExpanded: false,
         children: [
@@ -610,8 +848,13 @@ class _InversionViewState extends State<InversionView> {
                 ] else ...[
                   const Padding(
                     padding: EdgeInsets.all(6.0),
-                    child: Text('Complete los datos en CAPTURA para ver el financiamiento.',
-                        style: TextStyle(fontSize: AppTheme.fontSizeBody, color: AppTheme.textSecondary)),
+                    child: Text(
+                      'Complete los datos en CAPTURA para ver el financiamiento.',
+                      style: TextStyle(
+                        fontSize: AppTheme.fontSizeBody,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
                   ),
                 ],
               ],
@@ -626,20 +869,35 @@ class _InversionViewState extends State<InversionView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Participaciones',
-            style: TextStyle(
-                fontSize: AppTheme.fontSizeBody,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
+        const Text(
+          'Participaciones',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeBody,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
         const Divider(height: 4),
-        ResultRow(label: 'Inversión Total',
-            value: FormatUtils.formatCurrency(calc.inversionTotal)),
-        ResultRow(label: 'Participación Banco',
-            value: FormatUtils.formatCurrency(calc.participacionBanco)),
-        ResultRow(label: 'Participación Propia',
-            value: FormatUtils.formatCurrency(calc.participacionPropia)),
-        InfoRow(label: '% Banco', value: '${(calc.porcentajeBanco * 100).toStringAsFixed(1)}%'),
-        InfoRow(label: '% Propio', value: '${(calc.porcentajePropio * 100).toStringAsFixed(1)}%'),
+        ResultRow(
+          label: 'Inversión Total',
+          value: FormatUtils.formatCurrencyInt(calc.inversionTotal),
+        ),
+        ResultRow(
+          label: 'Participación Banco',
+          value: FormatUtils.formatCurrencyInt(calc.participacionBanco),
+        ),
+        ResultRow(
+          label: 'Participación Propia',
+          value: FormatUtils.formatCurrencyInt(calc.participacionPropia),
+        ),
+        InfoRow(
+          label: '% Banco',
+          value: '${(calc.porcentajeBanco * 100).toStringAsFixed(1)}%',
+        ),
+        InfoRow(
+          label: '% Propio',
+          value: '${(calc.porcentajePropio * 100).toStringAsFixed(1)}%',
+        ),
       ],
     );
   }
@@ -649,20 +907,31 @@ class _InversionViewState extends State<InversionView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(height: 4),
-        const Text('Costo Financiamiento',
-            style: TextStyle(
-                fontSize: AppTheme.fontSizeBody,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
+        const Text(
+          'Costo Financiamiento',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeBody,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
         const Divider(height: 4),
-        ResultRow(label: 'Monto Crédito',
-            value: FormatUtils.formatCurrency(calc.montoCredito)),
-        ResultRow(label: 'Duración Trámite',
-            value: '${calc.duracionTramiteMeses} meses'),
-        ResultRow(label: 'Costo Financiamiento',
-            value: FormatUtils.formatCurrency(calc.costoFinanciamiento)),
-        ResultRow(label: 'Monto Máximo a Pagar',
-            value: FormatUtils.formatCurrency(calc.montoMaximoPagar)),
+        ResultRow(
+          label: 'Monto Crédito',
+          value: FormatUtils.formatCurrencyInt(calc.montoCredito),
+        ),
+        ResultRow(
+          label: 'Duración Trámite',
+          value: '${calc.duracionTramiteMeses} meses',
+        ),
+        ResultRow(
+          label: 'Costo Financiamiento',
+          value: FormatUtils.formatCurrencyInt(calc.costoFinanciamiento),
+        ),
+        ResultRow(
+          label: 'Monto Máximo a Pagar',
+          value: FormatUtils.formatCurrencyInt(calc.montoMaximoPagar),
+        ),
       ],
     );
   }
@@ -672,18 +941,25 @@ class _InversionViewState extends State<InversionView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(height: 4),
-        const Text('Plan de Pagos',
-            style: TextStyle(
-                fontSize: AppTheme.fontSizeBody,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
+        const Text(
+          'Plan de Pagos',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeBody,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
         const Divider(height: 4),
-        ResultRow(label: 'Monto Crédito Redondeado',
-            value: FormatUtils.formatCurrency(calc.montoCreditoRedondeado)),
-        ResultRow(label: 'Plazo',
-            value: '${calc.plazoMeses} meses'),
-        ResultRow(label: 'Descuento Mensual',
-            value: FormatUtils.formatCurrency(calc.descuentoMensual), isBold: true),
+        ResultRow(
+          label: 'Monto Crédito Redondeado',
+          value: FormatUtils.formatCurrencyInt(calc.montoCreditoRedondeado),
+        ),
+        ResultRow(label: 'Plazo', value: '${calc.plazoMeses} meses'),
+        ResultRow(
+          label: 'Descuento Mensual',
+          value: FormatUtils.formatCurrencyInt(calc.descuentoMensual),
+          isBold: true,
+        ),
       ],
     );
   }
@@ -693,20 +969,31 @@ class _InversionViewState extends State<InversionView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(height: 4),
-        const Text('Proyección Pensión',
-            style: TextStyle(
-                fontSize: AppTheme.fontSizeBody,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
+        const Text(
+          'Proyección Pensión',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeBody,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
         const Divider(height: 4),
-        ResultRow(label: 'Pensión Mensual Inmediata',
-            value: FormatUtils.formatCurrency(calc.pensionMensualInmediata)),
-        ResultRow(label: 'Pensión Mensual Liquidación',
-            value: FormatUtils.formatCurrency(calc.pensionMensualLiquidacion)),
-        ResultRow(label: 'Flujo hasta 80 años',
-            value: FormatUtils.formatCurrency(calc.flujoHasta80)),
-        ResultRow(label: 'Periodos Recuperación',
-            value: '${calc.periodosRecuperacionMeses.toStringAsFixed(2)} meses'),
+        ResultRow(
+          label: 'Pensión Mensual Inmediata',
+          value: FormatUtils.formatCurrencyInt(calc.pensionMensualInmediata),
+        ),
+        ResultRow(
+          label: 'Pensión Mensual Liquidación',
+          value: FormatUtils.formatCurrencyInt(calc.pensionMensualLiquidacion),
+        ),
+        ResultRow(
+          label: 'Flujo hasta 80 años',
+          value: FormatUtils.formatCurrencyInt(calc.flujoHasta80),
+        ),
+        ResultRow(
+          label: 'Periodos Recuperación',
+          value: '${calc.periodosRecuperacionMeses.toStringAsFixed(2)} meses',
+        ),
       ],
     );
   }
@@ -716,13 +1003,16 @@ class _InversionViewState extends State<InversionView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(height: 4),
-        const Text('Veredicto',
-            style: TextStyle(
-                fontSize: AppTheme.fontSizeBody,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
-                const SizedBox(height: AppTheme.spacingXs),
-                Container(
+        const Text(
+          'Veredicto',
+          style: TextStyle(
+            fontSize: AppTheme.fontSizeBody,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: AppTheme.spacingXs),
+        Container(
           width: double.infinity,
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
@@ -731,7 +1021,9 @@ class _InversionViewState extends State<InversionView> {
                 : Colors.orange.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: calc.veredicto == 'RECOMENDABLE' ? Colors.green : Colors.orange,
+              color: calc.veredicto == 'RECOMENDABLE'
+                  ? Colors.green
+                  : Colors.orange,
             ),
           ),
           child: Row(
@@ -740,7 +1032,9 @@ class _InversionViewState extends State<InversionView> {
                 calc.veredicto == 'RECOMENDABLE'
                     ? Icons.check_circle
                     : Icons.warning,
-                color: calc.veredicto == 'RECOMENDABLE' ? Colors.green : Colors.orange,
+                color: calc.veredicto == 'RECOMENDABLE'
+                    ? Colors.green
+                    : Colors.orange,
                 size: 18,
               ),
               const SizedBox(width: 8),
@@ -748,13 +1042,16 @@ class _InversionViewState extends State<InversionView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(calc.veredicto,
-                        style: TextStyle(
-                            fontSize: AppTheme.fontSizeCardTitle,
-                            fontWeight: FontWeight.bold,
-                            color: calc.veredicto == 'RECOMENDABLE'
-                                ? Colors.green
-                                : Colors.orange)),
+                    Text(
+                      calc.veredicto,
+                      style: TextStyle(
+                        fontSize: AppTheme.fontSizeCardTitle,
+                        fontWeight: FontWeight.bold,
+                        color: calc.veredicto == 'RECOMENDABLE'
+                            ? Colors.green
+                            : Colors.orange,
+                      ),
+                    ),
                   ],
                 ),
               ),

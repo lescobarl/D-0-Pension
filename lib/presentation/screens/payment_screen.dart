@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../core/models/result.dart';
 import '../../core/theme/app_theme.dart';
+import '../../services/account/pending_registration.dart';
+import '../../services/account/registration_checkout.dart';
+import '../../services/account/user_account_service.dart';
 import '../../services/billing/payment_provider.dart';
 import '../../services/billing/play_billing_service.dart';
+import '../../services/billing/play_purchase_success.dart';
 
 /// Plan selection and checkout screen.
 ///
@@ -11,22 +17,34 @@ import '../../services/billing/play_billing_service.dart';
 ///   - Uses [AppTheme] instead of `FamilyTheme`
 ///   - Uses [PaymentProvider] instead of BLoC
 ///   - Uses default Material fonts instead of `GoogleFonts.nunito()`
+///   - Deferred checkout: la cuenta se materializa solo después de una compra
+///     verificada (ver [pendingRegistration]).
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({super.key});
+  const PaymentScreen({super.key, this.pendingRegistration});
+
+  /// Registro pendiente de un usuario nuevo (flujo A: onboarding → registro →
+  /// pago). Si es `null`, la compra se aplica a la sesión activa (renovación,
+  /// flujo C) o a nivel dispositivo (invitado / recuperación, flujo E).
+  final PendingRegistration? pendingRegistration;
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  String _selectedPlan = kProductIdAnnual;
+  String _selectedPlan = kProductIdSemestral;
 
   @override
   void initState() {
     super.initState();
-    // Initialize billing if not already done.
+    // Corrección de raíz del ciclo de recuperación: al montar /payment se
+    // limpia cualquier estado transitorio heredado (p. ej. el error de un
+    // restore fallido previo) para que SIEMPRE se muestre la selección de plan
+    // y nunca un error fantasma ('No hay suscripción activa' / 'Error de
+    // conexión') aunque el provider ya esté inicializado desde el arranque.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<PaymentProvider>();
+      provider.resetTransientState();
       if (!provider.isInitialized) {
         provider.initialize();
       }
@@ -77,6 +95,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildPlanSelection(PaymentProvider provider) {
+    final canLinkPendingLicense =
+        widget.pendingRegistration != null && provider.hasValidLicense;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -93,74 +114,76 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            'Accede a todas las funcionalidades de la calculadora',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
+          Text.rich(
+            TextSpan(
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primary,
+              ),
+              children: [
+                const TextSpan(text: 'Accede a todas las funcionalidades de: '),
+                const TextSpan(
+                  text: 'Calculadora pensión Ley 73 IMSS',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
-          // Annual plan card
+          // Único plan: Suscripción Semestral
           _buildPlanCard(
-            title: 'Suscripción Anual',
-            price: '\$199',
-            period: '/año',
-            description: 'Acceso completo por 1 año',
+            title: 'Suscripción Semestral',
+            price: '\$599',
+            period: '/6 meses',
+            description:
+                'La manera exacta de asegurar tu futuro y el de tu familia',
+            highlightedFeatures: [
+              'Tu asesor personalizado, con Inteligencia Artificial',
+              'Crea tus propios escenarios de pensión',
+              'Captura simplificada, sin tantos rollos',
+            ],
             features: [
               'Cálculos precisos Ley 73 IMSS',
               'Modalidad 40 y Pago Retroactivo',
               'Proyecciones de pensión',
               'Soporte prioritario',
             ],
-            productId: kProductIdAnnual,
+            productId: kProductIdSemestral,
             isPopular: true,
-            onTap: () => setState(() => _selectedPlan = kProductIdAnnual),
+            onTap: () => setState(() => _selectedPlan = kProductIdSemestral),
           ),
-          const SizedBox(height: 16),
-
-          // Perpetual plan card
-          _buildPlanCard(
-            title: 'Licencia Vitalicia',
-            price: '\$499',
-            period: 'único pago',
-            description: 'Acceso de por vida',
-            features: [
-              'Todo lo del plan anual',
-              'Sin renovaciones',
-              'Actualizaciones gratuitas',
-              'Soporte VIP',
-            ],
-            productId: kProductIdPerpetual,
-            isPopular: false,
-            onTap: () => setState(() => _selectedPlan = kProductIdPerpetual),
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
           // Security info
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.lock_outline, size: 16, color: AppTheme.textHint),
-              const SizedBox(width: 6),
-              Text(
-                'Pago seguro procesado por Google Play',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textHint,
+              Icon(Icons.lock_outline, size: 18, color: AppTheme.primary),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Pago seguro procesado por Google Play',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
           // Buy button
           SizedBox(
             width: double.infinity,
-            height: 52,
+            height: 48,
             child: ElevatedButton(
-              onPressed: () => _onPurchase(provider),
+              onPressed: provider.isLoading
+                  ? null
+                  : () => _onPurchase(provider),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.accent,
                 foregroundColor: Colors.white,
@@ -170,9 +193,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 elevation: 4,
               ),
               child: Text(
-                _selectedPlan == kProductIdAnnual
-                    ? 'Comprar Suscripción Anual - \$199'
-                    : 'Comprar Licencia Vitalicia - \$499',
+                'Comprar Suscripción Semestral',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -180,22 +201,42 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // Restore link
           Center(
             child: TextButton(
-              onPressed: () => _onRestore(provider),
-              style: TextButton.styleFrom(
-                foregroundColor: AppTheme.primary,
-              ),
+              onPressed: provider.isLoading ? null : () => _onRestore(provider),
+              style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
               child: const Text(
-                '¿Ya tienes una licencia? Restaurar compra',
+                'Recuperar acceso',
                 style: TextStyle(fontSize: 14),
               ),
             ),
           ),
-          const SizedBox(height: 32),
+
+          // Al registrarse con una licencia de dispositivo YA vigente, se
+          // permite vincularla a la nueva cuenta sin volver a pagar.
+          if (canLinkPendingLicense) ...[
+            const SizedBox(height: 4),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: () => _linkPendingLicense(),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primary,
+                  side: const BorderSide(color: AppTheme.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.link, size: 18),
+                label: const Text('Vincular licencia a mi cuenta'),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -207,6 +248,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     required String period,
     required String description,
     required List<String> features,
+    List<String> highlightedFeatures = const [],
     required String productId,
     required bool isPopular,
     required VoidCallback onTap,
@@ -237,7 +279,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -274,7 +316,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
 
                   // Price
                   Row(
@@ -284,7 +326,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       Text(
                         price,
                         style: TextStyle(
-                          fontSize: 32,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primary,
                         ),
@@ -303,48 +345,41 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   Text(
                     description,
                     style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
 
-                  // Features
-                  ...features.map(
-                    (feature) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                  // Features: all unified (star, gold, bold, dark text)
+                  ...[...highlightedFeatures, ...features].map((feature) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.check_circle,
+                          const Icon(
+                            Icons.star_rounded,
                             size: 18,
-                            color: AppTheme.successColor,
+                            color: AppTheme.accent,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            feature,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppTheme.textSecondary,
+                          Expanded(
+                            child: Text(
+                              feature,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimary,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                 ],
-              ),
-            ),
-            // Radio indicator
-            Positioned(
-              top: 20,
-              right: 20,
-              child: Icon(
-                isSelected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: isSelected ? AppTheme.primary : AppTheme.textHint,
-                size: 22,
               ),
             ),
           ],
@@ -354,6 +389,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildSuccessScreen(PaymentProvider provider) {
+    final accounts = context.read<UserAccountService>();
+    final sessionUser = accounts.currentUser;
+    final hasSession = sessionUser != null;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -376,12 +415,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Ya puedes acceder a todas las funcionalidades de la calculadora.',
+              hasSession
+                  ? 'Ya puedes acceder a todas las funcionalidades de la '
+                        'calculadora, ${sessionUser.username}.'
+                  : 'Ya puedes acceder a todas las funcionalidades de la '
+                        'calculadora.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -389,10 +429,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
               height: 52,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/home',
-                    (route) => false,
-                  );
+                  // El entry point resuelve el destino según sesión/licencia.
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/', (route) => false);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
@@ -403,13 +443,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
                 child: const Text(
                   'Ir a la Calculadora',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
+            if (!hasSession) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    // Compra como invitado: al iniciar sesión se vincula la
+                    // licencia del dispositivo a la cuenta.
+                    Navigator.of(context).pushNamed('/login');
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                    side: const BorderSide(color: AppTheme.primary),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.link, size: 18),
+                  label: const Text('Vincular a mi cuenta'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -417,6 +477,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildErrorScreen(PaymentProvider provider) {
+    // Caso distinto a un simple fallo de conexión: la cuenta de Google actual
+    // no tiene una suscripción ACTIVA y PAGADA. Mostramos una vista dedicada
+    // con la explicación y el camino accionable, para no dejar al usuario en el
+    // ciclo "Recuperar acceso → no hay cuenta → Error de conexión".
+    if (provider.isNoActiveSubscriptionError) {
+      return _buildNoActiveSubscriptionView(provider);
+    }
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -430,8 +497,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 color: AppTheme.errorColor,
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Error de conexión',
+              Text(
+                provider.isBillingUnavailableError
+                    ? 'Compra no disponible'
+                    : 'Error de conexión',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -442,10 +511,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               Text(
                 provider.userFriendlyError ?? 'Ocurrió un error desconocido.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textSecondary,
-                ),
+                style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -465,29 +531,73 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   child: const Text('Intentar de nuevo'),
                 ),
               ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  provider.resetState();
+                },
+                child: const Text('Volver'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Vista dedicada al error "no hay suscripción activa".
+  ///
+  /// Explica el porqué (suscripción comprada con otra cuenta de Google, venció
+  /// y no se renovó, o fue cancelada) y ofrece el camino accionable: comprar de
+  /// nuevo la suscripción semestral. `_executePurchase` reinicia el estado
+  /// internamente, por lo que llamar a [_onPurchase] desde aquí es seguro.
+  Widget _buildNoActiveSubscriptionView(PaymentProvider provider) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.subscriptions_outlined,
+                size: 80,
+                color: AppTheme.warningColor,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'No hay suscripción activa',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
               const SizedBox(height: 12),
+              Text(
+                'En esta cuenta de Google no hay una suscripción vigente.\n\n'
+                'Esto puede pasar si la compraste con otra cuenta de Google, si '
+                'venció y no se renovó, o si se canceló.\n\n'
+                'Para volver a usar la app, compra la suscripción semestral. Si '
+                'crees que ya pagaste, verifica que estés usando la misma cuenta '
+                'de Google con la que hiciste la compra.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 height: 48,
-                child: OutlinedButton(
-                  onPressed: () async {
-                    // Capture navigator before async gap to avoid
-                    // use_build_context_synchronously warnings.
-                    final navigator = Navigator.of(context);
-                    await provider.enableDemoMode();
-                    navigator.pushNamedAndRemoveUntil(
-                      '/home',
-                      (route) => false,
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
-                    side: BorderSide(color: AppTheme.primary),
+                child: ElevatedButton(
+                  onPressed: () => _onPurchase(provider),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accent,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Continuar en modo demo'),
+                  child: const Text('Comprar Suscripción Semestral'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -496,40 +606,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   provider.resetState();
                 },
                 child: const Text('Volver'),
-              ),
-              const SizedBox(height: 16),
-              // Info card about demo mode
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.warningColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppTheme.warningColor.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 16,
-                      color: AppTheme.warningColor,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'El modo demo te permite explorar la aplicación '
-                        'sin necesidad de una licencia. Algunas funciones '
-                        'avanzadas podrían no estar disponibles.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -543,14 +619,72 @@ class _PaymentScreenState extends State<PaymentScreen> {
   // -----------------------------------------------------------------------
 
   Future<void> _onPurchase(PaymentProvider provider) async {
-    if (_selectedPlan == kProductIdAnnual) {
-      await provider.purchaseAnnual();
-    } else {
-      await provider.purchasePerpetual();
-    }
+    final result = await provider.purchaseSemestral();
+    await _handleVerifiedPurchase(result);
   }
 
   Future<void> _onRestore(PaymentProvider provider) async {
-    await provider.restorePurchase();
+    final result = await provider.restorePurchase();
+    await _handleVerifiedPurchase(result);
+  }
+
+  /// Vincula una licencia de dispositivo YA vigente al registro pendiente
+  /// (flujo "Vincular licencia a mi cuenta") sin volver a cobrar.
+  Future<void> _linkPendingLicense() async {
+    final pending = widget.pendingRegistration;
+    if (pending == null) return;
+
+    final checkout = context.read<RegistrationCheckout>();
+    final ok = await checkout.linkToExistingLicense(pending: pending);
+    if (!mounted) return;
+
+    if (ok) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo vincular la licencia. Intenta de nuevo.'),
+        ),
+      );
+    }
+  }
+
+  /// Cierra el checkout diferido: solo con una compra VERIFICADA se materializa
+  /// la cuenta (flujo A) o se actualiza la licencia de la sesión (flujo C).
+  Future<void> _handleVerifiedPurchase(
+    Result<PlayPurchaseSuccess> result,
+  ) async {
+    final purchase = result.valueOrNull;
+    if (purchase == null) return; // Error ya reflejado por el provider.
+    if (!mounted) return;
+
+    final accounts = context.read<UserAccountService>();
+    final checkout = context.read<RegistrationCheckout>();
+
+    // Flujo A: usuario nuevo que se registró y llega a pagar.
+    if (widget.pendingRegistration != null) {
+      final ok = await checkout.completeCheckoutAfterVerifiedPurchase(
+        pending: widget.pendingRegistration!,
+        purchase: purchase,
+      );
+      if (!mounted) return;
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo crear tu cuenta. Intenta de nuevo.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Flujo C / renovación con sesión activa: vincula/actualiza la licencia
+    // de la cuenta con la compra recién verificada.
+    final sessionUser = accounts.currentUser;
+    if (sessionUser != null) {
+      await checkout.linkToExistingLicense(user: sessionUser);
+    }
+    // Invitado (flujo E): la licencia queda a nivel dispositivo; la pantalla
+    // de éxito ofrece "Vincular a mi cuenta".
   }
 }

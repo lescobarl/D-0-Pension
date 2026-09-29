@@ -54,6 +54,12 @@ class AppTheme {
   static const double spacingLg = 16;
   static const double spacingXl = 24;
 
+  // Altura canónica de los campos de entrada compactos de la pantalla de
+  // captura (cajas de texto, dropdowns, toggles, botones de fecha y campos de
+  // solo lectura). Fuente única de verdad: TODOS los campos miden lo mismo y
+  // el valor se ajusta en un solo lugar.
+  static const double fieldHeight = 28;
+
   // Border radius
   static const double radiusSm = 8;
   static const double radiusMd = 10;
@@ -80,16 +86,18 @@ class AppTheme {
     final primaryColor = config != null
         ? _parseHex(config.primaryColor)
         : AppTheme.primary;
-    final accentColor =
-        config != null ? _parseHex(config.accentColor) : AppTheme.accent;
+    final accentColor = config != null
+        ? _parseHex(config.accentColor)
+        : AppTheme.accent;
     final bgLight = config != null
         ? _parseHex(config.backgroundLight)
         : AppTheme.backgroundLight;
     final cardBg = config != null
         ? _parseHex(config.cardBackground)
         : AppTheme.cardBackground;
-    final errColor =
-        config != null ? _parseHex(config.errorColor) : AppTheme.errorColor;
+    final errColor = config != null
+        ? _parseHex(config.errorColor)
+        : AppTheme.errorColor;
 
     return ThemeData(
       useMaterial3: true,
@@ -123,9 +131,7 @@ class AppTheme {
           fontWeight: FontWeight.w600,
           fontSize: fontSizeTab,
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: fontSizeTabSmall,
-        ),
+        unselectedLabelStyle: const TextStyle(fontSize: fontSizeTabSmall),
         tabAlignment: TabAlignment.start,
       ),
       cardTheme: CardThemeData(
@@ -134,7 +140,10 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMd),
         ),
-        margin: const EdgeInsets.symmetric(horizontal: spacingSm, vertical: spacingXs),
+        margin: const EdgeInsets.symmetric(
+          horizontal: spacingSm,
+          vertical: spacingXs,
+        ),
         clipBehavior: Clip.antiAlias,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -147,7 +156,10 @@ class AppTheme {
             borderRadius: BorderRadius.circular(radiusSm),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          textStyle: const TextStyle(fontSize: fontSizeBody, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(
+            fontSize: fontSizeBody,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -188,8 +200,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusSm),
           borderSide: const BorderSide(color: errorColor, width: 2),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: spacingMd, vertical: spacingMd),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: spacingMd,
+          vertical: spacingMd,
+        ),
         labelStyle: TextStyle(fontSize: fontSizeLabel, color: textSecondary),
         hintStyle: TextStyle(fontSize: fontSizeBody, color: textHint),
         filled: true,
@@ -202,7 +216,11 @@ class AppTheme {
         thumbColor: primaryColor,
         overlayColor: primaryColor.withValues(alpha: 0.12),
         valueIndicatorColor: primaryColor,
-        valueIndicatorTextStyle: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+        valueIndicatorTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
         trackHeight: 6,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11),
         valueIndicatorShape: const PaddleSliderValueIndicatorShape(),
@@ -218,7 +236,9 @@ class AppTheme {
           return null;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return primaryColor.withValues(alpha: 0.5);
+          if (states.contains(WidgetState.selected)) {
+            return primaryColor.withValues(alpha: 0.5);
+          }
           return null;
         }),
       ),
@@ -227,9 +247,7 @@ class AppTheme {
           if (states.contains(WidgetState.selected)) return primaryColor;
           return null;
         }),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: primaryColor,

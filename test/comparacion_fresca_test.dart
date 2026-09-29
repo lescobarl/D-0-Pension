@@ -6,7 +6,6 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:d_0_pension/core/engine/formula_evaluator.dart';
-import 'package:d_0_pension/core/models/pension_calculation.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

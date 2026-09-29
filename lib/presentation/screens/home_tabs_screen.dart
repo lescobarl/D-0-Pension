@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../services/account/user_account_service.dart';
+import '../../services/billing/payment_provider.dart';
 import '../../services/retroactive_provider.dart';
 import 'captura_view.dart';
 import 'pension_view.dart';
@@ -10,14 +12,17 @@ import '../widgets/disclaimer_card.dart';
 
 /// TabBar screen with 4 main groups + AI assistant.
 ///
-/// Tabs:
-/// - CAPTURA: Unified data entry (personal + laboral + Mod40)
-/// - PENSIÓN: Pension results (actual vs Mod40 + FactAsig details)
-/// - INVERSIÓN: Investment analysis (costo, retroactivo, financiamiento, tasas)
-/// - IA EXPERTA: Conversational AI assistant that fills the calculator fields.
+/// Tabs (IA Experta en primera posición: para personas mayores es el acceso
+/// más amigable, conversan y la IA captura en vez de llenar formularios):
+/// - IA EXPERTA: Asistente conversacional que llena los campos de la calculadora.
+/// - CAPTURA: Captura de datos (personal + laboral + Mod40)
+/// - PENSIÓN: Resultados de pensión (actual vs Mod40 + detalle de FactAsig)
+/// - INVERSIÓN: Análisis de inversión (costo, retroactivo, financiamiento, tasas)
 ///
-/// The AI assistant is a 4th tab (not a pushed route) so switching to it and
-/// back never requires the system back button and preserves the conversation.
+/// El asistente de IA es una pestaña (no una ruta empujada) para que entrar y
+/// volver nunca requiera el botón de regreso del sistema y preserve la conversación.
+/// El TabBar NO es desplazable: las 4 pestañas se reparten el ancho y siempre
+/// están visibles, evitando que se "pierdan" en pantallas de teléfono.
 class HomeTabsScreen extends StatefulWidget {
   const HomeTabsScreen({super.key});
 
@@ -26,6 +31,89 @@ class HomeTabsScreen extends StatefulWidget {
 }
 
 class _HomeTabsScreenState extends State<HomeTabsScreen> {
+  /// Muestra el descargo de responsabilidad una sola vez, en el primer uso.
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final paymentProvider = context.read<PaymentProvider>();
+      if (!paymentProvider.isDisclaimerSeen) {
+        paymentProvider.markDisclaimerSeen();
+        DisclaimerCard.show(context);
+      }
+    });
+  }
+
+  /// `true` mientras se está cerrando la sesión (desactiva el botón).
+  bool _loggingOut = false;
+
+  /// Pide confirmación antes de cerrar sesión para evitar salidas accidentales.
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text(
+          '¿Deseas cerrar la sesión y salir de la calculadora?\n'
+          'Podrás volver a entrar cuando quieras.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Salir'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _logout();
+  }
+
+  /// Cierra la sesión (cuenta + licencia de dispositivo) y deja que el entry
+  /// point vuelva a la pantalla de login. Reutiliza el mismo patrón de la
+  /// pantalla de licencia: `logoutUser()` + `logout()`.
+  Future<void> _logout() async {
+    if (_loggingOut) return;
+    setState(() => _loggingOut = true);
+
+    final accounts = context.read<UserAccountService>();
+    final payments = context.read<PaymentProvider>();
+    await accounts.logoutUser();
+    await payments.logout();
+
+    if (!mounted) return;
+    setState(() => _loggingOut = false);
+    // El entry point resuelve el destino (vuelve a login).
+    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+  }
+
+  /// Construye una pestaña compacta (icono + etiqueta) que se adapta al ancho
+  /// disponible. FittedBox (scaleDown) evita desbordes en teléfonos angostos:
+  /// la etiqueta se reduce un poco en lugar de cortarse o perderse.
+  static Widget _buildTab(IconData icon, String label) {
+    return Tab(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Position of the draggable IA Experta button (relative to the body area).
   // Stored as an Offset so the user can move it anywhere on screen.
   Offset _fabPosition = const Offset(0, 0);
@@ -41,9 +129,7 @@ class _HomeTabsScreenState extends State<HomeTabsScreen> {
 
     // Show loading indicator while evaluator initializes
     if (!provider.evaluator.isInitialized || provider.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (provider.errorMessage != null) {
@@ -75,7 +161,11 @@ class _HomeTabsScreenState extends State<HomeTabsScreen> {
                   color: AppTheme.accent.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.account_balance, size: 16, color: AppTheme.accent),
+                child: const Icon(
+                  Icons.account_balance,
+                  size: 16,
+                  color: AppTheme.accent,
+                ),
               ),
               const SizedBox(width: 6),
               Flexible(
@@ -91,10 +181,26 @@ class _HomeTabsScreenState extends State<HomeTabsScreen> {
             ],
           ),
           actions: [
-            IconButton(
-              tooltip: 'Descargo de Responsabilidad',
-              onPressed: () => DisclaimerCard.show(context),
-              icon: const Icon(Icons.info_outline, size: 20),
+            Tooltip(
+              message: 'Acerca de',
+              child: TextButton.icon(
+                onPressed: () => DisclaimerCard.show(context),
+                icon: const Icon(Icons.info_outline, size: 20),
+                label: const Text('Acerca de'),
+                style: TextButton.styleFrom(foregroundColor: Colors.white),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _loggingOut ? null : _confirmLogout,
+              icon: _loggingOut
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.logout, size: 18),
+              label: const Text('Salir'),
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
             ),
           ],
           bottom: PreferredSize(
@@ -103,58 +209,29 @@ class _HomeTabsScreenState extends State<HomeTabsScreen> {
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                  bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
                 ),
               ),
               child: SizedBox(
                 height: 32,
                 child: TabBar(
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
+                  // NO desplazable: las 4 pestañas se reparten el ancho y
+                  // siempre están visibles (no se "pierden" en el teléfono).
+                  isScrollable: false,
+                  tabAlignment: TabAlignment.fill,
                   indicatorWeight: 2.0,
                   indicatorSize: TabBarIndicatorSize.label,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                  tabs: const [
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.edit_note, size: 16),
-                          SizedBox(width: 4),
-                          Text('Captura', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.elderly, size: 16),
-                          SizedBox(width: 4),
-                          Text('Pensión', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.trending_up, size: 16),
-                          SizedBox(width: 4),
-                          Text('Inversión', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.auto_awesome, size: 16),
-                          SizedBox(width: 4),
-                          Text('IA Experta', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
+                  labelPadding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  tabs: [
+                    _buildTab(Icons.auto_awesome, 'IA Experta'),
+                    _buildTab(Icons.edit_note, 'Captura'),
+                    _buildTab(Icons.elderly, 'Pensión'),
+                    _buildTab(Icons.trending_up, 'Inversión'),
                   ],
                 ),
               ),
@@ -170,16 +247,17 @@ class _HomeTabsScreenState extends State<HomeTabsScreen> {
 
             // Initial bottom-right position (before the user drags).
             final double initialLeft = constraints.maxWidth - fabWidth - margin;
-            final double initialTop = constraints.maxHeight - fabHeight - margin;
+            final double initialTop =
+                constraints.maxHeight - fabHeight - margin;
 
             return Stack(
               children: [
                 TabBarView(
                   children: [
+                    const AiChatView(),
                     const CapturaView(),
                     const PensionView(),
                     const InversionView(),
-                    const AiChatView(),
                   ],
                 ),
                 // Draggable IA Experta button. Starts at the bottom-right
@@ -197,7 +275,9 @@ class _HomeTabsScreenState extends State<HomeTabsScreen> {
                         });
                       },
                       child: FloatingActionButton.extended(
-                        backgroundColor: AppTheme.accentLight.withValues(alpha: 0.35),
+                        backgroundColor: AppTheme.accentLight.withValues(
+                          alpha: 0.35,
+                        ),
                         foregroundColor: AppTheme.accentDark,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -207,7 +287,7 @@ class _HomeTabsScreenState extends State<HomeTabsScreen> {
                           ),
                         ),
                         onPressed: () {
-                          DefaultTabController.of(fabContext).animateTo(3);
+                          DefaultTabController.of(fabContext).animateTo(0);
                         },
                         tooltip: 'Preguntar a la IA Experta',
                         icon: const Icon(Icons.auto_awesome, size: 20),

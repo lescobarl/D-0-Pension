@@ -30,7 +30,6 @@ void main() {
     final salarioConM40 = 2840.615712142857;
     final salarioSinM40 = 2281.531142857143; // E20 de DATOS GEN.
     final semanasTotales = 2095; // redondeado
-    final semanasSinM40 = 1960;
     final semanasEnM40 = 134.71428571428572;
     final edadRetiro = 60.583333333333336;
     final tieneEsposa = false;
@@ -41,7 +40,6 @@ void main() {
     final pensionYear = 2029;
     final startM40 = DateTime(2027, 2, 1);
     final endM40 = DateTime(2029, 8, 31);
-    final salarioRegistradoM40 = 25.0 * umaDiaria;
 
     print('\n╔══════════════════════════════════════════════════════════════╗');
     print('║ VALIDACIÓN: MISMOS VALORES QUE EL EXCEL                     ║');

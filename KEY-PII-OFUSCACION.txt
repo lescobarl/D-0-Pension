@@ -1,0 +1,32 @@
+# ============================================================================
+# CLAVE DE OFUSCACION DE DATOS PERSONALES (PII) - Proyecto D-0-Pension
+# ============================================================================
+#
+# Esta clave se usa para ofuscar (base64 + XOR) los datos personales que la
+# app guarda en SharedPreferences: fechas de nacimiento/calculo, salarios,
+# periodos salariales, composicion familiar y edad de retiro. Ademas, desde
+# la correccion PII (agosto 2026) tambien cubre:
+#       user_email            (lib/services/billing/login_provider.dart)
+#       license_purchase_token(lib/services/billing/payment_provider.dart)
+# El cifrado se aplica en:
+#       lib/core/utils/pii_cipher.dart     ->  clase PiiCipher
+#       lib/services/persistence_service.dart -> uso en save/load de PII
+#       lib/services/billing/login_provider.dart  -> email (encode/decode)
+#       lib/services/billing/payment_provider.dart -> token de compra (encode)
+#
+# IMPORTANTE - LEE ESTO:
+#   * La ofuscacion NO es seguridad real. Solo disuade la extraccion casual.
+#     La app tiene que poder reconstruir los valores en tiempo de ejecucion,
+#     asi que cualquier persona decidida puede recuperarlos. Es un disuasivo
+#     mientras se migra a un cifrado de grado produccion (p. ej. flutter_secure_storage).
+#   * Esta clave DEBE coincidir con la que esta en el codigo Dart:
+#       lib/core/utils/pii_cipher.dart  ->  const String _xorKey = "PII-OFUSCACION-V1";
+#     Si cambias una, cambia la otra.
+#   * La migracion v13 de PersistenceService re-escribe automaticamente los
+#     valores heredados en texto plano al formato ofuscado, sin perder datos.
+#
+# ----------------------------------------------------------------------------
+# CLAVE XOR (la que tienes que recordar / encontrar facilmente):
+# ----------------------------------------------------------------------------
+XOR_KEY=PII-OFUSCACION-V1
+# ============================================================================

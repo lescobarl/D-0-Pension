@@ -10,7 +10,6 @@ import '../../core/utils/error_handler.dart';
 import '../../services/ai_chat_service.dart';
 import '../../services/retroactive_provider.dart';
 import '../widgets/legal_note_card.dart';
-import '../widgets/result_row.dart';
 
 /// AI Chat view for conversational pension scenario input.
 ///
@@ -29,14 +28,21 @@ class AiChatView extends StatefulWidget {
   State<AiChatView> createState() => _AiChatViewState();
 }
 
-class _AiChatViewState extends State<AiChatView> {
+class _AiChatViewState extends State<AiChatView>
+    with AutomaticKeepAliveClientMixin {
+  // Mantiene viva la conversación al cambiar de pestaña (TabBarView descarta
+  // los hijos fuera de pantalla por defecto; con esto el chat no se pierde).
+  @override
+  bool get wantKeepAlive => true;
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late AiChatService _chatService;
   int _lastMessageCount = 0;
+  bool _lastLoading = false;
   bool _initialized = false;
-  bool _showUsage = false;
-  String? _lastAppliedMessage;
+  // Flujo natural IA → Captura: recuerda si la captura ya estaba completa para
+  // navegar a Captura UNA sola vez (en el flanco incompleto → completo).
+  bool _captureWasComplete = false;
 
   String _apiKey = '';
 
@@ -50,11 +56,9 @@ class _AiChatViewState extends State<AiChatView> {
     // Never let a missing/corrupt key block the assistant UI.
     String key = '';
     try {
-      final jsonStr =
-          await rootBundle.loadString('assets/config/api_key.json');
+      final jsonStr = await rootBundle.loadString('assets/config/api_key.json');
       final json = jsonDecode(jsonStr) as Map<String, dynamic>;
-      final obfuscated =
-          json['openrouter_api_key_obfuscated'] as String? ?? '';
+      final obfuscated = json['openrouter_api_key_obfuscated'] as String? ?? '';
       key = obfuscated.isEmpty ? '' : ApiKeyObfuscator.decode(obfuscated);
     } catch (_) {
       key = '';
@@ -65,21 +69,26 @@ class _AiChatViewState extends State<AiChatView> {
 
   void _initChatService() {
     final provider = context.read<RetroactiveProvider>();
-    _chatService = AiChatService(
-      provider: provider,
-      apiKey: _apiKey,
-    );
+    _chatService = AiChatService(provider: provider, apiKey: _apiKey);
     _chatService.addListener(_onServiceChanged);
-    _chatService.initialize().then((_) {
-      if (mounted) {
-        setState(() => _initialized = true);
-      }
-    }).catchError((Object e) {
-      // Ensure the "Iniciando asistente..." screen is never left hanging.
-      if (mounted) {
-        setState(() => _initialized = true);
-      }
-    });
+    _chatService
+        .initialize()
+        .then((_) {
+          if (mounted) {
+            setState(() => _initialized = true);
+            // Arranca desde el estado real de completitud (la sesión restaurada
+            // puede venir ya completa y no debe re-saltar a Captura por error).
+            _captureWasComplete = _chatService.isCaptureComplete;
+            // Show the most recent messages (or the welcome card) on first load.
+            _scrollToBottom();
+          }
+        })
+        .catchError((Object e) {
+          // Ensure the "Iniciando asistente..." screen is never left hanging.
+          if (mounted) {
+            setState(() => _initialized = true);
+          }
+        });
   }
 
   @override
@@ -92,38 +101,130 @@ class _AiChatViewState extends State<AiChatView> {
 
   void _onServiceChanged() {
     if (mounted) {
-      ErrorHandler.logDebug('AiChatView - Rebuild triggered at ${DateTime.now().toIso8601String()}');
-      if (_chatService.messages.length != _lastMessageCount) {
-        _lastMessageCount = _chatService.messages.length;
+      ErrorHandler.logDebug(
+        'AiChatView - Rebuild triggered at ${DateTime.now().toIso8601String()}',
+      );
+      final count = _chatService.messages.length;
+      final loading = _chatService.isLoading;
+      // React to BOTH the message count and the loading state: the loading
+      // flag flips right after the user sends a message (so their message and
+      // the typing indicator appear immediately) and again when the response
+      // arrives. Each change rebuilds and scrolls to the latest message.
+      if (count != _lastMessageCount || loading != _lastLoading) {
+        _lastMessageCount = count;
+        _lastLoading = loading;
         setState(() {});
+        _scrollToBottom();
       } else {
-        ErrorHandler.logDebug('Skipping rebuild - message count unchanged');
+        ErrorHandler.logDebug(
+          'Skipping rebuild - message count and loading unchanged',
+        );
       }
     }
   }
 
   Future<void> _sendMessage() async {
-    final text = _textController.text.trim();
-    if (text.isEmpty) return;
+    await _sendText(_textController.text.trim());
+  }
 
+  /// Envía un texto concreto (del campo de entrada, de un chip de ejemplo o de
+  /// una sugerencia de respuesta rápida) a [AiChatService.sendMessage].
+  ///
+  /// [guideField] lo aporta un chip de respuesta rápida: es el campo guiado al
+  /// que pertenece el chip, para que el clic se aplique SIEMPRE a ese campo
+  /// (aunque la guía ya haya avanzado a otra pregunta).
+  Future<void> _sendText(String text, {String? guideField}) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+
+    // Se lee el proveedor ANTES del await: así no se usa el context después de
+    // una brecha asíncrona (lint use_build_context_synchronously).
+    final provider = context.read<RetroactiveProvider>();
     _textController.clear();
-    final result = await _chatService.sendMessage(text);
+    final result = await _chatService.sendMessage(
+      trimmed,
+      guideField: guideField,
+    );
 
-    if (result is AiFillFields && result.setFields.isNotEmpty) {
-      _lastAppliedMessage =
-          '✅ Datos aplicados: ${result.setFields.length} campo(s) actualizado(s).';
-      setState(() {});
-    } else if (result is AiError) {
-      _lastAppliedMessage = '⚠️ ${result.error}';
+    if (result is AiFillFields || result is AiError) {
       setState(() {});
     }
 
     _scrollToBottom();
+
+    // ── Flujo natural IA → Captura ──
+    // Cuando ya no falta ningún dato capturable, se avisa con un SnackBar y,
+    // tras un breve retraso para que el usuario lea la confirmación, se cambia
+    // a la pestaña Captura para revisar y guardar (solo en el flanco de
+    // incompleto → completo; una sola vez por sesión).
+    //
+    // Regla A (Ley 73): aunque la captura esté completa, si hay errores
+    // bloqueantes (p. ej. nacimiento o alta posteriores a 1997-07-01, régimen
+    // de la Ley 1997) NO se permite avanzar: se avisa y se permanece en la IA
+    // Experta para corregir los datos.
+    final wasComplete = _captureWasComplete;
+    final nowComplete = _chatService.isCaptureComplete;
+    _captureWasComplete = nowComplete;
+    if (nowComplete && !wasComplete && provider.hasBlockingErrors) {
+      await _warnNoSePuedeAvanzar(provider);
+    } else if (nowComplete && !wasComplete) {
+      await _goToCapturaForReview();
+    }
+  }
+
+  /// Flujo natural IA Experta → Captura: avisa que la captura quedó completa
+  /// y, tras un breve retraso para que el adulto mayor lea el mensaje, cambia
+  /// a la pestaña Captura para revisar y guardar sus datos.
+  Future<void> _goToCapturaForReview() async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          '✅ ¡Captura completa! Revisa y guarda tus datos en la pestaña '
+          'Captura.',
+        ),
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    // Retraso breve: da tiempo a leer la confirmación antes del cambio.
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+    // Cambio defensivo de pestaña: solo si existe un DefaultTabController
+    // ancestro (DefaultTabController.of lanza si no hay); así no se rompen
+    // los tests que montan la vista suelta sin el shell de pestañas.
+    if (context.findAncestorWidgetOfExactType<DefaultTabController>() != null) {
+      DefaultTabController.of(context).animateTo(1);
+    }
+  }
+
+  /// No se puede avanzar a Captura: hay errores bloqueantes que impiden
+  /// calcular la pensión (por ejemplo, la Ley 73 no aplica). Muestra un aviso
+  /// claro para el adulto mayor y permanece en la IA Experta para corregir.
+  Future<void> _warnNoSePuedeAvanzar(RetroactiveProvider provider) async {
+    if (!mounted) return;
+    final mensajeLey73 = provider.ley73BlockingMessage;
+    final texto = mensajeLey73 != null
+        ? '⚠️ $mensajeLey73 Por eso no puedo avanzar a la captura: '
+              'corrige tus datos para continuar.'
+        : '⚠️ Hay datos que impiden calcular tu pensión. '
+              'Corrige los errores en la pestaña Captura para continuar.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(texto),
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _startNewSession() async {
     await _chatService.startNewSession();
-    setState(() => _lastAppliedMessage = null);
+    setState(() {
+      // El servicio limpia el conjunto de campos guiados: la captura vuelve a
+      // estar incompleta y puede volver a completarse (y navegar) de nuevo.
+      _captureWasComplete = false;
+    });
     _scrollToBottom();
   }
 
@@ -139,12 +240,29 @@ class _AiChatViewState extends State<AiChatView> {
     });
   }
 
+  /// Desplaza la conversación una cantidad fija de píxeles (usado por las
+  /// flechas del cursor). No hace nada si el scroll aún no tiene clientes.
+  void _scrollBy(double delta) {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final target = (position.pixels + delta).clamp(
+      0.0,
+      position.maxScrollExtent,
+    );
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+    );
+  }
+
   // ──────────────────────────────────────────────
   // Build
   // ──────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Requerido por AutomaticKeepAliveClientMixin.
     if (!_initialized) {
       return const Center(
         child: Column(
@@ -163,34 +281,54 @@ class _AiChatViewState extends State<AiChatView> {
 
     final messages = _chatService.messages;
 
-    return SingleChildScrollView(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 12),
-          _buildUsageToggle(),
-          if (_showUsage) ...[
-            const SizedBox(height: 8),
-            _buildUsageCard(),
-          ],
-          const SizedBox(height: 12),
-          if (_lastAppliedMessage != null) ...[
-            _buildAppliedNotification(),
-            const SizedBox(height: 12),
-          ],
-          if (messages.isEmpty)
-            _buildWelcomeCard()
-          else
-            _buildConversationCard(messages),
-          const SizedBox(height: 12),
-          _buildInputCard(),
-          const SizedBox(height: 12),
-          _buildLegalNoteCard(),
-        ],
-      ),
+    return Column(
+      children: [
+        // Encabezado fijo y compacto, pegado arriba (unificado con las demás
+        // pestañas que usan padding superior de 2).
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 2, 8, 4),
+          child: _buildHeader(),
+        ),
+        // Conversación con scroll propio: aprovecha todo el espacio y el área
+        // de entrada (botón Enviar) permanece siempre visible abajo.
+        Expanded(
+          // Focus + onKeyEvent: permite desplazar la conversación con las
+          // flechas del cursor (arriba/abajo) además del scroll táctil.
+          child: Focus(
+            autofocus: true,
+            onKeyEvent: (node, event) {
+              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              final key = event.logicalKey;
+              if (key == LogicalKeyboardKey.arrowDown) {
+                _scrollBy(120);
+                return KeyEventResult.handled;
+              }
+              if (key == LogicalKeyboardKey.arrowUp) {
+                _scrollBy(-120);
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: ListView(
+              controller: _scrollController,
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+              children: [
+                if (messages.isEmpty)
+                  _buildWelcomeCard()
+                else
+                  _buildConversationCard(messages),
+              ],
+            ),
+          ),
+        ),
+        // Entrada fija al fondo: el botón "Enviar" nunca desaparece.
+        _buildInputCard(),
+        // Aviso legal fijo al fondo de la página, a lo ancho y en una sola línea.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+          child: _buildLegalNoteCard(),
+        ),
+      ],
     );
   }
 
@@ -200,191 +338,79 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingLg),
+      // Compacto, unificado con el resto de subtítulos de las pestañas.
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: AppTheme.primary,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withValues(alpha: 0.2),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              borderRadius: BorderRadius.circular(6),
             ),
-            child: const Icon(Icons.smart_toy, color: AppTheme.accent, size: 24),
+            child: const Icon(
+              Icons.smart_toy,
+              color: AppTheme.accent,
+              size: 14,
+            ),
           ),
-          const SizedBox(width: AppTheme.spacingMd),
-          const Expanded(
+          const SizedBox(width: 6),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'ASISTENTE DE PENSIÓN',
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontSize: AppTheme.fontSizeCardTitle,
+                    fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 2),
-                Text(
-                  'Platícame tu situación y yo lleno los datos de la calculadora.',
-                  style: TextStyle(
-                    fontSize: AppTheme.fontSizeBodySmall,
-                    color: Colors.white70,
-                  ),
+                const SizedBox(height: 1),
+                // El botón comparte el renglón del subtítulo (sin fila extra),
+                // para no engrosar el encabezado.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Platícame tu situación y yo lleno los datos de la calculadora.',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: AppTheme.fontSizeBodySmall,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.spacingSm),
+                    TextButton.icon(
+                      onPressed: _startNewSession,
+                      icon: const Icon(Icons.delete_sweep_outlined, size: 14),
+                      label: const Text('Limpiar conversación'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 0,
+                        ),
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────
-  // Usage toggle button (collapsible)
-  // ──────────────────────────────────────────────
-
-  Widget _buildUsageToggle() {
-    return Card(
-      child: InkWell(
-        onTap: () => setState(() => _showUsage = !_showUsage),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.info_outline,
-                size: AppTheme.fontSizeIcon,
-                color: AppTheme.accent,
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Uso del asistente',
-                  style: TextStyle(
-                    fontSize: AppTheme.fontSizeCardTitle,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primary,
-                  ),
-                ),
-              ),
-              Icon(
-                _showUsage ? Icons.expand_less : Icons.expand_more,
-                color: AppTheme.primary,
-                size: 28,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────
-  // Usage / limits card
-  // ──────────────────────────────────────────────
-
-  Widget _buildUsageCard() {
-    final sessionRemaining = _chatService.sessionMessageRemaining;
-    final dailyRemaining = _chatService.dailyMessageRemaining;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.info_outline,
-                  size: AppTheme.fontSizeIcon,
-                  color: AppTheme.accent,
-                ),
-                const SizedBox(width: 6),
-                const Expanded(
-                  child: Text(
-                    'Uso del asistente',
-                    style: TextStyle(
-                      fontSize: AppTheme.fontSizeCardTitle,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: _startNewSession,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Nueva consulta'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            ResultRow(
-              label: 'Mensajes restantes en esta consulta',
-              value: '$sessionRemaining',
-              valueColor: sessionRemaining <= 5
-                  ? AppTheme.errorColor
-                  : AppTheme.primary,
-              isBold: true,
-            ),
-            ResultRow(
-              label: 'Mensajes restantes hoy',
-              value: '$dailyRemaining',
-              valueColor: dailyRemaining <= 20
-                  ? AppTheme.errorColor
-                  : AppTheme.textPrimary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────
-  // Applied fields notification (green)
-  // ──────────────────────────────────────────────
-
-  Widget _buildAppliedNotification() {
-    return Card(
-      color: Colors.green.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SelectionArea(
-                child: SelectableText(
-                  _lastAppliedMessage!,
-                  style: const TextStyle(
-                    fontSize: AppTheme.fontSizeBody,
-                    color: Colors.green,
-                  ),
-                ),
-              ),
-            ),
-            IconButton(
-              onPressed: () => setState(() => _lastAppliedMessage = null),
-              icon: const Icon(Icons.close, color: Colors.green, size: 18),
-              tooltip: 'Cerrar aviso',
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -395,32 +421,16 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildWelcomeCard() {
     return Card(
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.smart_toy,
-                  size: AppTheme.fontSizeIcon,
-                  color: AppTheme.primary,
-                ),
-                const SizedBox(width: 6),
-                const Expanded(
-                  child: SelectableText(
-                    '¿Cómo te puedo ayudar?',
-                    style: TextStyle(
-                      fontSize: AppTheme.fontSizeCardTitle,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+            // Primera opción: inicia el llenado guiado paso a paso (mismo
+            // estilo que el resto de las opciones).
+            _buildExampleChip('Ayúdame a llenar mi cálculo de pensión'),
+            const SizedBox(height: 6),
             const SelectableText(
               'Cuéntame en tus palabras tu caso. Por ejemplo:',
               style: TextStyle(
@@ -428,19 +438,19 @@ class _AiChatViewState extends State<AiChatView> {
                 color: AppTheme.textSecondary,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildExampleChip(
               'Tengo 60 años, 1200 semanas cotizadas, salario de \$500',
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             _buildExampleChip(
               'Estoy casado, tengo 2 hijos, mi salario diario es \$400',
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             _buildExampleChip(
               'Quiero pensionarme a los 62 años con Modalidad 40',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             const SelectableText(
               'Si ya tienes un cálculo de otro lado, también puedes pegarlo '
               'abajo para compararlo con el resultado de la app.',
@@ -459,14 +469,17 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildExampleChip(String text) {
     return InkWell(
+      // Los chips de ejemplo ENVÍAN directo el texto (antes solo lo dejaban en
+      // el campo de entrada, obligando al usuario a pulsar Enviar). Así la app
+      // guía con un solo toque.
       onTap: () {
-        _textController.text = text;
         HapticFeedback.selectionClick();
+        _sendText(text);
       },
       borderRadius: BorderRadius.circular(8),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: AppTheme.backgroundLight,
           borderRadius: BorderRadius.circular(8),
@@ -492,11 +505,7 @@ class _AiChatViewState extends State<AiChatView> {
                 ),
               ),
             ),
-            const Icon(
-              Icons.arrow_forward,
-              size: 18,
-              color: AppTheme.primary,
-            ),
+            const Icon(Icons.arrow_forward, size: 18, color: AppTheme.primary),
           ],
         ),
       ),
@@ -509,42 +518,22 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildConversationCard(List<ChatMessage> messages) {
     return Card(
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.forum,
-                  size: AppTheme.fontSizeIcon,
-                  color: AppTheme.primary,
-                ),
-                const SizedBox(width: 6),
-                const Expanded(
-                  child: Text(
-                    'Conversación',
-                    style: TextStyle(
-                      fontSize: AppTheme.fontSizeCardTitle,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: messages.length + (_chatService.isLoading ? 1 : 0),
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
+            ...List.generate(
+              messages.length + (_chatService.isLoading ? 1 : 0),
+              (index) {
                 if (index == messages.length && _chatService.isLoading) {
                   return _buildTypingIndicator();
                 }
-                return _buildMessageBubble(messages[index]);
+                final message = messages[index];
+                // Sin separación vertical entre mensajes: los frames quedan
+                // pegados (solo el relleno interno de 1px de cada burbuja).
+                return _buildMessageBubble(message);
               },
             ),
           ],
@@ -561,15 +550,16 @@ class _AiChatViewState extends State<AiChatView> {
     final iconBg = isUser ? AppTheme.accent : AppTheme.primary;
 
     return Row(
-      mainAxisAlignment:
-          isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: isUser
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (!isUser) _buildAvatar(icon, iconBg),
         if (!isUser) const SizedBox(width: 8),
         Flexible(
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.only(
@@ -585,18 +575,76 @@ class _AiChatViewState extends State<AiChatView> {
                       width: 1,
                     ),
             ),
-            child: SelectionArea(
-              child: SelectableText(
-                message.text,
-                style: TextStyle(
-                  fontSize: AppTheme.fontSizeBody,
-                  color: textColor,
-                  height: 1.4,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SelectionArea(
+                  child: SelectableText(
+                    message.text,
+                    style: TextStyle(
+                      fontSize: AppTheme.fontSizeBody,
+                      color: textColor,
+                      height: 1.0,
+                    ),
+                    selectionColor: isUser
+                        ? Colors.white.withValues(alpha: 0.35)
+                        : Colors.blue.withValues(alpha: 0.3),
+                  ),
                 ),
-                selectionColor: isUser
-                    ? Colors.white.withValues(alpha: 0.35)
-                    : Colors.blue.withValues(alpha: 0.3),
-              ),
+                // Chips de respuesta rápida de la pregunta guiada: viajan con
+                // el mensaje del asistente y se envían con un solo toque.
+                if (!isUser && (message.suggestions?.isNotEmpty ?? false))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final suggestion in message.suggestions!)
+                          ActionChip(
+                            label: Text(
+                              suggestion,
+                              style: const TextStyle(
+                                fontSize: AppTheme.fontSizeBodySmall,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                            backgroundColor: Colors.white,
+                            side: BorderSide(
+                              color: AppTheme.primary.withValues(alpha: 0.4),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            onPressed: _chatService.canSendMessage
+                                ? () => _sendText(
+                                    suggestion,
+                                    // El chip viaja con el campo al que
+                                    // pertenece. Respaldo: si la sesión es
+                                    // antigua (sin suggestionField) pero la
+                                    // guía sigue activa, se aplica al campo
+                                    // guiado actual en lugar de caer en la IA
+                                    // y mostrar "No pude aplicar ningún
+                                    // campo".
+                                    guideField:
+                                        message.suggestionField ??
+                                        _chatService.currentGuideField,
+                                  )
+                                : null,
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -608,9 +656,9 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildAvatar(IconData icon, Color color) {
     return CircleAvatar(
-      radius: 18,
+      radius: 10,
       backgroundColor: color,
-      child: Icon(icon, size: 20, color: Colors.white),
+      child: Icon(icon, size: 14, color: Colors.white),
     );
   }
 
@@ -620,7 +668,7 @@ class _AiChatViewState extends State<AiChatView> {
         _buildAvatar(Icons.smart_toy, AppTheme.primary),
         const SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
           decoration: BoxDecoration(
             color: AppTheme.backgroundLight,
             borderRadius: const BorderRadius.only(
@@ -629,9 +677,7 @@ class _AiChatViewState extends State<AiChatView> {
               bottomLeft: Radius.circular(2),
               bottomRight: Radius.circular(12),
             ),
-            border: Border.all(
-              color: AppTheme.primary.withValues(alpha: 0.2),
-            ),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -671,11 +717,10 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildInputCard() {
     final canSend = _chatService.canSendMessage;
-    final limitReason = _chatService.limitReason;
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -699,54 +744,25 @@ class _AiChatViewState extends State<AiChatView> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            if (limitReason != null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.errorColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppTheme.errorColor.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.warning_amber_rounded,
-                      color: AppTheme.errorColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        limitReason,
-                        style: const TextStyle(
-                          fontSize: AppTheme.fontSizeBodySmall,
-                          color: AppTheme.errorColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            const SizedBox(height: 8),
             TextField(
               controller: _textController,
               enabled: canSend,
-              maxLines: 4,
-              minLines: 2,
+              maxLines: 2,
+              minLines: 1,
               textInputAction: TextInputAction.newline,
               decoration: InputDecoration(
                 hintText: canSend
                     ? 'Escribe tu situación aquí...'
                     : 'Has alcanzado el límite de uso',
+                hintStyle: canSend
+                    ? TextStyle(
+                        color: AppTheme.primary.withValues(alpha: 0.35),
+                        fontSize: AppTheme.fontSizeInput,
+                      )
+                    : null,
                 filled: true,
-                fillColor: AppTheme.backgroundLight,
+                fillColor: AppTheme.primary.withValues(alpha: 0.12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
@@ -766,14 +782,17 @@ class _AiChatViewState extends State<AiChatView> {
                     width: 2,
                   ),
                 ),
-                contentPadding: const EdgeInsets.all(12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
               ),
               style: const TextStyle(
                 fontSize: AppTheme.fontSizeInput,
                 color: AppTheme.textPrimary,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -786,7 +805,7 @@ class _AiChatViewState extends State<AiChatView> {
                       side: BorderSide(
                         color: AppTheme.accent.withValues(alpha: 0.5),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                   ),
                 ),
@@ -804,11 +823,13 @@ class _AiChatViewState extends State<AiChatView> {
                             ),
                           )
                         : const Icon(Icons.send),
-                    label: Text(_chatService.isLoading ? 'Enviando...' : 'Enviar'),
+                    label: Text(
+                      _chatService.isLoading ? 'Enviando...' : 'Enviar',
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       textStyle: const TextStyle(
                         fontSize: AppTheme.fontSizeBody,
                         fontWeight: FontWeight.bold,
@@ -830,10 +851,13 @@ class _AiChatViewState extends State<AiChatView> {
 
   Widget _buildLegalNoteCard() {
     return const LegalNoteCard(
+      // Una sola línea compacta: mantiene el frame delgado, sin ocupar
+      // demasiado alto en la parte inferior de la pantalla.
+      singleLine: true,
       note:
           'Este asistente es una ayuda para capturar tus datos. NO hace cálculos. '
           'La IA puede cometer errores, revisa siempre la información en las pestañas de la calculadora. '
-          'La app cumple con uso justo: 30 mensajes por consulta, 5 consultas por día.',
+          'La app cumple con uso justo: 30 mensajes por consulta, 15 consultas por día.',
     );
   }
 

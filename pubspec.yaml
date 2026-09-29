@@ -1,14 +1,15 @@
 name: d_0_pension
 description: "Calculadora de pension Ley 1973 IMSS - Modalidad 40 y Pago Retroactivo"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.0+6
 
 environment:
-  sdk: ^3.11.3
+  sdk: ^3.13.0
 
 dependencies:
   flutter:
     sdk: flutter
+  crypto: ^3.0.6
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
   shared_preferences: ^2.3.4
@@ -16,13 +17,29 @@ dependencies:
   in_app_purchase: ^3.1.11
   in_app_purchase_android: ^0.5.0
   video_player: ^2.10.0
-  crypto: ^3.0.6
   package_info_plus: ^10.2.1
+  http: ^1.2.2
+  url_launcher: ^6.3.1
+  firebase_core: ^4.13.0
+  firebase_analytics: ^12.4.6
+  # Fuente de tiempo inyectable: LicenseService usa `clock.now()` (real en
+  # producción) para permitir golden tests deterministas que congelan el reloj
+  # con `withClock(Clock.fixed(...))`.
+  clock: ^1.1.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Dependencia directa de test: permite fijar InAppPurchasePlatform.instance
+  # con un fake real (extends InAppPurchasePlatform) para ejercitar el flujo
+  # real de PlayBillingService en widget tests (evita depend_on_referenced_packages).
+  in_app_purchase_platform_interface: ^1.4.1
+  # Dependencias directas de test: permiten instalar un fake de
+  # FirebaseAnalyticsPlatform y usar setupFirebaseCoreMocks() en los tests de
+  # Analytics (evita depend_on_referenced_packages).
+  firebase_analytics_platform_interface: ^6.0.6
+  firebase_core_platform_interface: ^8.1.0
 
 flutter:
   uses-material-design: true
@@ -31,3 +48,4 @@ flutter:
     - assets/config/app_metadata.json
     - assets/config/api_key.json
     - assets/videos/
+    - assets/icons/

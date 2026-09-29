@@ -223,7 +223,6 @@ void main() {
 
     // Semanas from Excel
     final semanasCotizadas = _parseDouble(datosGenMod40['semanas_cot_m40']).toInt();
-    final semanasAntesM40 = _parseDouble(datosGenMod40['semanas_antes_m40']).toInt();
 
     // Salary data from SAL. PROM MOD 40
     final salarioPromedio = _parseDouble(salPromMod40['salario_promedio']);
@@ -325,7 +324,7 @@ void main() {
     final startDate = fechaCalculo;
     final endDate = nuevaFechaStr != null ? DateTime.parse(nuevaFechaStr) : fechaCalculo;
     final retroactiveYears = (endDate.difference(startDate).inDays / 365.25);
-    final retroactivo = evaluator.calculateRetroactivo(
+    evaluator.calculateRetroactivo(
       costoModalidad40: costoMod40.inversionTotal,
       retroactiveYears: retroactiveYears,
       startDate: startDate,
@@ -540,23 +539,6 @@ void main() {
     }
     print('  TYPE MISMATCH: $field: App=$appVal (${appVal.runtimeType}) vs Excel=$excelVal (${excelVal.runtimeType})');
     return false;
-  }
-
-  /// Compare app results vs Excel results
-  List<String> _compareResults(Map<String, dynamic> app, Map<String, dynamic> excel, String prefix) {
-    final diffs = <String>[];
-    for (final key in app.keys) {
-      final fullKey = prefix.isEmpty ? key : '$prefix.$key';
-      final appVal = app[key];
-      final excelVal = excel[key];
-
-      if (appVal is Map<String, dynamic> && excelVal is Map<String, dynamic>) {
-        diffs.addAll(_compareResults(appVal, excelVal, fullKey));
-      } else if (!_compareValues(appVal, excelVal, fullKey)) {
-        diffs.add('$fullKey: App=$appVal vs Excel=$excelVal');
-      }
-    }
-    return diffs;
   }
 
   /// Compare only the core pension fields that should match exactly
