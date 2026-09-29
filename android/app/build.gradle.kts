@@ -64,3 +64,10 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Requisito de Play Console (>= 2026-08-30): Google Play Billing 8.0.0 o posterior.
+    // in_app_purchase_android 0.5.0 ya la incluye; se fija aquí para garantizar que el
+    // AAB resuelva >= 8.0.0 y que Google Play detecte la versión correcta.
+    implementation("com.android.billingclient:billing:8.0.0")
+}
