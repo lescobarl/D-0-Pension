@@ -3,8 +3,8 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // Con AGP 9 el Flutter Gradle Plugin gestiona el plugin de Kotlin; aquí no
+    // se declara 'kotlin-android'. El Flutter Gradle Plugin va después.
     id("dev.flutter.flutter-gradle-plugin")
     // Procesa android/app/google-services.json (Firebase Analytics).
     id("com.google.gms.google-services")
@@ -25,10 +25,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -58,6 +54,12 @@ android {
             // Firma con la keystore de upload (keystore.properties). Nunca con debug.
             signingConfig = signingConfigs.getByName("release")
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

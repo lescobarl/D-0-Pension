@@ -158,12 +158,10 @@ class AiChatService extends ChangeNotifier {
   int _dailyMessageCount = 0;
 
   AiChatService({
-    required RetroactiveProvider provider,
-    required String apiKey,
+    required this._provider,
+    required this._apiKey,
     http.Client? client,
-  }) : _provider = provider,
-       _apiKey = apiKey,
-       _client = client ?? http.Client();
+  }) : _client = client ?? http.Client();
 
   @override
   void dispose() {

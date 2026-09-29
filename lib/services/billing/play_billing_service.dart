@@ -384,8 +384,8 @@ class PlayBillingService {
 
     try {
       await start(session.product);
-      if (!session.isOpen) return session.completer.future;
-      return session.completer.future.timeout(
+      if (!session.isOpen) return await session.completer.future;
+      return await session.completer.future.timeout(
         timeout,
         onTimeout: () {
           final result = Failure<PlayPurchaseSuccess>(timeoutMessage);

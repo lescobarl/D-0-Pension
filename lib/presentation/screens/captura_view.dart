@@ -1803,21 +1803,23 @@ class _CapturaViewState extends State<CapturaView> {
       ),
       alignment: Alignment.centerLeft,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Etiqueta y valor a ANCHO NATURAL (sin Flexible/Expanded, que
-          // reparten el ancho a la mitad y truncan la etiqueta). Con
-          // spaceBetween la etiqueta queda a la izquierda usando todo el
-          // espacio y el valor pegado al borde derecho, sin desperdiciar.
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: AppTheme.fontSizeBodySmall,
-              color: AppTheme.textSecondary,
+          // Solo la etiqueta es Expanded: toma el espacio restante (tras el
+          // valor a ancho natural) y se recorta con ellipsis si no cabe. No se
+          // usa Flexible en ambos porque repartiría el ancho a la mitad y
+          // truncaría la etiqueta de más.
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: AppTheme.fontSizeBodySmall,
+                color: AppTheme.textSecondary,
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             value,
             maxLines: 1,

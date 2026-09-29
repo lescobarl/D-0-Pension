@@ -32,8 +32,7 @@ class UserAccountService extends ChangeNotifier {
   String? _sessionUsername;
   bool _rememberMe = true;
 
-  UserAccountService(this._prefs, {required PaymentProvider payments})
-    : _payments = payments {
+  UserAccountService(this._prefs, {required this._payments}) {
     _accounts = _loadAccounts(_prefs);
     _sessionUsername = _prefs.getString(_kSessionUsername);
     _rememberMe = _prefs.getBool(_kRememberMe) ?? true;

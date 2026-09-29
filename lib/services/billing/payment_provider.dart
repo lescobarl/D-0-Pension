@@ -48,10 +48,9 @@ class PaymentProvider extends ChangeNotifier {
   PaymentProvider(
     this._billingService,
     this._prefs, {
-    BuiltinAccountConfig? builtinAccount,
+    this._builtinAccount,
     AnalyticsService? analytics,
-  }) : _builtinAccount = builtinAccount,
-       _analytics = analytics ?? AnalyticsService.instance {
+  }) : _analytics = analytics ?? AnalyticsService.instance {
     // DI seam (Rule 0.2): the service never calls the provider directly; the
     // provider registers its renewal handler in the constructor.
     _billingService.onRenewalDetected = _handleRenewalDetected;
