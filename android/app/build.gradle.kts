@@ -39,8 +39,8 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            if (keystorePropertiesFile.exists()) {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
                 storeFile = file(keystoreProperties["storeFile"] as String)
@@ -51,8 +51,14 @@ android {
 
     buildTypes {
         release {
-            // Firma con la keystore de upload (keystore.properties). Nunca con debug.
-            signingConfig = signingConfigs.getByName("release")
+            // Firma con la keystore de upload (keystore.properties) en local/release
+            // real; en CI (sin keystore.properties) cae a firma debug para poder
+            // compilar/validar el release. La firma debug nunca se publica.
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
